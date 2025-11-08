@@ -17,23 +17,72 @@ CORS(app)  # Enable CORS for frontend access
 # Configuration
 DATA_DIR = Path(__file__).parent / 'data'
 CSV_FILE = DATA_DIR / 'sensor_data.csv'
-CSV_HEADERS = ['timestamp', 'device_id', 'temp_sht40', 'humidity_sht40', 
-               'temp_scd41', 'humidity_scd41', 'co2']
+CSV_HEADERS = ['timestamp', 'device_id', 'temperature', 'humidity', 'co2']
 
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)
 
-# Create CSV file with headers if it doesn't exist
-if not CSV_FILE.exists():
-    with open(CSV_FILE, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(CSV_HEADERS)
-    print(f"Created CSV file: {CSV_FILE}")
+# Create CSV file with headers if it doesn't exist or migrate legacy format
+def ensure_csv_schema():
+    if not CSV_FILE.exists():
+        with open(CSV_FILE, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(CSV_HEADERS)
+        print(f"Created CSV file: {CSV_FILE}")
+        return
+
+    with open(CSV_FILE, 'r', newline='') as f:
+        reader = csv.reader(f)
+        existing_header = next(reader, [])
+
+    if existing_header != CSV_HEADERS:
+        legacy_path = CSV_FILE.with_name(f"{CSV_FILE.stem}_legacy_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+        CSV_FILE.rename(legacy_path)
+        print(f"Detected legacy CSV format. Renamed to {legacy_path.name}")
+        with open(CSV_FILE, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(CSV_HEADERS)
+        print(f"Created new CSV file with updated schema: {CSV_FILE}")
+
+
+ensure_csv_schema()
+
+def normalize_sensor_data(data):
+    """Map incoming payload to canonical temperature/humidity keys."""
+    normalized = {}
+    try:
+        normalized['timestamp'] = data['timestamp']
+        normalized['device_id'] = data['device_id']
+    except KeyError as exc:
+        raise KeyError(f"Missing required field: {exc.args[0]}")
+
+    def first_present(keys):
+        for key in keys:
+            if key in data and data[key] is not None:
+                return data[key]
+        return None
+
+    temperature = first_present(['temperature', 'temp_scd41', 'temp_sht40'])
+    humidity = first_present(['humidity', 'humidity_scd41', 'humidity_sht40'])
+
+    if temperature is None:
+        raise KeyError("temperature")
+    if humidity is None:
+        raise KeyError("humidity")
+
+    normalized['temperature'] = temperature
+    normalized['humidity'] = humidity
+
+    if 'co2' not in data:
+        raise KeyError("co2")
+    normalized['co2'] = data['co2']
+
+    return normalized
+
 
 def validate_sensor_data(data):
     """Validate incoming sensor data"""
-    required_fields = ['timestamp', 'device_id', 'temp_sht40', 'humidity_sht40',
-                      'temp_scd41', 'humidity_scd41', 'co2']
+    required_fields = ['timestamp', 'device_id', 'temperature', 'humidity', 'co2']
     
     # Check required fields
     for field in required_fields:
@@ -42,18 +91,16 @@ def validate_sensor_data(data):
     
     # Validate data ranges
     try:
-        temp_sht40 = float(data['temp_sht40'])
-        temp_scd41 = float(data['temp_scd41'])
-        humidity_sht40 = float(data['humidity_sht40'])
-        humidity_scd41 = float(data['humidity_scd41'])
+        temperature = float(data['temperature'])
+        humidity = float(data['humidity'])
         co2 = int(data['co2'])
         
         # Temperature range: -10°C to 50°C
-        if not (-10 <= temp_sht40 <= 50) or not (-10 <= temp_scd41 <= 50):
+        if not (-10 <= temperature <= 50):
             return False, "Temperature out of valid range (-10 to 50°C)"
         
         # Humidity range: 0% to 100%
-        if not (0 <= humidity_sht40 <= 100) or not (0 <= humidity_scd41 <= 100):
+        if not (0 <= humidity <= 100):
             return False, "Humidity out of valid range (0 to 100%)"
         
         # CO2 range: 400 to 5000 ppm (normal indoor range)
@@ -92,26 +139,36 @@ def receive_data():
         print(f"{'='*50}")
         print(json.dumps(data, indent=2))
         
+        # Normalize payload to canonical keys
+        try:
+            normalized = normalize_sensor_data(data)
+        except KeyError as exc:
+            message = f"Missing required field: {exc.args[0]}"
+            print(f"⚠️  Validation error: {message}")
+            return jsonify({'error': message}), 400
+
         # Validate data
-        is_valid, message = validate_sensor_data(data)
+        is_valid, message = validate_sensor_data(normalized)
         if not is_valid:
             print(f"⚠️  Validation error: {message}")
             return jsonify({'error': message}), 400
         
         # Format timestamp
-        timestamp_str = format_timestamp(data['timestamp'])
-        
+        timestamp_str = format_timestamp(normalized['timestamp'])
+
+        temperature = float(normalized['temperature'])
+        humidity = float(normalized['humidity'])
+        co2 = int(normalized['co2'])
+
         # Append to CSV (with file locking for safety)
         with open(CSV_FILE, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 timestamp_str,
-                data['device_id'],
-                f"{float(data['temp_sht40']):.2f}",
-                f"{float(data['humidity_sht40']):.2f}",
-                f"{float(data['temp_scd41']):.2f}",
-                f"{float(data['humidity_scd41']):.2f}",
-                data['co2']
+                normalized['device_id'],
+                f"{temperature:.2f}",
+                f"{humidity:.2f}",
+                co2
             ])
         
         print(f"✓ Data saved to CSV at {timestamp_str}")
@@ -154,16 +211,18 @@ def get_data():
                         continue
                     
                     # Convert to appropriate types
+                    temperature = float(row.get('temperature', row.get('temp_scd41', 0)))
+                    humidity = float(row.get('humidity', row.get('humidity_scd41', 0)))
+                    co2 = int(row['co2'])
+
                     data_point = {
                         'timestamp': row['timestamp'],
                         'device_id': row['device_id'],
-                        'temp_sht40': float(row['temp_sht40']),
-                        'humidity_sht40': float(row['humidity_sht40']),
-                        'temp_scd41': float(row['temp_scd41']),
-                        'humidity_scd41': float(row['humidity_scd41']),
-                        'co2': int(row['co2']),
-                        'temp_avg': (float(row['temp_sht40']) + float(row['temp_scd41'])) / 2,
-                        'humidity_avg': (float(row['humidity_sht40']) + float(row['humidity_scd41'])) / 2
+                        'temperature': temperature,
+                        'humidity': humidity,
+                        'co2': co2,
+                        'temp_avg': temperature,
+                        'humidity_avg': humidity
                     }
                     data_points.append(data_point)
                 
@@ -210,11 +269,11 @@ def get_stats():
                     if row_time < cutoff_time:
                         continue
                     
-                    temp_avg = (float(row['temp_sht40']) + float(row['temp_scd41'])) / 2
-                    humidity_avg = (float(row['humidity_sht40']) + float(row['humidity_scd41'])) / 2
+                    temperature = float(row.get('temperature', row.get('temp_scd41', 0)))
+                    humidity = float(row.get('humidity', row.get('humidity_scd41', 0)))
                     
-                    temps.append(temp_avg)
-                    humidities.append(humidity_avg)
+                    temps.append(temperature)
+                    humidities.append(humidity)
                     co2_values.append(int(row['co2']))
                 
                 except (ValueError, KeyError):

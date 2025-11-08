@@ -1,16 +1,19 @@
 /*
  * IoT Environmental Monitoring System
- * ESP12S + SHT40 + SCD41 Sensors with LaskaKit μSup I2C Connectors
+ * ESP12S + SCD41 Sensor with LaskaKit μSup I2C Connector
  * 
  * ESP12S I2C Pins:
  * - SDA: GPIO 4 (D2)
  * - SCL: GPIO 5 (D1)
  * 
  * With μSup Connectors (I2C):
- * - Both sensors connect to same I2C bus via μSup connectors
+ * - Sensors connect to I2C bus via μSup connectors
  * - Power: 3.3V from ESP12S
  * - No manual wiring needed - μSup handles connections!
  */
+
+// Arduino core
+#include <Wire.h>
 
 // Board selection - uncomment your board
 #define BOARD_ESP12S       // ESP8266-based ESP12S
@@ -21,10 +24,24 @@
   #include <ESP8266WiFi.h>
   #include <ESP8266HTTPClient.h>
   #include <WiFiClient.h>
+  #include <Adafruit_GFX.h>
+  #include <Adafruit_SSD1306.h>
   // LaskaKit AirBoard 8266 specific I2C pins for μSup connectors
   #define I2C_SDA 0  // GPIO 0 (D3) - connected to μSup connectors
   #define I2C_SCL 2  // GPIO 2 (D4) - connected to μSup connectors
-  // No display on ESP12S/AirBoard 8266
+  #define HAS_DISPLAY
+  #define SCREEN_WIDTH 128
+  #define SCREEN_HEIGHT 64
+  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+  #ifndef TFT_BLACK
+    #define TFT_BLACK SSD1306_BLACK
+    #define TFT_WHITE SSD1306_WHITE
+    #define TFT_RED 0xF800
+    #define TFT_GREEN 0x07E0
+    #define TFT_YELLOW 0xFFE0
+    #define TFT_ORANGE 0xFD20
+    #define TFT_CYAN 0x07FF
+  #endif
 #else
   // ESP32 libraries
   #include <WiFi.h>
@@ -36,9 +53,7 @@
   TFT_eSPI tft = TFT_eSPI();
 #endif
 
-#include <Wire.h>
 #include <ArduinoJson.h>
-#include <Adafruit_SHT4x.h>
 #include <SparkFun_SCD4x_Arduino_Library.h>
 #include <time.h>
 
@@ -49,18 +64,16 @@
 // Apply configuration
 const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
+const uint16_t WARNING_CO2_THRESHOLD = 1500;
 // ========================================
 
 // Hardware objects
-Adafruit_SHT4x sht40;
 SCD4x scd41;
 
 // Data storage
 struct SensorData {
-  float temp_sht40;
-  float humidity_sht40;
-  float temp_scd41;
-  float humidity_scd41;
+  float temperature;
+  float humidity;
   uint16_t co2;
   unsigned long timestamp;
   bool valid;
@@ -69,6 +82,10 @@ struct SensorData {
 SensorData lastReading;
 unsigned long lastReadingTime = 0;
 bool sensorsInitialized = false;
+
+#ifdef HAS_DISPLAY
+bool displayInitialized = false;
+#endif
 
 // Connection status
 enum ConnectionState {
@@ -86,6 +103,7 @@ ConnectionState serverState = DISCONNECTED;
 void initDisplay();
 void displayStatus(const char* message, uint16_t color);
 void displayReadings(SensorData data);
+void displayWarningScreen(SensorData data);
 #endif
 void scanI2C();
 bool initSensors();
@@ -101,18 +119,17 @@ void setup() {
   Serial.println("Environmental Monitoring System");
   Serial.println("=================================\n");
   
-  #ifdef HAS_DISPLAY
-  // Initialize display (ESP32 only)
-  initDisplay();
-  displayStatus("Initializing...", TFT_YELLOW);
-  #endif
-  
   // Initialize I2C with correct pins for ESP12S
   Wire.begin(I2C_SDA, I2C_SCL);
   Serial.print("I2C initialized on SDA=GPIO");
   Serial.print(I2C_SDA);
   Serial.print(", SCL=GPIO");
   Serial.println(I2C_SCL);
+
+  #ifdef HAS_DISPLAY
+  initDisplay();
+  displayStatus("Initializing...", TFT_YELLOW);
+  #endif
   
   // Scan I2C bus
   scanI2C();
@@ -192,6 +209,7 @@ void loop() {
 
 #ifdef HAS_DISPLAY
 void initDisplay() {
+#if defined(BOARD_ESP32)
   tft.init();
   tft.setRotation(1);  // Landscape mode
   tft.fillScreen(TFT_BLACK);
@@ -200,17 +218,100 @@ void initDisplay() {
   tft.setCursor(0, 0);
   tft.println("Environmental");
   tft.println("Monitor v1.0");
+  displayInitialized = true;
+#elif defined(BOARD_ESP12S)
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("✗ SSD1306 display not found at 0x3C");
+    displayInitialized = false;
+    return;
+  }
+  displayInitialized = true;
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  display.println("Environmental");
+  display.setCursor(0, 20);
+  display.println("Monitor");
+  display.display();
+#endif
 }
 
 void displayStatus(const char* message, uint16_t color) {
+  if (!displayInitialized) {
+    return;
+  }
+#if defined(BOARD_ESP32)
   tft.fillRect(0, 60, 240, 30, TFT_BLACK);
   tft.setTextColor(color, TFT_BLACK);
   tft.setTextSize(2);
   tft.setCursor(10, 65);
   tft.println(message);
+#elif defined(BOARD_ESP12S)
+  (void)color;
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println(message);
+  display.display();
+#endif
+}
+
+void displayWarningScreen(SensorData data) {
+#if defined(BOARD_ESP32)
+  tft.fillScreen(TFT_RED);
+  tft.setTextColor(TFT_WHITE, TFT_RED);
+  tft.setTextSize(3);
+  tft.setCursor(20, 20);
+  tft.println("WARNING");
+  
+  tft.setTextSize(2);
+  tft.setCursor(20, 60);
+  tft.print("CO2: ");
+  tft.print(data.co2);
+  tft.println(" ppm");
+
+  tft.setTextSize(1);
+  tft.setCursor(20, 90);
+  tft.println("Ventilate room!");
+#elif defined(BOARD_ESP12S)
+  display.clearDisplay();
+
+  // Yellow header (top 16 px are rendered in yellow by the module)
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(2);
+  display.setCursor(4, 4);
+  display.println("POZOR");
+
+  // Blue section content
+  display.setTextSize(1);
+  display.setCursor(0, 28);
+  display.print("CO2: ");
+  display.print(data.co2);
+  display.println(" ppm");
+  display.setCursor(0, 40);
+  display.println("Vyvetrejte okna.");
+
+  static bool invertToggle = false;
+  invertToggle = !invertToggle;
+  display.invertDisplay(invertToggle);
+
+  display.display();
+#endif
 }
 
 void displayReadings(SensorData data) {
+  if (!displayInitialized) {
+    return;
+  }
+
+  if (data.co2 >= WARNING_CO2_THRESHOLD) {
+    displayWarningScreen(data);
+    return;
+  }
+
+#if defined(BOARD_ESP32)
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(1);
   
@@ -229,28 +330,22 @@ void displayReadings(SensorData data) {
   tft.print("Time: ");
   tft.println(timeStr);
   
-  // Temperature (average of both sensors)
-  float avgTemp = (data.temp_sht40 + data.temp_scd41) / 2.0;
   tft.setTextSize(2);
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setCursor(0, 30);
   tft.print("Temp: ");
-  tft.print(avgTemp, 1);
+  tft.print(data.temperature, 1);
   tft.println(" C");
   
-  // Humidity (average of both sensors)
-  float avgHum = (data.humidity_sht40 + data.humidity_scd41) / 2.0;
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
   tft.setCursor(0, 50);
   tft.print("Hum:  ");
-  tft.print(avgHum, 1);
+  tft.print(data.humidity, 1);
   tft.println(" %");
   
   // CO2 with color coding
   uint16_t co2Color = TFT_GREEN;
   if (data.co2 > 1000) co2Color = TFT_ORANGE;
-  if (data.co2 > 1500) co2Color = TFT_RED;
-  
   tft.setTextColor(co2Color, TFT_BLACK);
   tft.setCursor(0, 70);
   tft.print("CO2:  ");
@@ -268,6 +363,32 @@ void displayReadings(SensorData data) {
   tft.setTextColor(serverState == CONNECTED ? TFT_GREEN : TFT_RED, TFT_BLACK);
   tft.print("Server: ");
   tft.println(serverState == CONNECTED ? "OK" : "ERR");
+#elif defined(BOARD_ESP12S)
+  display.invertDisplay(false);
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("Monitor kvality");
+
+  display.setTextSize(1);
+  display.setCursor(0, 18);
+  display.print("CO2: ");
+  display.print(data.co2);
+  display.println(" ppm");
+
+  display.setTextSize(1);
+  display.setCursor(0, 46);
+  display.print("Teplota: ");
+  display.print(data.temperature, 1);
+  display.println(" C");
+  display.setCursor(0, 58);
+  display.print("WiFi:");
+  display.print(wifiState == CONNECTED ? "OK" : "ERR");
+  display.print("  Srv:");
+  display.print(serverState == CONNECTED ? "OK" : "ERR");
+  display.display();
+#endif
 }
 #endif  // HAS_DISPLAY
 
@@ -275,8 +396,8 @@ void scanI2C() {
   Serial.println("\nScanning I2C bus...");
   Serial.println("LaskaKit AirBoard 8266 - μSup connectors");
   Serial.println("Expected devices:");
-  Serial.println("  - SHT40 at 0x44");
   Serial.println("  - SCD41 at 0x62");
+  Serial.println("  - Optional display at 0x3C");
   Serial.println("\nScanning addresses 0x01-0x7F...");
   
   int deviceCount = 0;
@@ -291,8 +412,8 @@ void scanI2C() {
       Serial.print(addr, HEX);
       
       // Identify known devices
-      if (addr == 0x44) Serial.print(" (SHT40)");
-      else if (addr == 0x62) Serial.print(" (SCD41)");
+      if (addr == 0x62) Serial.print(" (SCD41)");
+      else if (addr == 0x3C) Serial.print(" (Display)");
       
       Serial.println();
       deviceCount++;
@@ -320,17 +441,6 @@ bool initSensors() {
   
   // Give sensors time to power up
   delay(500);
-  
-  // Initialize SHT40 (I2C address 0x44)
-  Serial.print("SHT40 (0x44): ");
-  if (sht40.begin(&Wire)) {
-    Serial.println("✓ OK");
-    sht40.setPrecision(SHT4X_HIGH_PRECISION);
-    sht40.setHeater(SHT4X_NO_HEATER);
-  } else {
-    Serial.println("✗ FAILED - Check I2C connections and address");
-    success = false;
-  }
   
   // Initialize SCD41 (I2C address 0x62)
   Serial.print("SCD41 (0x62): ");
@@ -367,40 +477,24 @@ SensorData readSensors() {
   data.valid = false;
   data.timestamp = time(nullptr);
   
-  // Read SHT40
-  sensors_event_t humidity, temp;
-  if (sht40.getEvent(&humidity, &temp)) {
-    data.temp_sht40 = temp.temperature;
-    data.humidity_sht40 = humidity.relative_humidity;
-    
-    Serial.print("SHT40 - Temp: ");
-    Serial.print(data.temp_sht40, 2);
-    Serial.print("°C, Humidity: ");
-    Serial.print(data.humidity_sht40, 2);
-    Serial.println("%");
-  } else {
-    Serial.println("SHT40: Read failed");
-    return data;
-  }
-  
   // Read SCD41
   if (scd41.readMeasurement()) {
     data.co2 = scd41.getCO2();
-    data.temp_scd41 = scd41.getTemperature();
-    data.humidity_scd41 = scd41.getHumidity();
+    data.temperature = scd41.getTemperature();
+    data.humidity = scd41.getHumidity();
     
     Serial.print("SCD41 - CO2: ");
     Serial.print(data.co2);
     Serial.print(" ppm, Temp: ");
-    Serial.print(data.temp_scd41, 2);
+    Serial.print(data.temperature, 2);
     Serial.print("°C, Humidity: ");
-    Serial.print(data.humidity_scd41, 2);
+    Serial.print(data.humidity, 2);
     Serial.println("%");
     
     // Validate readings
     if (data.co2 >= 400 && data.co2 <= 5000 &&
-        data.temp_scd41 >= -10 && data.temp_scd41 <= 50 &&
-        data.humidity_scd41 >= 0 && data.humidity_scd41 <= 100) {
+        data.temperature >= -10 && data.temperature <= 50 &&
+        data.humidity >= 0 && data.humidity <= 100) {
       data.valid = true;
     } else {
       Serial.println("SCD41: Reading out of valid range");
@@ -501,10 +595,8 @@ bool sendDataToServer(SensorData data) {
   StaticJsonDocument<256> doc;
   doc["timestamp"] = data.timestamp;
   doc["device_id"] = DEVICE_ID;
-  doc["temp_sht40"] = round(data.temp_sht40 * 100) / 100.0;
-  doc["humidity_sht40"] = round(data.humidity_sht40 * 100) / 100.0;
-  doc["temp_scd41"] = round(data.temp_scd41 * 100) / 100.0;
-  doc["humidity_scd41"] = round(data.humidity_scd41 * 100) / 100.0;
+  doc["temperature"] = round(data.temperature * 100) / 100.0;
+  doc["humidity"] = round(data.humidity * 100) / 100.0;
   doc["co2"] = data.co2;
   
   String jsonString;

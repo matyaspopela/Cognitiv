@@ -16,7 +16,7 @@
 
 // Server Configuration
 // Run 'ipconfig' in PowerShell to find your PC's IP address
-#define SERVER_URL "http://YOUR_SERVER_IP:5000/data"
+#define SERVER_URL "http://192.168.0.172:5000/data"
 
 // Device ID (unique name for this sensor)
 #define DEVICE_ID "YOUR_DEVICE_ID"
