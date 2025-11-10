@@ -231,10 +231,56 @@
             margin: 0;
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: clamp(24px, 4vw, 32px);
+        .mission-section {
+            margin-top: clamp(60px, 8vw, 100px);
+            background: var(--surface);
+            border-radius: 28px;
+            padding: clamp(32px, 5vw, 48px);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(24px, 5vw, 40px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mission-text {
+            flex: 1 1 300px;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(14px, 3vw, 20px);
+        }
+
+        .mission-text h2 {
+            margin: 0;
+            font-size: clamp(30px, 4.2vw, 44px);
+            line-height: 1.15;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .mission-text p {
+            margin: 0;
+            font-size: clamp(15px, 2.1vw, 18px);
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        .mission-image {
+            flex: 1 1 260px;
+            min-height: 220px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(147, 51, 234, 0.12));
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            box-shadow: 0 24px 44px rgba(15, 23, 42, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: clamp(24px, 4vw, 32px);
+            color: var(--text);
+            font-weight: 600;
         }
 
         .co2-status {
@@ -340,43 +386,6 @@
             color: var(--muted);
         }
 
-        .feature-card {
-            background: var(--surface);
-            padding: clamp(20px, 3vw, 28px);
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-soft);
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 16px;
-            background: var(--accent-soft);
-            color: var(--accent);
-            display: grid;
-            place-items: center;
-            font-size: 22px;
-            margin-bottom: 20px;
-        }
-
-        .feature-card h3 {
-            margin: 0 0 12px;
-            font-size: 18px;
-        }
-
-        .feature-card p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
         .insights {
             background: var(--surface);
             border-radius: 28px;
@@ -464,11 +473,11 @@
                     <h1>Podívejte se na své prostředí s jasností.</h1>
                     <p>
                         Cognitiv převádí surová data ze senzorů na rozhodnutí díky moderní vizualizaci.
-                        Sledujte trendy teploty, vlhkosti a CO₂ v dashboardu navrženém pro soustředěnou práci.
+                        Sledujte trendy teploty, vlhkosti a CO₂ v dashboardu navrženém pro přehlednost.
                     </p>
                     <div class="hero-actions">
                         <a class="btn btn-primary" href="/dashboard">Otevřít živý přehled</a>
-                        <a class="btn btn-ghost" href="#features">Prozkoumat možnosti</a>
+                        <a class="btn btn-ghost" href="#features">Cíl projektu</a>
                     </div>
                 </div>
                 <div class="hero-visual">
@@ -498,32 +507,18 @@
                 </div>
             </section>
 
-            <section id="features">
-                <div class="section-heading">
-                    <h2>Monitorování s důrazem na design</h2>
-                    <p>Od prvního pohledu po hlubší analýzu drží Cognitiv klíčové signály kvality vzduchu v popředí, aniž by zahltil.</p>
+            <section id="features" class="mission-section">
+                <div class="mission-text">
+                    <h2>Posuneme spolu kvalitu vzduchu v budovách o dech dál.</h2>
+                    <p>
+                        Cognitiv je projekt založený na vizi lepšího vzduchu, tedy lepšího prostředí pro kvalitní výuku, pracoviště nebo prostě život. Věřím, že tento systém ulehčí plánovat ventilaci v budovách, a to nejvíce v případech kde je možné nainstalovat chytré ventilační systémy.
+                    </p>
+                    <p>
+                        Jakožto moderní instituce, by naše školy měly klást důraz na kvalitu vzduchu, neboť je to element jenž dokázaně ovlivňuje schopnost koncentrace a bdělosti ve výuce.
+                    </p>
                 </div>
-                <div class="features-grid">
-                    <article class="feature-card">
-                        <div class="feature-icon">🎛️</div>
-                        <h3>Vedený start</h3>
-                        <p>Začněte přátelským přehledem a do datově bohatého dashboardu vstupte až ve chvíli, kdy budete připraveni.</p>
-                    </article>
-                    <article class="feature-card">
-                        <div class="feature-icon">📊</div>
-                        <h3>Pohlcující grafy</h3>
-                        <p>Procházejte celoobrazovkové metriky s plynulými přechody pro analytický zážitek jako z filmu.</p>
-                    </article>
-                    <article class="feature-card">
-                        <div class="feature-icon">🎨</div>
-                        <h3>Promyšlená estetika</h3>
-                        <p>Vytříbená paleta, typografie a jasná hierarchie zpřístupňují i složitější poznatky.</p>
-                    </article>
-                    <article class="feature-card">
-                        <div class="feature-icon">⚡</div>
-                        <h3>Aktualizace v reálném čase</h3>
-                        <p>Získejte nová data ze senzorů během pár sekund a udržujte prostor komfortní a bezpečný.</p>
-                    </article>
+                <div class="mission-image">
+                    Vizualizace zařízení Cognitiv<br />ESP8266 + SCD41 + cloudový přehled
                 </div>
             </section>
 
@@ -591,15 +586,15 @@
                 if (current >= 2000) {
                     label = 'Kritická kvalita vzduchu';
                     stateClass = 'critical';
-                    message = 'CO₂ je velmi vysoké. Okamžitě intenzivně vyvětrejte.';
+                    message = 'Koncentrace CO₂ je velmi vysoká. Intenzivně vyvětrejte.';
                 } else if (current >= 1500) {
-                    label = 'Zvýšené CO₂';
+                    label = 'Špatná kvalita vzduchu';
                     stateClass = 'high';
-                    message = 'CO₂ je zvýšené. Doporučujeme intenzivně větrat.';
+                    message = 'Koncentrace CO₂ je vysoká. Doporučujeme intenzivně větrat.';
                 } else if (current >= 1000) {
                     label = 'Střední kvalita vzduchu';
                     stateClass = 'moderate';
-                    message = 'CO₂ pozvolna roste. Zvažte otevření okna nebo zapnutí ventilace.';
+                    message = 'Koncentrace CO₂ pozvolna roste. Zvažte otevření okna';
                 }
             } else {
                 label = 'Čekám na data';
