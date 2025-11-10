@@ -18,7 +18,7 @@
 // ESP8266 libraries (LaskaKit AirBoard 8266)
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecureBearSSL.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #ifdef WIFI_ENTERPRISE_ENABLED
@@ -463,9 +463,13 @@ bool sendDataToServer(SensorData data) {
     return false;
   }
   
-  WiFiClient client;
+  BearSSL::WiFiClientSecure client;
+  client.setInsecure();  // TODO: replace with certificate pinning for production security
   HTTPClient http;
-  http.begin(client, SERVER_URL);
+  if (!http.begin(client, SERVER_URL)) {
+    Serial.println("Failed to initialize HTTPS connection");
+    return false;
+  }
   http.addHeader("Content-Type", "application/json");
   
   // Create JSON payload
