@@ -5,8 +5,8 @@
 #define CONFIG_H
 
 // WiFi Configuration
-#define WIFI_SSID "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define WIFI_SSID "moto g32_7681"
+#define WIFI_PASSWORD "edasimon"
 
 // For WPA2 Enterprise networks (username + password)
 // Uncomment these lines and comment out WIFI_PASSWORD above if using Enterprise WiFi
@@ -16,7 +16,7 @@
 
 // Server Configuration
 // Run 'ipconfig' in PowerShell to find your PC's IP address
-#define SERVER_URL "http://192.168.0.172:5000/data"
+#define SERVER_URL "http://172.22.205.72:5000/data"
 
 // Device ID (unique name for this sensor)
 #define DEVICE_ID "YOUR_DEVICE_ID"

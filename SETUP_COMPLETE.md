@@ -141,8 +141,6 @@ Cognitiv/
 ├── server/                      # Flask backend
 │   ├── server.py
 │   ├── requirements.txt
-│   ├── data/
-│   │   └── sensor_data.csv     # Auto-created
 │   └── static/
 │       └── dashboard.html
 ├── analysis/                    # Python analysis
@@ -170,11 +168,10 @@ Cognitiv/
 
 ### Flask Server
 - Receives sensor data (POST /data)
-- Validates and stores in CSV
+- Validates and stores in MongoDB
 - Serves web dashboard (GET /)
 - Provides data API (GET /data)
 - Calculates statistics (GET /stats)
-- Enables CSV download (GET /download)
 
 ### Web Dashboard
 - Shows current readings (large display)

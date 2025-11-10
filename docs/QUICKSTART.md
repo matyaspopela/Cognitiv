@@ -215,8 +215,11 @@ After collecting data for a day or more:
 ```powershell
 cd analysis
 pip install -r requirements.txt
-python data_quality.py ../server/data/sensor_data.csv
-python visualize.py ../server/data/sensor_data.csv
+mongoexport --uri "$env:MONGO_URI" --collection sensor_data \
+  --type=csv --fields timestamp_str,device_id,temperature,humidity,co2 \
+  --out sensor_data.csv
+python data_quality.py ../sensor_data.csv
+python visualize.py ../sensor_data.csv
 ```
 
 ---

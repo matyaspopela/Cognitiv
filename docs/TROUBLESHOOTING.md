@@ -235,37 +235,43 @@ python -m pip install flask flask-cors
 python -c "import flask; print(flask.__version__)"
 ```
 
-### ❌ CSV File Permission Error
+### ❌ MongoDB Authentication Error
 
-**Error**: `PermissionError: [Errno 13] Permission denied: 'sensor_data.csv'`
+**Error**: `pymongo.errors.OperationFailure: Authentication failed`
 
-**Cause**: File is open in Excel or another program
+**Cause**: Invalid username/password or IP not allowed in Atlas.
 
 **Solutions**:
-1. Close Excel/any program viewing the CSV
-2. Restart server
-3. Check file isn't read-only: Right-click → Properties → uncheck Read-only
+1. Verify the credentials embedded in `MONGO_URI`
+2. In MongoDB Atlas, ensure your current IP is in the Network Access allowlist
+3. Reset Atlas user password if needed and update `MONGO_URI`
+4. Retest with `mongosh "your-mongo-uri"`
 
 ### ❌ Data Not Being Saved
 
-**Symptoms**: Server receives data but CSV doesn't update
+**Symptoms**: Server receives data but MongoDB collection remains empty
 
 **Debug Steps**:
 
 1. **Check server console output**:
    ```
-   ✓ Data saved to CSV at 2024-11-03 10:30:00  ← Should see this
+   ✓ Data saved to MongoDB at 2024-11-03 10:30:00  ← Should see this
    ```
 
-2. **Check CSV file location**:
-   ```python
-   # In server.py, check this line:
-   CSV_FILE = DATA_DIR / 'sensor_data.csv'
+2. **Verify connection string**:
+   ```powershell
+   echo $env:MONGO_URI
+   ```
+   Ensure it matches your Atlas cluster.
+
+3. **Check Atlas collection**:
+   ```bash
+   mongosh "your-mongo-uri"
+   use cognitiv
+   db.sensor_data.findOne()
    ```
 
-3. **Verify file permissions**: Make sure `server/data/` folder is writable
-
-4. **Check disk space**: Ensure drive has space available
+4. **Monitor Atlas metrics**: Open Atlas dashboard → Metrics → Connections to confirm inserts
 
 ---
 
@@ -497,23 +503,25 @@ Received data from livingroom_01
   "temp_sht40": 22.5,
   ...
 }
-✓ Data saved to CSV at 2024-11-03 10:30:00
+✓ Data saved to MongoDB at 2024-11-03 10:30:00
 ```
 
 Look for error messages or validation failures.
 
-### Verify CSV Data Integrity
+### Inspect Data in MongoDB
 
-```powershell
-cd server/data
-# Check CSV file
-type sensor_data.csv | Select-Object -First 10
+```bash
+mongosh "your-mongo-uri"
+use cognitiv
+db.sensor_data.find().sort({ timestamp: -1 }).limit(5)
 ```
 
-Verify:
-- Headers present: `timestamp,device_id,temp_sht40,...`
-- Data format correct: `2024-11-03 10:30:00,livingroom_01,22.50,...`
-- No corrupted lines
+Or export a CSV snapshot:
+```bash
+mongoexport --uri "$MONGO_URI" --collection sensor_data \
+  --type=csv --fields timestamp_str,device_id,temperature,humidity,co2 \
+  --out sensor_data.csv
+```
 
 ---
 
@@ -560,7 +568,7 @@ With the above information:
 2. **Calibrate CO₂ sensor**: Every 3-6 months in fresh air
 3. **Clean sensors**: Gently dust with soft brush
 4. **Update firmware**: Check for improvements/fixes
-5. **Backup data**: Copy CSV file regularly
+5. **Backup data**: Schedule Atlas backups or run `mongodump`
 
 ### Best Practices
 

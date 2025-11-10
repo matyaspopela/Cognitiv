@@ -11,8 +11,6 @@ Cognitiv/
 ├── server/                            # Flask Backend Server
 │   ├── server.py                      # Main server application
 │   ├── requirements.txt               # Python dependencies
-│   ├── data/                          # Data storage
-│   │   └── sensor_data.csv           # CSV data file (auto-created)
 │   └── static/                        # Frontend files
 │       └── dashboard.html             # Web dashboard
 │
@@ -67,7 +65,7 @@ READING_INTERVAL   // How often to read (milliseconds)
 #### `server/server.py`
 **Purpose**: Flask REST API server
 - Receives sensor data from ESP32
-- Validates and stores data in CSV
+- Validates and stores data in MongoDB
 - Serves dashboard web page
 - Provides data API endpoints
 
@@ -75,7 +73,6 @@ READING_INTERVAL   // How often to read (milliseconds)
 - `POST /data`: Receive sensor data
 - `GET /data`: Query stored data
 - `GET /stats`: Get statistical summary
-- `GET /download`: Download CSV file
 - `GET /status`: Server health check
 - `GET /`: Serve dashboard
 
@@ -92,7 +89,6 @@ READING_INTERVAL   // How often to read (milliseconds)
 - Statistics and air quality metrics
 - Auto-refresh every 30 seconds
 - Time range selection
-- CSV download
 
 **Features**:
 - Current readings (large display)
@@ -113,9 +109,9 @@ READING_INTERVAL   // How often to read (milliseconds)
 - Checks value ranges
 - Detects rapid changes
 
-**Usage**:
+**Usage** (after exporting data from MongoDB, e.g., with `mongoexport`):
 ```bash
-python data_quality.py ../server/data/sensor_data.csv
+python data_quality.py ../sensor_data.csv
 ```
 
 **Output**:
@@ -135,9 +131,9 @@ python data_quality.py ../server/data/sensor_data.csv
 - Daily comparisons
 - CO2 quality breakdown
 
-**Usage**:
+**Usage** (after exporting data from MongoDB):
 ```bash
-python visualize.py ../server/data/sensor_data.csv
+python visualize.py ../sensor_data.csv
 ```
 
 **Output**: PNG files in `analysis/visualizations/`
@@ -159,9 +155,9 @@ python visualize.py ../server/data/sensor_data.csv
 - Interaction features (dew point, etc.)
 - Anomaly detection features
 
-**Usage**:
+**Usage** (after exporting data from MongoDB):
 ```bash
-python prepare_ml.py ../server/data/sensor_data.csv ml_features.csv
+python prepare_ml.py ../sensor_data.csv ml_features.csv
 ```
 
 **Output**: `ml_features.csv` with 100+ columns
@@ -197,7 +193,7 @@ python prepare_ml.py ../server/data/sensor_data.csv ml_features.csv
 │  └───────┬───────┘  │
 │          │          │
 │  ┌───────▼───────┐  │
-│  │ Append to CSV │  │ Log to file
+│  │ Insert into DB│  │ MongoDB Atlas
 │  └───────┬───────┘  │
 │          │          │
 │  ┌───────▼───────┐  │
@@ -238,10 +234,24 @@ python prepare_ml.py ../server/data/sensor_data.csv ml_features.csv
 }
 ```
 
-### CSV (Server Storage)
-```csv
-timestamp,device_id,temp_sht40,humidity_sht40,temp_scd41,humidity_scd41,co2
-2024-11-03 10:30:00,livingroom_01,22.50,45.20,22.30,44.80,650
+### MongoDB Document (Server Storage)
+```json
+{
+  "_id": "655f0c2b5f6f3c1a2b3d4e5f",
+  "timestamp": "2024-11-03T10:30:00",
+  "timestamp_str": "2024-11-03 10:30:00",
+  "device_id": "livingroom_01",
+  "temperature": 22.5,
+  "humidity": 45.2,
+  "co2": 650,
+  "raw_payload": {
+    "timestamp": 1699013400,
+    "device_id": "livingroom_01",
+    "temp_sht40": 22.5,
+    "humidity_sht40": 45.2,
+    "co2": 650
+  }
+}
 ```
 
 ### JSON (Server → Dashboard)
@@ -253,13 +263,11 @@ timestamp,device_id,temp_sht40,humidity_sht40,temp_scd41,humidity_scd41,co2
     {
       "timestamp": "2024-11-03 10:30:00",
       "device_id": "livingroom_01",
-      "temp_sht40": 22.50,
-      "humidity_sht40": 45.20,
-      "temp_scd41": 22.30,
-      "humidity_scd41": 44.80,
+      "temperature": 22.50,
+      "humidity": 45.20,
       "co2": 650,
-      "temp_avg": 22.40,
-      "humidity_avg": 45.00
+      "temp_avg": 22.50,
+      "humidity_avg": 45.20
     }
   ]
 }
@@ -282,7 +290,9 @@ timestamp,device_id,temp_sht40,humidity_sht40,temp_scd41,humidity_scd41,co2
 | host | 0.0.0.0 | Listen on all interfaces |
 | port | 5000 | Server port number |
 | debug | True | Enable debug mode |
-| CSV_FILE | data/sensor_data.csv | Data file location |
+| MONGO_URI | (see `.env`) | MongoDB Atlas connection string |
+| MONGO_DB_NAME | cognitiv | Database for sensor data |
+| MONGO_COLLECTION | sensor_data | MongoDB collection name |
 
 ### Dashboard
 
@@ -387,19 +397,19 @@ timestamp,device_id,temp_sht40,humidity_sht40,temp_scd41,humidity_scd41,co2
 ### Performance
 - ESP32 can handle ~1 reading/second, but 1/minute is recommended
 - Server can handle 100s of devices simultaneously
-- CSV works fine up to ~1M rows, then consider database
+- MongoDB Atlas scales to millions of records with minimal maintenance
 - Dashboard optimized for modern browsers
 
 ### Limitations
 - ESP32 WiFi range: ~50m indoors
 - SCD41 warm-up: 60 seconds minimum
-- CSV file size: Monitor and archive periodically
+- Atlas free tier has connection and storage limits—monitor usage
 - Browser chart performance: Auto-samples >100 points
 
 ### Best Practices
 - Keep firmware simple and stable
 - Log everything for debugging
-- Backup CSV data regularly
+- Backup MongoDB collections periodically (Atlas backups or `mongodump`)
 - Document any modifications
 - Test changes incrementally
 

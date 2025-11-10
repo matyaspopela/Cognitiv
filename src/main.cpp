@@ -15,42 +15,33 @@
 // Arduino core
 #include <Wire.h>
 
-// Board selection - uncomment your board
-#define BOARD_ESP12S       // ESP8266-based ESP12S
-// #define BOARD_ESP32      // ESP32-based (LilyGo T-Display, etc.)
-
-#ifdef BOARD_ESP12S
-  // ESP8266 libraries (LaskaKit AirBoard 8266)
-  #include <ESP8266WiFi.h>
-  #include <ESP8266HTTPClient.h>
-  #include <WiFiClient.h>
-  #include <Adafruit_GFX.h>
-  #include <Adafruit_SSD1306.h>
-  // LaskaKit AirBoard 8266 specific I2C pins for μSup connectors
-  #define I2C_SDA 0  // GPIO 0 (D3) - connected to μSup connectors
-  #define I2C_SCL 2  // GPIO 2 (D4) - connected to μSup connectors
-  #define HAS_DISPLAY
-  #define SCREEN_WIDTH 128
-  #define SCREEN_HEIGHT 64
-  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-  #ifndef TFT_BLACK
-    #define TFT_BLACK SSD1306_BLACK
-    #define TFT_WHITE SSD1306_WHITE
-    #define TFT_RED 0xF800
-    #define TFT_GREEN 0x07E0
-    #define TFT_YELLOW 0xFFE0
-    #define TFT_ORANGE 0xFD20
-    #define TFT_CYAN 0x07FF
-  #endif
-#else
-  // ESP32 libraries
-  #include <WiFi.h>
-  #include <HTTPClient.h>
-  #include <TFT_eSPI.h>
-  #define I2C_SDA 21
-  #define I2C_SCL 22
-  #define HAS_DISPLAY
-  TFT_eSPI tft = TFT_eSPI();
+// ESP8266 libraries (LaskaKit AirBoard 8266)
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#ifdef WIFI_ENTERPRISE_ENABLED
+extern "C" {
+  #include "user_interface.h"
+  #include "wpa2_enterprise.h"
+}
+#endif
+// LaskaKit AirBoard 8266 specific I2C pins for μSup connectors
+#define I2C_SDA 0  // GPIO 0 (D3) - connected to μSup connectors
+#define I2C_SCL 2  // GPIO 2 (D4) - connected to μSup connectors
+#define HAS_DISPLAY
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+#ifndef TFT_BLACK
+  #define TFT_BLACK SSD1306_BLACK
+  #define TFT_WHITE SSD1306_WHITE
+  #define TFT_RED 0xF800
+  #define TFT_GREEN 0x07E0
+  #define TFT_YELLOW 0xFFE0
+  #define TFT_ORANGE 0xFD20
+  #define TFT_CYAN 0x07FF
 #endif
 
 #include <ArduinoJson.h>
@@ -209,17 +200,6 @@ void loop() {
 
 #ifdef HAS_DISPLAY
 void initDisplay() {
-#if defined(BOARD_ESP32)
-  tft.init();
-  tft.setRotation(1);  // Landscape mode
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(0, 0);
-  tft.println("Environmental");
-  tft.println("Monitor v1.0");
-  displayInitialized = true;
-#elif defined(BOARD_ESP12S)
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println("✗ SSD1306 display not found at 0x3C");
     displayInitialized = false;
@@ -234,20 +214,12 @@ void initDisplay() {
   display.setCursor(0, 20);
   display.println("Monitor");
   display.display();
-#endif
 }
 
 void displayStatus(const char* message, uint16_t color) {
   if (!displayInitialized) {
     return;
   }
-#if defined(BOARD_ESP32)
-  tft.fillRect(0, 60, 240, 30, TFT_BLACK);
-  tft.setTextColor(color, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(10, 65);
-  tft.println(message);
-#elif defined(BOARD_ESP12S)
   (void)color;
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -255,27 +227,9 @@ void displayStatus(const char* message, uint16_t color) {
   display.setCursor(0, 0);
   display.println(message);
   display.display();
-#endif
 }
 
 void displayWarningScreen(SensorData data) {
-#if defined(BOARD_ESP32)
-  tft.fillScreen(TFT_RED);
-  tft.setTextColor(TFT_WHITE, TFT_RED);
-  tft.setTextSize(3);
-  tft.setCursor(20, 20);
-  tft.println("WARNING");
-  
-  tft.setTextSize(2);
-  tft.setCursor(20, 60);
-  tft.print("CO2: ");
-  tft.print(data.co2);
-  tft.println(" ppm");
-
-  tft.setTextSize(1);
-  tft.setCursor(20, 90);
-  tft.println("Ventilate room!");
-#elif defined(BOARD_ESP12S)
   display.clearDisplay();
 
   // Yellow header (top 16 px are rendered in yellow by the module)
@@ -298,7 +252,6 @@ void displayWarningScreen(SensorData data) {
   display.invertDisplay(invertToggle);
 
   display.display();
-#endif
 }
 
 void displayReadings(SensorData data) {
@@ -311,59 +264,6 @@ void displayReadings(SensorData data) {
     return;
   }
 
-#if defined(BOARD_ESP32)
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(1);
-  
-  // Header
-  tft.setTextColor(TFT_CYAN, TFT_BLACK);
-  tft.setCursor(0, 0);
-  tft.println("Environmental Monitor");
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  
-  // Timestamp
-  char timeStr[30];
-  time_t now = data.timestamp;
-  struct tm* timeinfo = localtime(&now);
-  strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
-  tft.setCursor(0, 12);
-  tft.print("Time: ");
-  tft.println(timeStr);
-  
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.setCursor(0, 30);
-  tft.print("Temp: ");
-  tft.print(data.temperature, 1);
-  tft.println(" C");
-  
-  tft.setTextColor(TFT_CYAN, TFT_BLACK);
-  tft.setCursor(0, 50);
-  tft.print("Hum:  ");
-  tft.print(data.humidity, 1);
-  tft.println(" %");
-  
-  // CO2 with color coding
-  uint16_t co2Color = TFT_GREEN;
-  if (data.co2 > 1000) co2Color = TFT_ORANGE;
-  tft.setTextColor(co2Color, TFT_BLACK);
-  tft.setCursor(0, 70);
-  tft.print("CO2:  ");
-  tft.print(data.co2);
-  tft.println(" ppm");
-  
-  // Connection status
-  tft.setTextSize(1);
-  tft.setCursor(0, 100);
-  tft.setTextColor(wifiState == CONNECTED ? TFT_GREEN : TFT_RED, TFT_BLACK);
-  tft.print("WiFi: ");
-  tft.println(wifiState == CONNECTED ? "OK" : "ERR");
-  
-  tft.setCursor(0, 110);
-  tft.setTextColor(serverState == CONNECTED ? TFT_GREEN : TFT_RED, TFT_BLACK);
-  tft.print("Server: ");
-  tft.println(serverState == CONNECTED ? "OK" : "ERR");
-#elif defined(BOARD_ESP12S)
   display.invertDisplay(false);
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -388,7 +288,6 @@ void displayReadings(SensorData data) {
   display.print("  Srv:");
   display.print(serverState == CONNECTED ? "OK" : "ERR");
   display.display();
-#endif
 }
 #endif  // HAS_DISPLAY
 
@@ -519,28 +418,11 @@ void connectWiFi() {
   #ifdef WIFI_ENTERPRISE_ENABLED
     // WPA2 Enterprise (username + password)
     Serial.println("Using WPA2 Enterprise authentication");
-    #ifdef BOARD_ESP12S
-      // ESP8266 WPA2 Enterprise
-      #include <ESP8266WiFi.h>
-      extern "C" {
-        #include "user_interface.h"
-        #include "wpa2_enterprise.h"
-      }
-      
-      wifi_station_set_wpa2_enterprise_auth(1);
-      wifi_station_set_enterprise_identity((uint8*)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
-      wifi_station_set_enterprise_username((uint8*)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
-      wifi_station_set_enterprise_password((uint8*)WIFI_EAP_PASSWORD, strlen(WIFI_EAP_PASSWORD));
-      WiFi.begin(WIFI_SSID);
-    #else
-      // ESP32 WPA2 Enterprise
-      #include "esp_wpa2.h"
-      esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
-      esp_wifi_sta_wpa2_ent_set_username((uint8_t *)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
-      esp_wifi_sta_wpa2_ent_set_password((uint8_t *)WIFI_EAP_PASSWORD, strlen(WIFI_EAP_PASSWORD));
-      esp_wifi_sta_wpa2_ent_enable();
-      WiFi.begin(WIFI_SSID);
-    #endif
+    wifi_station_set_wpa2_enterprise_auth(1);
+    wifi_station_set_enterprise_identity((uint8*)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
+    wifi_station_set_enterprise_username((uint8*)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
+    wifi_station_set_enterprise_password((uint8*)WIFI_EAP_PASSWORD, strlen(WIFI_EAP_PASSWORD));
+    WiFi.begin(WIFI_SSID);
   #else
     // Standard WPA/WPA2 Personal (password only)
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -581,14 +463,9 @@ bool sendDataToServer(SensorData data) {
     return false;
   }
   
-  #ifdef BOARD_ESP12S
   WiFiClient client;
   HTTPClient http;
   http.begin(client, SERVER_URL);
-  #else
-  HTTPClient http;
-  http.begin(SERVER_URL);
-  #endif
   http.addHeader("Content-Type", "application/json");
   
   // Create JSON payload

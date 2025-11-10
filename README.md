@@ -23,11 +23,11 @@ A complete IoT solution for monitoring temperature, humidity, and CO₂ levels u
 - **Real-time Monitoring**: Continuous tracking of environmental parameters
 - **Dual Sensor System**: Redundant readings from SHT40 and SCD41 for accuracy
 - **Visual Dashboard**: Beautiful web interface with live graphs
-- **Data Logging**: Automatic CSV storage for historical analysis
+- **Cloud Data Logging**: MongoDB Atlas storage for historical analysis
 - **Local Display**: ESP32 T-Display shows current readings
 - **WiFi Connectivity**: Wireless data transmission to local server
 - **Air Quality Alerts**: CO₂ level categorization (Good/Moderate/Poor)
-- **Data Export**: Download CSV files for external analysis
+- **Cloud Storage**: Historical data stored in MongoDB Atlas for analysis
 - **ML Ready**: Data format optimized for machine learning
 
 ## 🏗️ System Architecture
@@ -43,7 +43,13 @@ A complete IoT solution for monitoring temperature, humidity, and CO₂ levels u
 ┌─────────────────────────┐
 │  Local Server (PC)      │
 │  - Flask REST API       │
-│  - CSV Data Storage     │
+│  - MongoDB Atlas Client │
+└──────────┬──────────────┘
+           │
+           ▼
+┌─────────────────────────┐
+│  MongoDB Atlas Cluster  │
+│  - Sensor Data Storage  │
 └──────────┬──────────────┘
            │
            ▼
@@ -182,6 +188,8 @@ cd server
 pip install -r requirements.txt
 ```
 
+This installs the Flask server along with the MongoDB driver (`pymongo`).
+
 ### Step 4: Hardware Assembly
 
 1. Connect sensors to ESP32 following the wiring diagram above
@@ -226,14 +234,19 @@ const unsigned long READING_INTERVAL = 60000;  // 60 seconds
 
 ### Server Configuration
 
-The server uses default settings that work for most setups. If needed, you can modify `server/server.py`:
+The server uses environment variables for MongoDB connectivity. Set these before starting the server (or let the defaults kick in for quick testing):
 
-```python
-# Port (default: 5000)
-app.run(host='0.0.0.0', port=5000, debug=True)
+- `MONGO_URI`: Full MongoDB connection string (`mongodb+srv://...`)
+- `MONGO_DB_NAME`: Database name to use (default: `cognitiv`)
+- `MONGO_COLLECTION`: Collection name to store sensor documents (default: `sensor_data`)
 
-# Data directory (default: server/data/)
-DATA_DIR = Path(__file__).parent / 'data'
+Example (PowerShell):
+
+```powershell
+$env:MONGO_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/"
+$env:MONGO_DB_NAME="cognitiv"
+$env:MONGO_COLLECTION="sensor_data"
+python server.py
 ```
 
 ## 🚀 Usage
@@ -251,7 +264,8 @@ DATA_DIR = Path(__file__).parent / 'data'
    ============================================================
    IoT Environmental Monitoring Server
    ============================================================
-   CSV File: C:\Users\...\server\data\sensor_data.csv
+   MongoDB Connection: mongodb+srv://...
+   Database: cognitiv, Collection: sensor_data
    Server URL: http://0.0.0.0:5000
    Dashboard: http://localhost:5000
    ============================================================
@@ -269,6 +283,14 @@ DATA_DIR = Path(__file__).parent / 'data'
    - Open browser
    - Go to `http://localhost:5000` (on the server PC)
    - Or use PC's IP from other devices: `http://192.168.1.100:5000`
+
+### Connect Page Flow (Manual Verification)
+
+1. Keep the server running and ensure your board is connected to the PC via USB.
+2. Open `http://localhost:5000/connect` in a browser.
+3. Enter the WiFi network name (SSID) and optional password, then submit.
+4. Wait for the on-page status banner to confirm the PlatformIO upload completed successfully; if it fails, review the log excerpt shown.
+5. After a successful upload, power-cycle the board and verify it connects to the dashboard within a minute.
 
 ### Monitoring Serial Output
 
@@ -293,7 +315,6 @@ To see debug information from ESP32:
 - Historical line graphs (temperature, humidity, CO₂)
 - Air quality distribution
 - Data point count
-- Download button for CSV export
 
 ## 📡 API Documentation
 
@@ -398,11 +419,6 @@ Get statistical summary.
 }
 ```
 
-#### GET `/download`
-Download complete CSV file.
-
-**Response**: CSV file attachment
-
 #### GET `/status`
 Server health check.
 
@@ -410,10 +426,10 @@ Server health check.
 ```json
 {
   "status": "online",
-  "csv_file": "C:\\Users\\...\\sensor_data.csv",
-  "file_size_bytes": 125000,
-  "file_size_mb": 0.12,
+  "database": "cognitiv",
+  "collection": "sensor_data",
   "data_points": 1500,
+  "latest_entry": "2024-11-03 14:25:00",
   "server_time": "2024-11-03 14:30:00"
 }
 ```
@@ -516,17 +532,18 @@ app.run(host='0.0.0.0', port=5001, debug=True)
 4. Try different browser
 5. Clear browser cache
 
-#### ❌ CSV File Corruption
+#### ❌ MongoDB Connection Issues
 
-**Symptoms**: Dashboard shows no data or server crashes on data read
+**Symptoms**: Server logs show `MongoDB insert error` or `Failed to initialize MongoDB client`
 
 **Solutions**:
-1. Stop server
-2. Check `server/data/sensor_data.csv` manually
-3. Remove corrupted lines
-4. Ensure header row is present:
-   ```csv
-   timestamp,device_id,temp_sht40,humidity_sht40,temp_scd41,humidity_scd41,co2
+1. Verify `MONGO_URI`, `MONGO_DB_NAME`, and `MONGO_COLLECTION` environment variables
+2. Confirm your IP is allowed in the MongoDB Atlas network access list
+3. Check Atlas cluster status (pause/resume if needed)
+4. Test connectivity with the MongoDB shell:
+   ```bash
+   mongosh "your-mongo-uri"
+   show dbs
    ```
 
 ### Data Quality Issues
@@ -575,75 +592,33 @@ app.run(host='0.0.0.0', port=5001, debug=True)
 
 ## 📊 Data Analysis
 
-### CSV Data Format
+### Accessing Data from MongoDB
 
-The system stores data in `server/data/sensor_data.csv`:
-
-```csv
-timestamp,device_id,temp_sht40,humidity_sht40,temp_scd41,humidity_scd41,co2
-2024-11-03 10:30:00,livingroom_01,22.50,45.20,22.30,44.80,650
-2024-11-03 10:31:00,livingroom_01,22.60,45.10,22.40,44.70,652
-```
-
-### Data Analysis Scripts
-
-See `analysis/` folder for Python scripts:
-
-#### 1. Data Quality Check (`data_quality.py`)
-
-Checks for:
-- Missing values
-- Outliers
-- Duplicate timestamps
-- Sensor drift
-
-Usage:
-```bash
-cd analysis
-python data_quality.py ../server/data/sensor_data.csv
-```
-
-#### 2. Data Visualization (`visualize.py`)
-
-Creates advanced plots:
-- Correlation heatmaps
-- Distribution histograms
-- Time series decomposition
-- Hourly/daily patterns
-
-#### 3. ML Feature Engineering (`prepare_ml.py`)
-
-Prepares features for machine learning:
-- Time-based features (hour, day of week, etc.)
-- Rolling statistics (moving averages)
-- Rate of change calculations
-- Occupancy detection (CO₂ spikes)
-
-### Example Analysis with Pandas
+Use MongoDB tools (e.g., VS Code extension, MongoDB Compass, `mongosh`) to explore the `sensor_data` collection. For programmatic access you can load data straight into pandas:
 
 ```python
+import os
+from pymongo import MongoClient
 import pandas as pd
-import matplotlib.pyplot as plt
 
-# Load data
-df = pd.read_csv('server/data/sensor_data.csv', parse_dates=['timestamp'])
+client = MongoClient(os.environ["MONGO_URI"])
+collection = client["cognitiv"]["sensor_data"]
 
-# Basic statistics
+cursor = collection.find({}, projection={"_id": 0, "raw_payload": 0})
+df = pd.DataFrame(list(cursor))
+df["timestamp"] = pd.to_datetime(df["timestamp"])
+
 print(df.describe())
+```
 
-# Plot temperature over time
-df.plot(x='timestamp', y='temp_avg', figsize=(12, 6))
-plt.title('Temperature Over Time')
-plt.ylabel('Temperature (°C)')
-plt.show()
+You can also export data for offline processing with `mongoexport`:
 
-# Find peak CO₂ hours
-df['hour'] = df['timestamp'].dt.hour
-hourly_avg = df.groupby('hour')['co2'].mean()
-print("Peak CO₂ hour:", hourly_avg.idxmax())
-
-# Correlation between sensors
-print(df[['temp_sht40', 'temp_scd41']].corr())
+```bash
+mongoexport \
+  --uri="$MONGO_URI" \
+  --collection=sensor_data \
+  --type=json \
+  --out=sensor_data.json
 ```
 
 ### Machine Learning Use Cases
@@ -690,28 +665,7 @@ const unsigned long READING_INTERVAL = 300000;
 
 ### Database Integration
 
-For production use, consider replacing CSV with SQLite or PostgreSQL:
-
-```python
-# Example with SQLite
-import sqlite3
-
-conn = sqlite3.connect('sensor_data.db')
-cursor = conn.cursor()
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS readings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        device_id TEXT,
-        temp_sht40 REAL,
-        humidity_sht40 REAL,
-        temp_scd41 REAL,
-        humidity_scd41 REAL,
-        co2 INTEGER
-    )
-''')
-```
+MongoDB Atlas is used by default. To connect additional tools (BI platforms, analytics notebooks), reuse the same `MONGO_URI` with your preferred MongoDB driver.
 
 ## 📝 Development Roadmap
 

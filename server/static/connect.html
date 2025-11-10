@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitiv • Connect Board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #eef2ff;
+            --surface: #ffffff;
+            --surface-muted: rgba(255, 255, 255, 0.82);
+            --border: rgba(15, 23, 42, 0.08);
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #2563eb;
+            --accent-strong: #9333ea;
+            --accent-soft: #dbeafe;
+            --shadow: 0 26px 48px rgba(15, 23, 42, 0.12);
+            --shadow-soft: 0 18px 36px rgba(15, 23, 42, 0.08);
+            --danger: #dc2626;
+            --success: #16a34a;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(160deg, #eef2ff 0%, #f8fafc 42%, #e0f2fe 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .page {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: clamp(24px, 4vw, 52px);
+            gap: clamp(28px, 5vw, 60px);
+            max-width: 1040px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            font-weight: 700;
+            font-size: clamp(20px, 2.6vw, 28px);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: clamp(12px, 3vw, 24px);
+            font-size: 15px;
+        }
+
+        .nav-links a {
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 500;
+            color: var(--muted);
+            transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: clamp(24px, 4vw, 40px);
+            align-items: start;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: clamp(22px, 3vw, 32px);
+            padding: clamp(24px, 4vw, 36px);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            flex-direction: column;
+            gap: clamp(14px, 2vw, 22px);
+        }
+
+        .card h1,
+        .card h2 {
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .card h1 {
+            font-size: clamp(28px, 4vw, 36px);
+            letter-spacing: -0.01em;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        label span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+        }
+
+        input {
+            padding: 16px 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.36);
+            background: rgba(248, 250, 252, 0.92);
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: rgba(37, 99, 235, 0.6);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+        }
+
+        button {
+            padding: 14px 24px;
+            border-radius: 999px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+        }
+
+        .btn-primary {
+            color: #fff;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+            box-shadow: 0 18px 34px rgba(37, 99, 235, 0.28);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 36px rgba(37, 99, 235, 0.32);
+        }
+
+        .btn-secondary {
+            background: var(--surface-muted);
+            color: var(--text);
+            border: 1px solid rgba(148, 163, 184, 0.24);
+        }
+
+        .status-box {
+            border-radius: 18px;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-box.show {
+            display: flex;
+        }
+
+        .status-box.neutral {
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--accent);
+            border: 1px solid rgba(37, 99, 235, 0.24);
+        }
+
+        .status-box.success {
+            background: rgba(22, 163, 74, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(22, 163, 74, 0.28);
+        }
+
+        .status-box.error {
+            background: rgba(220, 38, 38, 0.12);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.28);
+        }
+
+        .status-label {
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .tips {
+            display: grid;
+            gap: 12px;
+        }
+
+        .tips span {
+            display: inline-block;
+            padding: 10px 14px;
+            border-radius: 14px;
+            background: rgba(148, 163, 184, 0.14);
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @media (max-width: 720px) {
+            nav {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .nav-links {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <nav>
+            <a class="brand" href="/">Cognitiv</a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/connect" class="active">Connect</a>
+                <a href="/dashboard">Dashboard</a>
+            </div>
+        </nav>
+
+        <main>
+            <section class="card">
+                <span class="status-pill">Step 1</span>
+                <h1>Configure WiFi without the terminal</h1>
+                <p>
+                    Enter the WiFi credentials your board should use and let the server handle the PlatformIO upload.
+                    No command line or manual flashing required—just plug in the board and click upload.
+                </p>
+                <div class="tips">
+                    <span>• Keep the board connected via USB during the upload.</span>
+                    <span>• Re-run this flow for every board you want to prepare.</span>
+                    <span>• Future updates will add board selection and history.</span>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>WiFi details</h2>
+                <form id="connectForm">
+                    <label for="ssidInput">
+                        Network name (SSID)
+                        <span>The network your board should join.</span>
+                        <input id="ssidInput" name="ssid" placeholder="e.g. Cognitiv-Lab" required autocomplete="off">
+                    </label>
+
+                    <label for="passwordInput">
+                        Password
+                        <span>Leave blank for open networks.</span>
+                        <input id="passwordInput" name="password" type="password" placeholder="Network password">
+                    </label>
+
+                    <div id="statusBox" class="status-box">
+                        <span class="status-label" id="statusLabel">Status</span>
+                        <span id="statusMessage"></span>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn-primary" id="submitButton" type="submit">
+                            ⟳ Upload firmware
+                        </button>
+                        <button class="btn-secondary" id="resetButton" type="reset">Clear</button>
+                    </div>
+                </form>
+            </section>
+        </main>
+
+        <footer>
+            Upload complete? Jump into the <a href="/dashboard">dashboard</a> to confirm the board is reporting.
+        </footer>
+    </div>
+
+    <script>
+    const form = document.getElementById('connectForm');
+    const statusBox = document.getElementById('statusBox');
+    const statusLabel = document.getElementById('statusLabel');
+    const statusMessage = document.getElementById('statusMessage');
+    const submitButton = document.getElementById('submitButton');
+    const resetButton = document.getElementById('resetButton');
+
+    function setStatus(type, message) {
+        statusBox.className = `status-box ${type} show`;
+        statusLabel.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Status';
+        statusMessage.textContent = message;
+    }
+
+    function clearStatus() {
+        statusBox.className = 'status-box';
+        statusLabel.textContent = 'Status';
+        statusMessage.textContent = '';
+    }
+
+    function toggleLoading(isLoading) {
+        submitButton.disabled = isLoading;
+        submitButton.textContent = isLoading ? 'Uploading…' : '⟳ Upload firmware';
+        submitButton.style.opacity = isLoading ? '0.7' : '1';
+    }
+
+    resetButton.addEventListener('click', () => {
+        clearStatus();
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const ssid = document.getElementById('ssidInput').value.trim();
+        const password = document.getElementById('passwordInput').value;
+
+        if (!ssid) {
+            setStatus('error', 'SSID is required.');
+            return;
+        }
+
+        clearStatus();
+        setStatus('neutral', 'Preparing upload…');
+        toggleLoading(true);
+
+        try {
+            const response = await fetch('/connect/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ssid, password })
+            });
+
+            const payload = await response.json();
+
+            if (!response.ok || payload.status !== 'success') {
+                const errorMessage = payload.message || payload.error || 'Upload failed. Check server logs.';
+                setStatus('error', errorMessage);
+                return;
+            }
+
+            let message = 'Firmware uploaded successfully.';
+            if (payload.log_excerpt) {
+                message += ` ${payload.log_excerpt}`;
+            }
+            setStatus('success', message);
+            form.reset();
+        } catch (error) {
+            console.error('Upload error:', error);
+            setStatus('error', 'Unexpected error while uploading. Confirm the board is connected and try again.');
+        } finally {
+            toggleLoading(false);
+        }
+    });
+    </script>
+</body>
+</html>
+
