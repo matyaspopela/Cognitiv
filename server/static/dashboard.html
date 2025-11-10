@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cognitiv • Environmental Dashboard</title>
+    <title>Cognitiv • Přehled prostředí</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -320,6 +320,10 @@
             color: #14b8a6;
         }
 
+        .metric-value.co2.caution {
+            color: #facc15;
+        }
+
         .metric-value.co2.warning {
             color: var(--warning);
         }
@@ -485,10 +489,14 @@
         }
 
         .quality-bar.moderate {
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.9), rgba(234, 179, 8, 0.9));
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.9), rgba(250, 204, 21, 0.9));
         }
 
-        .quality-bar.poor {
+        .quality-bar.high {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.9), rgba(234, 88, 12, 0.9));
+        }
+
+        .quality-bar.critical {
             background: linear-gradient(135deg, rgba(220, 38, 38, 0.9), rgba(239, 68, 68, 0.85));
         }
 
@@ -599,42 +607,42 @@
             <div class="header-top">
                 <div class="brand-group">
                     <div class="top-links">
-                        <a class="brand-link" href="/">↖ Home</a>
-                        <a class="top-link" href="/connect">Connect</a>
-                        <a class="top-link active" href="/dashboard">Dashboard</a>
+                        <a class="brand-link" href="/">↖ Domů</a>
+                        <a class="top-link" href="/connect">Připojit</a>
+                        <a class="top-link active" href="/dashboard">Přehled</a>
                     </div>
                     <div>
-                        <h1>Environmental Intelligence Dashboard</h1>
-                        <p class="subtitle">Deep dive into live comfort and air-quality signals from your Cognitiv sensors.</p>
+                        <h1>Dashboard pro monitorování prostředí</h1>
+                        <p class="subtitle">Podrobný pohled na komfort a kvalitu vzduchu z vašich senzorů Cognitiv.</p>
                     </div>
                 </div>
                 <nav class="header-nav">
-                    <a href="/">Home</a>
-                    <a href="/connect">Connect</a>
-                    <a href="/dashboard" class="active">Dashboard</a>
+                    <a href="/">Domů</a>
+                    <a href="/connect">Připojit</a>
+                    <a href="/dashboard" class="active">Přehled</a>
                 </nav>
                 <div class="status-group">
                     <div class="status-indicator">
                         <span class="status-dot online" id="serverStatus"></span>
-                        <span id="serverStatusText">Server Online</span>
+                        <span id="serverStatusText">Server online</span>
                     </div>
-                    <div class="last-update" id="lastUpdate">Last update: Never</div>
+                    <div class="last-update" id="lastUpdate">Poslední aktualizace: nikdy</div>
                 </div>
             </div>
             <div class="header-controls">
                 <div class="controls-left">
                     <label class="control-label" for="timeRange">
-                        Time horizon
+                        Časové období
                         <select id="timeRange">
-                            <option value="1">Last 1 Hour</option>
-                            <option value="6">Last 6 Hours</option>
-                            <option value="24" selected>Last 24 Hours</option>
-                            <option value="168">Last 7 Days</option>
-                            <option value="720">Last 30 Days</option>
+                            <option value="1">Poslední 1 hodina</option>
+                            <option value="6">Posledních 6 hodin</option>
+                            <option value="24" selected>Posledních 24 hodin</option>
+                            <option value="168">Posledních 7 dní</option>
+                            <option value="720">Posledních 30 dní</option>
                         </select>
                     </label>
                 </div>
-                <button class="btn-primary" id="refreshButton" onclick="refreshData()">⟳ Refresh data</button>
+                <button class="btn-primary" id="refreshButton" onclick="refreshData()">⟳ Aktualizovat data</button>
             </div>
         </header>
 
@@ -644,8 +652,8 @@
             <section class="metrics-grid">
                 <article class="metric-card">
                     <div class="metric-header">
-                        <span>Temperature</span>
-                        <span class="badge">Comfort</span>
+                        <span>Teplota</span>
+                        <span class="badge">Komfort</span>
                     </div>
                     <div class="metric-value temp" id="currentTemp">
                         --<span class="metric-unit">°C</span>
@@ -653,14 +661,14 @@
                     <div class="metric-breakdown">
                         <span>Min <strong id="minTemp">--</strong></span>
                         <span>Max <strong id="maxTemp">--</strong></span>
-                        <span>Avg <strong id="avgTemp">--</strong></span>
+                        <span>Průměr <strong id="avgTemp">--</strong></span>
                     </div>
                 </article>
 
                 <article class="metric-card">
                     <div class="metric-header">
-                        <span>Humidity</span>
-                        <span class="badge">Moisture balance</span>
+                        <span>Vlhkost</span>
+                        <span class="badge">Vlhkostní rovnováha</span>
                     </div>
                     <div class="metric-value humidity" id="currentHumidity">
                         --<span class="metric-unit">%</span>
@@ -668,14 +676,14 @@
                     <div class="metric-breakdown">
                         <span>Min <strong id="minHumidity">--</strong></span>
                         <span>Max <strong id="maxHumidity">--</strong></span>
-                        <span>Avg <strong id="avgHumidity">--</strong></span>
+                        <span>Průměr <strong id="avgHumidity">--</strong></span>
                     </div>
                 </article>
 
                 <article class="metric-card">
                     <div class="metric-header">
-                        <span>CO₂ Level</span>
-                        <span class="badge">Air quality</span>
+                        <span>CO₂</span>
+                        <span class="badge">Kvalita vzduchu</span>
                     </div>
                     <div class="metric-value co2" id="currentCO2">
                         --<span class="metric-unit">ppm</span>
@@ -683,83 +691,88 @@
                     <div class="metric-breakdown">
                         <span>Min <strong id="minCO2">--</strong></span>
                         <span>Max <strong id="maxCO2">--</strong></span>
-                        <span>Avg <strong id="avgCO2">--</strong></span>
+                        <span>Průměr <strong id="avgCO2">--</strong></span>
                     </div>
                 </article>
 
                 <article class="metric-card">
                     <div class="metric-header">
-                        <span>Data coverage</span>
-                        <span class="badge">Insights</span>
+                        <span>Datové pokrytí</span>
+                        <span class="badge">Přehled</span>
                     </div>
                     <div class="metric-value" style="color: var(--accent);" id="dataPoints">
                         --
                     </div>
                     <div class="metric-breakdown">
-                        <span>Readings in window</span>
+                        <span>Záznamů v okně</span>
                     </div>
                 </article>
             </section>
 
             <section class="quality-card">
                 <div class="quality-header">
-                    <h2>Air quality distribution</h2>
-                    <p>Percentage of readings within each CO₂ comfort band for the selected period.</p>
+                    <h2>Rozložení kvality vzduchu</h2>
+                    <p>Podíl měření v jednotlivých pásmech CO₂ pro zvolené období.</p>
                 </div>
                 <div class="quality-bars">
                     <div class="quality-bar good">
-                        <span>Good</span>
+                        <span>Dobrá</span>
                         <strong id="co2Good">--%</strong>
-                        <small>&lt; 800 ppm</small>
+                        <small>&lt; 1000 ppm</small>
                     </div>
                     <div class="quality-bar moderate">
-                        <span>Moderate</span>
+                        <span>Střední</span>
                         <strong id="co2Moderate">--%</strong>
-                        <small>800 – 1000 ppm</small>
+                        <small>1000 – 1499 ppm</small>
                     </div>
-                    <div class="quality-bar poor">
-                        <span>Poor</span>
-                        <strong id="co2Poor">--%</strong>
-                        <small>&gt; 1000 ppm</small>
+                    <div class="quality-bar high">
+                        <span>Zvýšená</span>
+                        <strong id="co2High">--%</strong>
+                        <small>1500 – 1999 ppm</small>
+                    </div>
+                    <div class="quality-bar critical">
+                        <span>Kritická</span>
+                        <strong id="co2Critical">--%</strong>
+                        <small>&ge; 2000 ppm</small>
                     </div>
                 </div>
             </section>
 
             <section class="trend-analysis">
                 <header>
-                    <h2>Trend insights</h2>
-                    <p>We compare the first and latest readings in the selected window to highlight whether conditions are rising, falling, or holding steady.</p>
+                    <h2>Trendové postřehy</h2>
+                    <p>Porovnáváme první a poslední měření v zadaném období a zvýrazňujeme, zda podmínky rostou, klesají nebo zůstávají stabilní.</p>
                 </header>
                 <div class="trend-grid">
                     <article class="trend-card">
-                        <h3>Temperature</h3>
+                        <h3>Teplota</h3>
                         <div class="trend-direction steady" id="tempTrendDirection">--</div>
-                        <div class="trend-detail" id="tempTrendDetail">Waiting for data…</div>
+                        <div class="trend-detail" id="tempTrendDetail">Čekám na data…</div>
                     </article>
                     <article class="trend-card">
-                        <h3>Humidity</h3>
+                        <h3>Vlhkost</h3>
                         <div class="trend-direction steady" id="humidityTrendDirection">--</div>
-                        <div class="trend-detail" id="humidityTrendDetail">Waiting for data…</div>
+                        <div class="trend-detail" id="humidityTrendDetail">Čekám na data…</div>
                     </article>
                     <article class="trend-card">
                         <h3>CO₂</h3>
                         <div class="trend-direction steady" id="co2TrendDirection">--</div>
-                        <div class="trend-detail" id="co2TrendDetail">Waiting for data…</div>
+                        <div class="trend-detail" id="co2TrendDetail">Čekám na data…</div>
                     </article>
                 </div>
             </section>
 
             <section class="charts-section">
                 <div class="charts-header">
-                    <h2>Trend explorer</h2>
-                    <p>Each chart expands across the page for comfortable review of temperature, humidity, and CO₂ signals.</p>
+                    <h2>Průzkumník trendů</h2>
+                    <p>Grafy se rozprostírají přes celou šířku, takže teplotu, vlhkost i CO₂ přehledně porovnáte.</p>
                 </div>
                 <div class="chart-stack-wrapper">
                     <div class="chart-stack" id="chartStack">
                         <article class="chart-panel" data-chart="temperature">
                             <div>
-                                <h3>Temperature over time</h3>
-                                <p>Track microclimate changes and quickly identify heating or cooling events.</p>
+                                <h3>Teplota v čase</h3>
+                                <p>Sledujte změny mikroklimatu a rychle odhalte epizody vytápění či ochlazení.</p>
                             </div>
                             <div class="chart-canvas">
                                 <canvas id="tempChart"></canvas>
@@ -767,8 +780,8 @@
                         </article>
                         <article class="chart-panel" data-chart="humidity">
                             <div>
-                                <h3>Humidity over time</h3>
-                                <p>Ensure ambient moisture stays in the healthy range for comfort and equipment.</p>
+                                <h3>Vlhkost v čase</h3>
+                                <p>Kontrolujte, že se vlhkost drží ve zdravém pásmu pro pohodlí i techniku.</p>
                             </div>
                             <div class="chart-canvas">
                                 <canvas id="humidityChart"></canvas>
@@ -776,8 +789,8 @@
                         </article>
                         <article class="chart-panel" data-chart="co2">
                             <div>
-                                <h3>CO₂ levels over time</h3>
-                                <p>Spot ventilation gaps with threshold markers for moderate and poor air quality.</p>
+                                <h3>CO₂ v čase</h3>
+                                <p>Odhalte nedostatečné větrání pomocí prahů pro jednotlivá pásma kvality vzduchu.</p>
                             </div>
                             <div class="chart-canvas">
                                 <canvas id="co2Chart"></canvas>
@@ -789,7 +802,7 @@
         </main>
 
         <footer>
-            Designed for clarity and calm monitoring. <a href="/">Return home</a>
+            Navrženo pro klidné a přehledné sledování. <a href="/">Zpět na domov</a>
         </footer>
     </div>
 
@@ -843,7 +856,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Temperature (°C)',
+                        label: 'Teplota (°C)',
                         data: [],
                         borderColor: '#fb923c',
                         backgroundColor: 'rgba(251, 146, 60, 0.12)',
@@ -873,7 +886,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Humidity (%)',
+                        label: 'Vlhkost (%)',
                         data: [],
                         borderColor: '#38bdf8',
                         backgroundColor: 'rgba(56, 189, 248, 0.12)',
@@ -930,31 +943,46 @@
                         ...commonOptions.plugins,
                         annotation: {
                             annotations: {
-                                moderate: {
+                                good: {
                                     type: 'line',
-                                    yMin: 800,
-                                    yMax: 800,
-                                    borderColor: '#f97316',
+                                    yMin: 1000,
+                                    yMax: 1000,
+                                    borderColor: '#facc15',
                                     borderWidth: 2,
                                     borderDash: [6, 6],
                                     label: {
                                         enabled: true,
-                                        content: 'Moderate (800 ppm)',
+                                        content: 'Prahová hodnota 1000 ppm',
                                         backgroundColor: 'rgba(15, 23, 42, 0.9)',
                                         color: '#fff',
                                         position: 'start'
                                     }
                                 },
-                                poor: {
+                                high: {
                                     type: 'line',
-                                    yMin: 1000,
-                                    yMax: 1000,
+                                    yMin: 1500,
+                                    yMax: 1500,
+                                    borderColor: '#f97316',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        enabled: true,
+                                        content: 'Prahová hodnota 1500 ppm',
+                                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                        color: '#fff',
+                                        position: 'start'
+                                    }
+                                },
+                                critical: {
+                                    type: 'line',
+                                    yMin: 2000,
+                                    yMax: 2000,
                                     borderColor: '#dc2626',
                                     borderWidth: 2,
                                     borderDash: [6, 6],
                                     label: {
                                         enabled: true,
-                                        content: 'Poor (1000 ppm)',
+                                        content: 'Prahová hodnota 2000 ppm',
                                         backgroundColor: 'rgba(15, 23, 42, 0.9)',
                                         color: '#fff',
                                         position: 'start'
@@ -982,18 +1010,18 @@
                     updateServerStatus(true);
                     clearError();
                 } else {
-                    throw new Error('Failed to fetch data');
+                    throw new Error('Načtení dat se nezdařilo');
                 }
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Chyba při načítání dat:', error);
                 updateServerStatus(false);
-                showError('Failed to connect to server. Please check if the server is running.');
+                showError('Nepodařilo se spojit se serverem. Zkontrolujte, zda běží.');
             }
         }
 
         function updateUI(data, stats) {
             if (!data || data.length === 0 || !stats || Object.keys(stats).length === 0) {
-                showError('No data available. Waiting for sensor readings…');
+                showError('Nejsou k dispozici žádná data. Čekám na měření ze senzorů…');
                 return;
             }
 
@@ -1005,10 +1033,12 @@
             const co2Element = document.getElementById('currentCO2');
             co2Element.innerHTML = `${stats.co2.current}<span class="metric-unit">ppm</span>`;
             co2Element.className = 'metric-value co2';
-            if (stats.co2.current > 1000) {
+            if (stats.co2.current >= 2000) {
                 co2Element.classList.add('danger');
-            } else if (stats.co2.current > 800) {
+            } else if (stats.co2.current >= 1500) {
                 co2Element.classList.add('warning');
+            } else if (stats.co2.current >= 1000) {
+                co2Element.classList.add('caution');
             }
 
             document.getElementById('minTemp').textContent = stats.temperature.min;
@@ -1025,17 +1055,18 @@
 
             document.getElementById('dataPoints').textContent = stats.data_points;
 
-            const quality = stats.co2_quality || { good_percent: 0, moderate_percent: 0, poor_percent: 0 };
-            document.getElementById('co2Good').textContent = `${quality.good_percent}%`;
-            document.getElementById('co2Moderate').textContent = `${quality.moderate_percent}%`;
-            document.getElementById('co2Poor').textContent = `${quality.poor_percent}%`;
+            const quality = stats.co2_quality || { good_percent: 0, moderate_percent: 0, high_percent: 0, critical_percent: 0 };
+            document.getElementById('co2Good').textContent = `${quality.good_percent ?? 0}%`;
+            document.getElementById('co2Moderate').textContent = `${quality.moderate_percent ?? 0}%`;
+            document.getElementById('co2High').textContent = `${quality.high_percent ?? 0}%`;
+            document.getElementById('co2Critical').textContent = `${quality.critical_percent ?? 0}%`;
 
             updateCharts(data);
             updateTrendInsights(data);
 
             const lastData = data[data.length - 1];
             document.getElementById('lastUpdate').textContent =
-                `Last update: ${lastData.timestamp}`;
+                `Poslední aktualizace: ${lastData.timestamp}`;
         }
 
         function updateCharts(data) {
@@ -1047,10 +1078,10 @@
 
             const labels = sampledData.map((point) => {
                 const date = new Date(point.timestamp);
-                return date.toLocaleString('en-US', {
+                return date.toLocaleString('cs-CZ', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    hour12: true
+                    hour12: false
                 });
             });
 
@@ -1106,9 +1137,9 @@
                     if (!directionEl || !detailEl) {
                         return;
                     }
-                    directionEl.textContent = 'Not enough data';
+                    directionEl.textContent = 'Nedostatek dat';
                     directionEl.className = 'trend-direction steady';
-                    detailEl.textContent = 'Collect more readings to establish a trend.';
+                    detailEl.textContent = 'Pro vykreslení trendu je potřeba více měření.';
                 });
                 return;
             }
@@ -1136,17 +1167,17 @@
                 const endValue = getValue(lastPoint, config.keys);
 
                 if (startValue === null || endValue === null) {
-                    directionEl.textContent = 'Awaiting data';
+                    directionEl.textContent = 'Čekám na data';
                     directionEl.className = 'trend-direction steady';
-                    detailEl.textContent = 'Sensor readings are incomplete for this window.';
+                    detailEl.textContent = 'Pro toto období chybí kompletní měření.';
                     return;
                 }
 
                 const change = endValue - startValue;
                 const absChange = Math.abs(change);
-                let directionLabel = 'Stable';
+                let directionLabel = 'Stabilní';
                 let directionClass = 'steady';
-                let detail = `Holding near ${config.format(endValue)}.`;
+                let detail = `Hodnota se drží kolem ${config.format(endValue)}.`;
                 const thresholdText = Number.isInteger(config.threshold)
                     ? `${config.threshold}`
                     : config.threshold.toFixed(1);
@@ -1155,16 +1186,16 @@
                 const arrowFlat = '⭮';
 
                 if (absChange <= config.threshold) {
-                    directionLabel = `${arrowFlat} Holding steady`;
-                    detail = `Shift smaller than ${thresholdText} ${config.unit}; environment is consistent.`;
+                    directionLabel = `${arrowFlat} Stabilní`;
+                    detail = `Změna je menší než ${thresholdText} ${config.unit}; prostředí zůstává stabilní.`;
                 } else if (change > 0) {
-                    directionLabel = `${arrowUp} Trending upward`;
+                    directionLabel = `${arrowUp} Rostoucí trend`;
                     directionClass = 'raising';
-                    detail = `Up ${config.format(absChange)} since the start (${config.format(startValue)} → ${config.format(endValue)}).`;
+                    detail = `Nárůst o ${config.format(absChange)} od začátku (${config.format(startValue)} → ${config.format(endValue)}).`;
                 } else {
-                    directionLabel = `${arrowDown} Trending downward`;
+                    directionLabel = `${arrowDown} Klesající trend`;
                     directionClass = 'falling';
-                    detail = `Down ${config.format(absChange)} since the start (${config.format(startValue)} → ${config.format(endValue)}).`;
+                    detail = `Pokles o ${config.format(absChange)} od začátku (${config.format(startValue)} → ${config.format(endValue)}).`;
                 }
 
                 directionEl.textContent = directionLabel;
@@ -1179,10 +1210,10 @@
 
             if (isOnline) {
                 statusDot.className = 'status-dot online';
-                statusText.textContent = 'Server Online';
+                statusText.textContent = 'Server online';
             } else {
                 statusDot.className = 'status-dot offline';
-                statusText.textContent = 'Server Offline';
+                statusText.textContent = 'Server offline';
             }
         }
 

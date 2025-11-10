@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cognitiv • Connect Board</title>
+    <title>Cognitiv • Připojení desky</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -293,59 +293,59 @@
         <nav>
             <a class="brand" href="/">Cognitiv</a>
             <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="/connect" class="active">Connect</a>
-                <a href="/dashboard">Dashboard</a>
+                <a href="/">Domů</a>
+                <a href="/connect" class="active">Připojit</a>
+                <a href="/dashboard">Přehled</a>
             </div>
         </nav>
 
         <main>
             <section class="card">
-                <span class="status-pill">Step 1</span>
-                <h1>Configure WiFi without the terminal</h1>
+                <span class="status-pill">Krok 1</span>
+                <h1>Nastavte Wi-Fi bez terminálu</h1>
                 <p>
-                    Enter the WiFi credentials your board should use and let the server handle the PlatformIO upload.
-                    No command line or manual flashing required—just plug in the board and click upload.
+                    Zadejte údaje Wi-Fi, které má deska používat, a zbytek nechte na serveru s PlatformIO.
+                    Není potřeba příkazová řádka ani ruční flashování – stačí desku připojit a kliknout na nahrání.
                 </p>
                 <div class="tips">
-                    <span>• Keep the board connected via USB during the upload.</span>
-                    <span>• Re-run this flow for every board you want to prepare.</span>
-                    <span>• Future updates will add board selection and history.</span>
+                    <span>• Během nahrávání nechte desku připojenou přes USB.</span>
+                    <span>• Tento postup zopakujte pro každou desku, kterou chcete připravit.</span>
+                    <span>• V budoucnu přibude výběr desky a historie nahrávání.</span>
                 </div>
             </section>
 
             <section class="card">
-                <h2>WiFi details</h2>
+                <h2>Detaily Wi-Fi</h2>
                 <form id="connectForm">
                     <label for="ssidInput">
-                        Network name (SSID)
-                        <span>The network your board should join.</span>
-                        <input id="ssidInput" name="ssid" placeholder="e.g. Cognitiv-Lab" required autocomplete="off">
+                        Název sítě (SSID)
+                        <span>Síť, ke které se má deska připojit.</span>
+                        <input id="ssidInput" name="ssid" placeholder="např. Cognitiv-Lab" required autocomplete="off">
                     </label>
 
                     <label for="passwordInput">
-                        Password
-                        <span>Leave blank for open networks.</span>
-                        <input id="passwordInput" name="password" type="password" placeholder="Network password">
+                        Heslo
+                        <span>U otevřených sítí ponechte prázdné.</span>
+                        <input id="passwordInput" name="password" type="password" placeholder="Heslo sítě">
                     </label>
 
                     <div id="statusBox" class="status-box">
-                        <span class="status-label" id="statusLabel">Status</span>
+                        <span class="status-label" id="statusLabel">Stav</span>
                         <span id="statusMessage"></span>
                     </div>
 
                     <div class="actions">
                         <button class="btn-primary" id="submitButton" type="submit">
-                            ⟳ Upload firmware
+                            ⟳ Nahrát firmware
                         </button>
-                        <button class="btn-secondary" id="resetButton" type="reset">Clear</button>
+                        <button class="btn-secondary" id="resetButton" type="reset">Vymazat</button>
                     </div>
                 </form>
             </section>
         </main>
 
         <footer>
-            Upload complete? Jump into the <a href="/dashboard">dashboard</a> to confirm the board is reporting.
+            Hotovo? Otevřete <a href="/dashboard">přehled</a> a ověřte, že deska odesílá data.
         </footer>
     </div>
 
@@ -359,19 +359,19 @@
 
     function setStatus(type, message) {
         statusBox.className = `status-box ${type} show`;
-        statusLabel.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Status';
+        statusLabel.textContent = type === 'success' ? 'Úspěch' : type === 'error' ? 'Chyba' : 'Stav';
         statusMessage.textContent = message;
     }
 
     function clearStatus() {
         statusBox.className = 'status-box';
-        statusLabel.textContent = 'Status';
+        statusLabel.textContent = 'Stav';
         statusMessage.textContent = '';
     }
 
     function toggleLoading(isLoading) {
         submitButton.disabled = isLoading;
-        submitButton.textContent = isLoading ? 'Uploading…' : '⟳ Upload firmware';
+        submitButton.textContent = isLoading ? 'Nahrávám…' : '⟳ Nahrát firmware';
         submitButton.style.opacity = isLoading ? '0.7' : '1';
     }
 
@@ -386,12 +386,12 @@
         const password = document.getElementById('passwordInput').value;
 
         if (!ssid) {
-            setStatus('error', 'SSID is required.');
+            setStatus('error', 'SSID je povinné.');
             return;
         }
 
         clearStatus();
-        setStatus('neutral', 'Preparing upload…');
+        setStatus('neutral', 'Připravuji nahrávání…');
         toggleLoading(true);
 
         try {
@@ -406,20 +406,20 @@
             const payload = await response.json();
 
             if (!response.ok || payload.status !== 'success') {
-                const errorMessage = payload.message || payload.error || 'Upload failed. Check server logs.';
+                const errorMessage = payload.message || payload.error || 'Nahrávání selhalo. Zkontrolujte logy serveru.';
                 setStatus('error', errorMessage);
                 return;
             }
 
-            let message = 'Firmware uploaded successfully.';
+            let message = 'Firmware byl úspěšně nahrán.';
             if (payload.log_excerpt) {
                 message += ` ${payload.log_excerpt}`;
             }
             setStatus('success', message);
             form.reset();
         } catch (error) {
-            console.error('Upload error:', error);
-            setStatus('error', 'Unexpected error while uploading. Confirm the board is connected and try again.');
+            console.error('Chyba při nahrávání:', error);
+            setStatus('error', 'Při nahrávání došlo k neočekávané chybě. Zkontrolujte připojení desky a zkuste to znovu.');
         } finally {
             toggleLoading(false);
         }

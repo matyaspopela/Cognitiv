@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cognitiv • Environmental Intelligence</title>
+    <title>Cognitiv • Inteligentní prostředí</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -310,7 +310,12 @@
             color: #92400e;
         }
 
-        .co2-state.poor {
+        .co2-state.high {
+            background: rgba(249, 115, 22, 0.2);
+            color: #b45309;
+        }
+
+        .co2-state.critical {
             background: rgba(220, 38, 38, 0.18);
             color: #b91c1c;
         }
@@ -447,77 +452,77 @@
         <nav>
             <a class="brand" href="/">Cognitiv</a>
             <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="/connect">Connect</a>
-                <a class="cta" href="/dashboard">Dashboard</a>
+                <a href="/">Domů</a>
+                <a href="/connect">Připojit</a>
+                <a class="cta" href="/dashboard">Přehled</a>
             </div>
         </nav>
 
         <main>
             <section class="hero">
                 <div class="hero-copy">
-                    <h1>See your environment with clarity.</h1>
+                    <h1>Podívejte se na své prostředí s jasností.</h1>
                     <p>
-                        Cognitiv translates raw sensor feeds into decisions with modern visual storytelling.
-                        Track temperature, humidity, and CO₂ trends, and step into a dashboard designed for focus.
+                        Cognitiv převádí surová data ze senzorů na rozhodnutí díky moderní vizualizaci.
+                        Sledujte trendy teploty, vlhkosti a CO₂ v dashboardu navrženém pro soustředěnou práci.
                     </p>
                     <div class="hero-actions">
-                        <a class="btn btn-primary" href="/dashboard">Launch Live Dashboard</a>
-                        <a class="btn btn-ghost" href="#features">Explore capabilities</a>
+                        <a class="btn btn-primary" href="/dashboard">Otevřít živý přehled</a>
+                        <a class="btn btn-ghost" href="#features">Prozkoumat možnosti</a>
                     </div>
                 </div>
                 <div class="hero-visual">
-                    <h2>Designed for clarity</h2>
-                    <p>Launch straight into a focused dashboard built around large-format charts, purposeful color, and minimal noise so critical signals never get buried.</p>
+                    <h2>Navrženo pro přehlednost</h2>
+                    <p>Vstupte přímo do přehledného dashboardu s velkoformátovými grafy, promyšlenými barvami a minimem rušivých prvků, aby důležité signály nezanikly.</p>
                     <ul class="hero-highlights">
-                        <li>Guided flow from welcome to live analytics</li>
-                        <li>Responsive layouts for wall displays or tablets</li>
-                        <li>Color cues that instantly communicate air quality</li>
+                        <li>Vedený postup od úvodní stránky po živou analytiku</li>
+                        <li>Responzivní rozvržení pro nástěnné displeje i tablety</li>
+                        <li>Barevné náznaky, které okamžitě ukazují kvalitu vzduchu</li>
                     </ul>
                 </div>
             </section>
 
             <section class="co2-status" id="co2Status">
                 <div class="co2-headline">
-                    <span class="co2-pill">Live air snapshot</span>
-                    <h2>CO₂ comfort at a glance</h2>
-                    <p id="co2Summary">Loading the latest readings from your devices…</p>
+                    <span class="co2-pill">Živý stav vzduchu</span>
+                    <h2>CO₂ pohodlí na první pohled</h2>
+                    <p id="co2Summary">Načítám nejnovější data z vašich zařízení…</p>
                 </div>
                 <div class="co2-reading">
                     <div class="co2-value" id="co2Value">-- ppm</div>
-                    <div class="co2-state" id="co2StateLabel">Awaiting data</div>
+                    <div class="co2-state" id="co2StateLabel">Čekám na data</div>
                     <div class="co2-meta">
-                        <span>Updated <strong id="co2Updated">—</strong></span>
-                        <span>Window <strong id="co2Window">Last hour</strong></span>
+                        <span>Aktualizováno <strong id="co2Updated">—</strong></span>
+                        <span>Okno <strong id="co2Window">Poslední hodina</strong></span>
                     </div>
                 </div>
             </section>
 
             <section id="features">
                 <div class="section-heading">
-                    <h2>Design-forward monitoring</h2>
-                    <p>From the first glance to deeper investigations, Cognitiv keeps critical air-quality signals front and center without overwhelming you.</p>
+                    <h2>Monitorování s důrazem na design</h2>
+                    <p>Od prvního pohledu po hlubší analýzu drží Cognitiv klíčové signály kvality vzduchu v popředí, aniž by zahltil.</p>
                 </div>
                 <div class="features-grid">
                     <article class="feature-card">
                         <div class="feature-icon">🎛️</div>
-                        <h3>Guided entry</h3>
-                        <p>Start with a welcoming overview, then jump into the data-rich dashboard only when you're ready.</p>
+                        <h3>Vedený start</h3>
+                        <p>Začněte přátelským přehledem a do datově bohatého dashboardu vstupte až ve chvíli, kdy budete připraveni.</p>
                     </article>
                     <article class="feature-card">
                         <div class="feature-icon">📊</div>
-                        <h3>Immersive charts</h3>
-                        <p>Scroll through full-screen metrics with buttery transitions for a cinematic analysis experience.</p>
+                        <h3>Pohlcující grafy</h3>
+                        <p>Procházejte celoobrazovkové metriky s plynulými přechody pro analytický zážitek jako z filmu.</p>
                     </article>
                     <article class="feature-card">
                         <div class="feature-icon">🎨</div>
-                        <h3>Thoughtful aesthetics</h3>
-                        <p>A refined palette, elevated typography, and clear hierarchy make complex insights approachable.</p>
+                        <h3>Promyšlená estetika</h3>
+                        <p>Vytříbená paleta, typografie a jasná hierarchie zpřístupňují i složitější poznatky.</p>
                     </article>
                     <article class="feature-card">
                         <div class="feature-icon">⚡</div>
-                        <h3>Real-time updates</h3>
-                        <p>Pull fresh sensor readings in seconds and keep your space comfortable and safe.</p>
+                        <h3>Aktualizace v reálném čase</h3>
+                        <p>Získejte nová data ze senzorů během pár sekund a udržujte prostor komfortní a bezpečný.</p>
                     </article>
                 </div>
             </section>
@@ -525,12 +530,12 @@
         </main>
 
         <footer>
-            <div>Built for real-world air-quality stewardship.</div>
+            <div>Vytvořeno pro zodpovědnou péči o kvalitu vzduchu.</div>
             <div class="footer-links">
-                <a href="/connect">Connect</a>
-                <a href="/dashboard">Dashboard</a>
-                <a href="#features">Features</a>
-                <a href="mailto:hello@cognitiv.dev">Contact</a>
+                <a href="/connect">Připojit</a>
+                <a href="/dashboard">Přehled</a>
+                <a href="#features">Funkce</a>
+                <a href="mailto:hello@cognitiv.dev">Kontakt</a>
             </div>
         </footer>
     </div>
@@ -548,14 +553,14 @@
         };
 
         const handleNoData = () => {
-            summaryEl.textContent = 'No CO₂ readings in the past hour yet. Connect a board and try again soon.';
+            summaryEl.textContent = 'V poslední hodině zatím nejsou dostupná data CO₂. Připojte desku a zkuste to znovu.';
             valueEl.textContent = '-- ppm';
-            setState('Awaiting data', '');
+            setState('Čekám na data', '');
             updatedEl.textContent = '—';
         };
 
         try {
-            windowEl.textContent = 'Last 60 minutes';
+            windowEl.textContent = 'Posledních 60 minut';
             const response = await fetch('/stats?hours=1');
             const payload = await response.json();
 
@@ -572,39 +577,43 @@
 
             const current = co2Stats.current ?? co2Stats.avg ?? '--';
             const lastUpdated = payload.stats && payload.stats.time_range_hours
-                ? `past ${payload.stats.time_range_hours}h`
-                : 'recently';
+                ? `posledních ${payload.stats.time_range_hours} h`
+                : 'nedávno';
 
             valueEl.textContent = typeof current === 'number' ? `${current} ppm` : `${current}`;
             updatedEl.textContent = lastUpdated;
 
-            let message = 'Air quality looks stable.';
+            let message = 'Kvalita vzduchu je stabilní.';
             let stateClass = 'good';
-            let label = 'Good air quality';
+            let label = 'Dobrá kvalita vzduchu';
 
             if (typeof current === 'number') {
-                if (current >= 1000) {
-                    label = 'Poor air quality';
-                    stateClass = 'poor';
-                    message = 'CO₂ is elevated. Consider airing out the space.';
-                } else if (current >= 800) {
-                    label = 'Moderate air quality';
+                if (current >= 2000) {
+                    label = 'Kritická kvalita vzduchu';
+                    stateClass = 'critical';
+                    message = 'CO₂ je velmi vysoké. Okamžitě intenzivně vyvětrejte.';
+                } else if (current >= 1500) {
+                    label = 'Zvýšené CO₂';
+                    stateClass = 'high';
+                    message = 'CO₂ je zvýšené. Doporučujeme intenzivně větrat.';
+                } else if (current >= 1000) {
+                    label = 'Střední kvalita vzduchu';
                     stateClass = 'moderate';
-                    message = 'CO₂ creeping up. Ventilation may be helpful.';
+                    message = 'CO₂ pozvolna roste. Zvažte otevření okna nebo zapnutí ventilace.';
                 }
             } else {
-                label = 'Awaiting data';
+                label = 'Čekám na data';
                 stateClass = '';
-                message = 'No live data yet. Sensors will update shortly.';
+                message = 'Žádná živá data nejsou k dispozici. Senzory brzy odešlou nový záznam.';
             }
 
             summaryEl.textContent = message;
             setState(label, stateClass);
         } catch (error) {
-            console.error('Failed to load CO₂ status:', error);
-            summaryEl.textContent = 'Unable to reach the server right now. Try opening the dashboard for detailed status.';
+            console.error('Nepodařilo se načíst stav CO₂:', error);
+            summaryEl.textContent = 'Server je momentálně nedostupný. Otevřete přehled pro detailní stav.';
             valueEl.textContent = '-- ppm';
-            setState('Connection issue', '');
+            setState('Problém s připojením', '');
             updatedEl.textContent = '—';
         }
     }

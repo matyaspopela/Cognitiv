@@ -23,19 +23,23 @@ from board_manager import BoardManagerError, upload_firmware
 app = Flask(__name__, static_folder='static')
 CORS(app)  # Enable CORS for frontend access
 
-# Configuration
+# Konfigurace
 MONGO_URI = os.getenv('MONGO_URI')
 MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'cognitiv')
 MONGO_COLLECTION_NAME = os.getenv('MONGO_COLLECTION', 'sensor_data')
 SERVER_PORT = int(os.getenv('PORT', '5000'))
 DEBUG_MODE = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 
+CO2_GOOD_MAX = 1000
+CO2_MODERATE_MAX = 1500
+CO2_HIGH_MAX = 2000
+
 
 def init_mongo_client():
     if not MONGO_URI:
         raise RuntimeError(
-            "MONGO_URI environment variable is required but not set. "
-            "Provide a valid MongoDB connection string (e.g. via Render's dashboard)."
+            "Proměnná prostředí MONGO_URI musí být nastavena. "
+            "Zadejte platný připojovací řetězec MongoDB (např. v administraci Renderu)."
         )
     try:
         client = MongoClient(
@@ -48,23 +52,23 @@ def init_mongo_client():
         db = client[MONGO_DB_NAME]
         collection = db[MONGO_COLLECTION_NAME]
         collection.create_index([('device_id', ASCENDING), ('timestamp', ASCENDING)])
-        print(f"Connected to MongoDB cluster. Database: {MONGO_DB_NAME}, Collection: {MONGO_COLLECTION_NAME}")
+        print(f"Připojeno k MongoDB. Databáze: {MONGO_DB_NAME}, kolekce: {MONGO_COLLECTION_NAME}")
         return collection
     except Exception as err:
-        print(f"✗ Failed to initialize MongoDB client: {err}")
+        print(f"✗ Nepodařilo se inicializovat klienta MongoDB: {err}")
         raise
 
 
 mongo_collection = init_mongo_client()
 
 def normalize_sensor_data(data):
-    """Map incoming payload to canonical temperature/humidity keys."""
+    """Mapování příchozího JSONu na standardizované klíče."""
     normalized = {}
     try:
         normalized['timestamp'] = data['timestamp']
         normalized['device_id'] = data['device_id']
     except KeyError as exc:
-        raise KeyError(f"Missing required field: {exc.args[0]}")
+        raise KeyError(f"Chybí povinné pole: {exc.args[0]}")
 
     def first_present(keys):
         for key in keys:
@@ -91,13 +95,13 @@ def normalize_sensor_data(data):
 
 
 def validate_sensor_data(data):
-    """Validate incoming sensor data"""
+    """Validace příchozích měření"""
     required_fields = ['timestamp', 'device_id', 'temperature', 'humidity', 'co2']
     
     # Check required fields
     for field in required_fields:
         if field not in data:
-            return False, f"Missing required field: {field}"
+            return False, f"Chybí povinné pole: {field}"
     
     # Validate data ranges
     try:
@@ -107,23 +111,23 @@ def validate_sensor_data(data):
         
         # Temperature range: -10°C to 50°C
         if not (-10 <= temperature <= 50):
-            return False, "Temperature out of valid range (-10 to 50°C)"
+            return False, "Teplota je mimo povolený rozsah (-10 až 50 °C)"
         
         # Humidity range: 0% to 100%
         if not (0 <= humidity <= 100):
-            return False, "Humidity out of valid range (0 to 100%)"
+            return False, "Vlhkost je mimo povolený rozsah (0 až 100 %)"
         
         # CO2 range: 400 to 5000 ppm (normal indoor range)
         if not (400 <= co2 <= 5000):
-            return False, "CO2 out of valid range (400 to 5000 ppm)"
+            return False, "CO₂ je mimo povolený rozsah (400 až 5000 ppm)"
         
         return True, "Valid"
     
     except (ValueError, TypeError) as e:
-        return False, f"Invalid data type: {str(e)}"
+        return False, f"Neplatný datový typ: {str(e)}"
 
 def format_timestamp(unix_timestamp):
-    """Convert Unix timestamp to readable format"""
+    """Převod Unix časového razítka na čitelný formát"""
     try:
         dt = datetime.fromtimestamp(float(unix_timestamp))
         return dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -132,25 +136,25 @@ def format_timestamp(unix_timestamp):
 
 @app.route('/')
 def home():
-    """Serve the landing page"""
+    """Úvodní stránka"""
     return send_from_directory('static', 'index.html')
 
 
 @app.route('/dashboard')
 def dashboard():
-    """Serve the interactive dashboard"""
+    """Interaktivní dashboard"""
     return send_from_directory('static', 'dashboard.html')
 
 
 @app.route('/connect')
 def connect():
-    """Serve the board connection page"""
+    """Průvodce připojením desky"""
     return send_from_directory('static', 'connect.html')
 
 
 @app.route('/connect/upload', methods=['POST'])
 def connect_upload():
-    """Apply WiFi credentials and upload firmware to the connected board"""
+    """Zápis WiFi údajů a nahrání firmware do připojené desky"""
     payload = request.get_json(silent=True) or {}
 
     ssid = (payload.get('ssid') or '').strip()
@@ -159,7 +163,7 @@ def connect_upload():
     if not ssid:
         return jsonify({
             'status': 'error',
-            'message': 'SSID is required to upload firmware.'
+            'message': 'Pro nahrání firmware je nutné zadat SSID.'
         }), 400
 
     if password is None:
@@ -168,16 +172,16 @@ def connect_upload():
     if not isinstance(password, str):
         return jsonify({
             'status': 'error',
-            'message': 'Password must be a string value.'
+            'message': 'Heslo musí být textový řetězec.'
         }), 400
 
     try:
         apply_wifi_credentials(ssid, password)
     except ConfigWriteError as exc:
-        print(f"✗ Failed to update config.h: {exc}")
+        print(f"✗ Nepodařilo se upravit config.h: {exc}")
         return jsonify({
             'status': 'error',
-            'message': 'Unable to update configuration file. Check server permissions.'
+            'message': 'Konfigurační soubor se nepodařilo upravit. Zkontrolujte oprávnění serveru.'
         }), 500
 
     try:
@@ -185,42 +189,42 @@ def connect_upload():
     except FileNotFoundError:
         return jsonify({
             'status': 'error',
-            'message': 'PlatformIO is not installed on the server. Install it to enable uploads.'
+            'message': 'Na serveru není nainstalováno PlatformIO. Bez něj nelze nahrávat firmware.'
         }), 500
     except OSError as exc:
         return jsonify({
             'status': 'error',
-            'message': f'Failed to launch PlatformIO: {exc}'
+            'message': f'PlatformIO se nepodařilo spustit: {exc}'
         }), 500
 
     log_excerpt = summarize_logs(stdout, stderr)
 
     if return_code != 0:
-        print(f"✗ PlatformIO upload failed for SSID '{ssid}'.")
+        print(f"✗ Nahrávání přes PlatformIO pro SSID '{ssid}' selhalo.")
         return jsonify({
             'status': 'error',
-            'message': 'PlatformIO upload failed. Review the log excerpt for details.',
+            'message': 'Nahrávání firmware selhalo. Podrobnosti najdete v logu.',
             'log_excerpt': log_excerpt
         }), 500
 
-    print(f"✓ PlatformIO upload succeeded for SSID '{ssid}'.")
+    print(f"✓ Nahrávání přes PlatformIO pro SSID '{ssid}' proběhlo úspěšně.")
     return jsonify({
         'status': 'success',
-        'message': 'Firmware uploaded to board successfully.',
+        'message': 'Firmware byl na desku úspěšně nahrán.',
         'log_excerpt': log_excerpt
     }), 200
 
 @app.route('/data', methods=['POST'])
 def receive_data():
-    """Receive sensor data from ESP32"""
+    """Příjem dat ze senzoru"""
     try:
         data = request.get_json()
         
         if not data:
-            return jsonify({'error': 'No data received'}), 400
+            return jsonify({'error': 'Nebyla přijata žádná data.'}), 400
         
         print(f"\n{'='*50}")
-        print(f"Received data from {data.get('device_id', 'unknown')}")
+        print(f"Přijata data z {data.get('device_id', 'unknown')}")
         print(f"{'='*50}")
         print(json.dumps(data, indent=2))
         
@@ -228,14 +232,14 @@ def receive_data():
         try:
             normalized = normalize_sensor_data(data)
         except KeyError as exc:
-            message = f"Missing required field: {exc.args[0]}"
-            print(f"⚠️  Validation error: {message}")
+            message = f"Chybí povinné pole: {exc.args[0]}"
+            print(f"⚠️  Chyba validace: {message}")
             return jsonify({'error': message}), 400
 
         # Validate data
         is_valid, message = validate_sensor_data(normalized)
         if not is_valid:
-            print(f"⚠️  Validation error: {message}")
+            print(f"⚠️  Chyba validace: {message}")
             return jsonify({'error': message}), 400
         
         # Format timestamp
@@ -257,24 +261,24 @@ def receive_data():
 
         try:
             mongo_collection.insert_one(document)
-            print(f"✓ Data saved to MongoDB at {timestamp_str}")
+            print(f"✓ Data uložena do MongoDB v {timestamp_str}")
         except PyMongoError as exc:
-            print(f"✗ MongoDB insert error: {exc}")
-            return jsonify({'error': 'Failed to store data'}), 500
+            print(f"✗ Chyba při ukládání do MongoDB: {exc}")
+            return jsonify({'error': 'Data se nepodařilo uložit.'}), 500
         
         return jsonify({
             'status': 'success',
-            'message': 'Data received and stored',
+            'message': 'Data byla přijata a uložena.',
             'timestamp': timestamp_str
         }), 200
     
     except Exception as e:
-        print(f"✗ Error: {str(e)}")
+        print(f"✗ Neočekávaná chyba: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/data', methods=['GET'])
 def get_data():
-    """Get sensor data for dashboard (with optional filtering)"""
+    """Vrací data pro dashboard (volitelná filtrace)"""
     try:
         # Get query parameters
         hours = request.args.get('hours', type=int, default=24)
@@ -321,13 +325,13 @@ def get_data():
         }), 200
     
     except PyMongoError as exc:
-        return jsonify({'error': f'Database error: {exc}'}), 500
+        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/stats', methods=['GET'])
 def get_stats():
-    """Get statistical summary of data"""
+    """Statistické shrnutí dat"""
     try:
         hours = request.args.get('hours', type=int, default=24)
         cutoff_time = datetime.now() - timedelta(hours=hours)
@@ -349,11 +353,14 @@ def get_stats():
                     'co2_max': {'$max': '$co2'},
                     'co2_avg': {'$avg': '$co2'},
                     'count': {'$sum': 1},
-                    'co2_good': {'$sum': {'$cond': [{'$lt': ['$co2', 800]}, 1, 0]}},
+                    'co2_good': {'$sum': {'$cond': [{'$lt': ['$co2', CO2_GOOD_MAX]}, 1, 0]}},
                     'co2_moderate': {'$sum': {'$cond': [
-                        {'$and': [{'$gte': ['$co2', 800]}, {'$lt': ['$co2', 1000]}]}, 1, 0
+                        {'$and': [{'$gte': ['$co2', CO2_GOOD_MAX]}, {'$lt': ['$co2', CO2_MODERATE_MAX]}]}, 1, 0
                     ]}},
-                    'co2_poor': {'$sum': {'$cond': [{'$gte': ['$co2', 1000]}, 1, 0]}},
+                    'co2_high': {'$sum': {'$cond': [
+                        {'$and': [{'$gte': ['$co2', CO2_MODERATE_MAX]}, {'$lt': ['$co2', CO2_HIGH_MAX]}]}, 1, 0
+                    ]}},
+                    'co2_critical': {'$sum': {'$cond': [{'$gte': ['$co2', CO2_HIGH_MAX]}, 1, 0]}},
                 }
             }
         ]
@@ -362,7 +369,7 @@ def get_stats():
         if not agg_result:
             return jsonify({
                 'status': 'success',
-                'message': 'No data available',
+                'message': 'Nejsou k dispozici žádná data.',
                 'stats': {}
             }), 200
         
@@ -384,7 +391,8 @@ def get_stats():
         count = stats_doc.get('count', 0)
         co2_good = stats_doc.get('co2_good', 0)
         co2_moderate = stats_doc.get('co2_moderate', 0)
-        co2_poor = stats_doc.get('co2_poor', 0)
+        co2_high = stats_doc.get('co2_high', 0)
+        co2_critical = stats_doc.get('co2_critical', 0)
 
         stats = {
             'temperature': {
@@ -413,20 +421,23 @@ def get_stats():
             stats['co2_quality'] = {
                 'good': co2_good,
                 'moderate': co2_moderate,
-                'poor': co2_poor,
-                'good_percent': round(co2_good / count * 100, 1) if count else 0,
-                'moderate_percent': round(co2_moderate / count * 100, 1) if count else 0,
-                'poor_percent': round(co2_poor / count * 100, 1) if count else 0
+                'high': co2_high,
+                'critical': co2_critical,
+                'good_percent': round(co2_good / count * 100, 1),
+                'moderate_percent': round(co2_moderate / count * 100, 1),
+                'high_percent': round(co2_high / count * 100, 1),
+                'critical_percent': round(co2_critical / count * 100, 1)
             }
-        
-        if count == 0:
+        else:
             stats['co2_quality'] = {
                 'good': 0,
                 'moderate': 0,
-                'poor': 0,
+                'high': 0,
+                'critical': 0,
                 'good_percent': 0,
                 'moderate_percent': 0,
-                'poor_percent': 0
+                'high_percent': 0,
+                'critical_percent': 0
             }
         
         return jsonify({
@@ -435,13 +446,13 @@ def get_stats():
         }), 200
     
     except PyMongoError as exc:
-        return jsonify({'error': f'Database error: {exc}'}), 500
+        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/status')
 def status():
-    """Get server status"""
+    """Stav serveru"""
     try:
         total_documents = mongo_collection.count_documents({})
         latest_doc = mongo_collection.find().sort('timestamp', -1).limit(1)
@@ -463,18 +474,18 @@ def status():
         }), 200
 
     except PyMongoError as exc:
-        return jsonify({'error': f'Database error: {exc}'}), 500
+        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("IoT Environmental Monitoring Server")
+    print("IoT server pro monitorování prostředí")
     print("="*60)
-    print(f"Database: {MONGO_DB_NAME}, Collection: {MONGO_COLLECTION_NAME}")
-    print(f"Listening on port: {SERVER_PORT}")
-    print("Ensure 'MONGO_URI' is set in your environment (Render > Environment).")
-    print("Expose this service via https://<your-service>.onrender.com/")
+    print(f"Databáze: {MONGO_DB_NAME}, kolekce: {MONGO_COLLECTION_NAME}")
+    print(f"Server naslouchá na portu: {SERVER_PORT}")
+    print("Ujistěte se, že je nastavena proměnná 'MONGO_URI' (Render > Environment).")
+    print("Službu publikujte např. na https://<vaše-služba>.onrender.com/")
     print("="*60 + "\n")
     
     # Run server
