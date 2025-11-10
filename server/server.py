@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import json
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import PyMongoError
+import certifi
 
 from board_manager import (
     apply_wifi_credentials,
@@ -37,7 +38,11 @@ def init_mongo_client():
             "Provide a valid MongoDB connection string (e.g. via Render's dashboard)."
         )
     try:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        client = MongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=5000,
+            tlsCAFile=certifi.where(),
+        )
         # Trigger server selection to fail fast if misconfigured
         client.admin.command('ping')
         db = client[MONGO_DB_NAME]
