@@ -23,15 +23,19 @@ app = Flask(__name__, static_folder='static')
 CORS(app)  # Enable CORS for frontend access
 
 # Configuration
-MONGO_URI = os.getenv(
-    'MONGO_URI',
-    'mongodb+srv://matyaspopela:w8TuhFkstboeuem2@kognitiv.ihdrkc7.mongodb.net/'
-)
+MONGO_URI = os.getenv('MONGO_URI')
 MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'cognitiv')
 MONGO_COLLECTION_NAME = os.getenv('MONGO_COLLECTION', 'sensor_data')
+SERVER_PORT = int(os.getenv('PORT', '5000'))
+DEBUG_MODE = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 
 
 def init_mongo_client():
+    if not MONGO_URI:
+        raise RuntimeError(
+            "MONGO_URI environment variable is required but not set. "
+            "Provide a valid MongoDB connection string (e.g. via Render's dashboard)."
+        )
     try:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         # Trigger server selection to fail fast if misconfigured
@@ -462,15 +466,11 @@ if __name__ == '__main__':
     print("\n" + "="*60)
     print("IoT Environmental Monitoring Server")
     print("="*60)
-    print(f"MongoDB Connection: {MONGO_URI}")
     print(f"Database: {MONGO_DB_NAME}, Collection: {MONGO_COLLECTION_NAME}")
-    print(f"Server URL: http://0.0.0.0:5000")
-    print(f"Homepage: http://localhost:5000")
-    print(f"Dashboard: http://localhost:5000/dashboard")
-    print("\nTo access from ESP32, use your PC's IP address:")
-    print("Windows: Run 'ipconfig' to find IPv4 Address")
-    print("Mac/Linux: Run 'ifconfig' to find inet address")
+    print(f"Listening on port: {SERVER_PORT}")
+    print("Ensure 'MONGO_URI' is set in your environment (Render > Environment).")
+    print("Expose this service via https://<your-service>.onrender.com/")
     print("="*60 + "\n")
     
     # Run server
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=SERVER_PORT, debug=DEBUG_MODE)

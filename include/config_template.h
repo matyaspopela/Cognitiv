@@ -9,8 +9,8 @@
 #define WIFI_PASSWORD "YourWiFiPassword"
 
 // Server Configuration
-// Run 'ipconfig' in PowerShell to find your PC's IP address
-#define SERVER_URL "http://192.168.1.100:5000/data"
+// Replace with your Render service URL (e.g. https://your-app.onrender.com/data)
+#define SERVER_URL "https://your-app.onrender.com/data"
 
 // Device ID (unique name for this sensor)
 #define DEVICE_ID "YOUR_DEVICE_ID"
