@@ -24,10 +24,15 @@
             --success: #16a34a;
             --warning: #f97316;
             --danger: #dc2626;
+            --page-padding: clamp(20px, 4vw, 40px);
         }
 
         *, *::before, *::after {
             box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
         }
 
         body {
@@ -47,7 +52,8 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: clamp(20px, 4vw, 40px);
+            padding: var(--page-padding);
+            gap: clamp(28px, 4vw, 44px);
         }
 
         header {
@@ -61,56 +67,37 @@
             gap: clamp(18px, 2vw, 28px);
         }
 
-        .header-top {
-            display: flex;
-            flex-wrap: wrap;
-            gap: clamp(16px, 2vw, 28px);
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .brand-group {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .top-links {
+        .header-bar {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
+            gap: clamp(12px, 2vw, 24px);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: clamp(12px, 2vw, 20px);
         }
 
         .brand-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            font-size: 13px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--muted);
-            background: rgba(37, 99, 235, 0.12);
-            padding: 8px 14px;
-            border-radius: 999px;
-        }
-
-        .top-link {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 10px 16px;
             border-radius: 999px;
             font-weight: 500;
-            font-size: 14px;
+            font-size: 13px;
             color: var(--muted);
-            background: rgba(148, 163, 184, 0.12);
             transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+            background: rgba(148, 163, 184, 0.12);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
         }
 
-        .top-link:hover,
-        .top-link.active {
+        .brand-link:hover {
             background: rgba(37, 99, 235, 0.16);
             color: var(--accent);
             transform: translateY(-2px);
@@ -142,23 +129,16 @@
             color: var(--accent);
         }
 
-        h1 {
-            margin: 0;
-            font-size: clamp(28px, 4vw, 38px);
-            letter-spacing: -0.01em;
-        }
-
-        .subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: 15px;
-        }
-
         .status-group {
             display: flex;
             flex-direction: column;
             gap: 12px;
             align-items: flex-start;
+        }
+
+        .header-bar .status-group {
+            align-items: flex-end;
+            text-align: right;
         }
 
         .status-indicator {
@@ -195,6 +175,65 @@
         .last-update {
             font-size: 13px;
             color: var(--muted);
+        }
+
+        .header-body {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(20px, 2.5vw, 28px);
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+
+        .header-copy {
+            max-width: clamp(420px, 46vw, 560px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .header-copy h1 {
+            margin: 0;
+            font-size: clamp(28px, 4vw, 38px);
+            letter-spacing: -0.01em;
+        }
+
+        .header-copy .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .animated-block {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.6s ease, transform 0.6s ease, box-shadow 0.4s ease;
+        }
+
+        .page.loading .animated-block {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+
+        .page.loaded .animated-block {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .metrics-grid.animated-block {
+            transition-delay: 0.05s;
+        }
+
+        .quality-card.animated-block {
+            transition-delay: 0.1s;
+        }
+
+        .trend-analysis.animated-block {
+            transition-delay: 0.15s;
+        }
+
+        .charts-section.animated-block {
+            transition-delay: 0.2s;
         }
 
         .header-controls {
@@ -288,6 +327,12 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            transition: transform 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
+        }
+
+        .page.loaded .metric-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
         }
 
         .metric-header {
@@ -306,6 +351,26 @@
             display: flex;
             align-items: baseline;
             gap: 6px;
+            transition: color 0.35s ease;
+        }
+
+        .metric-value.value-updated {
+            animation: valuePop 0.6s ease;
+        }
+
+        @keyframes valuePop {
+            0% {
+                transform: scale(1);
+            }
+            35% {
+                transform: scale(1.06);
+            }
+            65% {
+                transform: scale(0.97);
+            }
+            100% {
+                transform: scale(1);
+            }
         }
 
         .metric-value.temp {
@@ -482,6 +547,12 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .page.loaded .quality-bar:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
         }
 
         .quality-bar.good {
@@ -601,26 +672,19 @@
         }
     </style>
 </head>
-<body>
-    <div class="page">
+    <body>
+        <div class="page loading">
         <header>
-            <div class="header-top">
-                <div class="brand-group">
-                    <div class="top-links">
-                        <a class="brand-link" href="/">↖ Domů</a>
-                        <a class="top-link" href="/connect">Připojit</a>
-                        <a class="top-link active" href="/dashboard">Přehled</a>
-                    </div>
-                    <div>
-                        <h1>Dashboard pro monitorování prostředí</h1>
-                        <p class="subtitle">Podrobný pohled na komfort a kvalitu vzduchu z vašich senzorů Cognitiv.</p>
-                    </div>
+            <div class="header-bar">
+                <div class="header-brand">
+                    <a class="brand-link" href="/">↖ Domů</a>
+                    <nav class="header-nav">
+                        <a href="/">Domů</a>
+                        <a href="/connect">Připojit</a>
+                        <a href="/dashboard" class="active">Přehled</a>
+                        <a href="/history">Historie</a>
+                    </nav>
                 </div>
-                <nav class="header-nav">
-                    <a href="/">Domů</a>
-                    <a href="/connect">Připojit</a>
-                    <a href="/dashboard" class="active">Přehled</a>
-                </nav>
                 <div class="status-group">
                     <div class="status-indicator">
                         <span class="status-dot online" id="serverStatus"></span>
@@ -629,31 +693,36 @@
                     <div class="last-update" id="lastUpdate">Poslední aktualizace: nikdy</div>
                 </div>
             </div>
-            <div class="header-controls">
-                <div class="controls-left">
-                    <label class="control-label" for="timeRange">
-                        Časové období
-                        <select id="timeRange">
-                            <option value="1">Poslední 1 hodina</option>
-                            <option value="6">Posledních 6 hodin</option>
-                            <option value="24" selected>Posledních 24 hodin</option>
-                            <option value="168">Posledních 7 dní</option>
-                            <option value="720">Posledních 30 dní</option>
-                        </select>
-                    </label>
+            <div class="header-body">
+                <div class="header-copy">
+                    <h1>Dashboard pro monitorování prostředí</h1>
+                    <p class="subtitle">Podrobný pohled na komfort a kvalitu vzduchu z vašich senzorů Cognitiv.</p>
                 </div>
-                <button class="btn-primary" id="refreshButton" onclick="refreshData()">⟳ Aktualizovat data</button>
+                <div class="header-controls">
+                    <div class="controls-left">
+                        <label class="control-label" for="timeRange">
+                            Časové období
+                            <select id="timeRange">
+                                <option value="1">Poslední 1 hodina</option>
+                                <option value="6">Posledních 6 hodin</option>
+                                <option value="24" selected>Posledních 24 hodin</option>
+                                <option value="168">Posledních 7 dní</option>
+                                <option value="720">Posledních 30 dní</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button class="btn-primary" id="refreshButton" onclick="refreshData()">⟳ Aktualizovat data</button>
+                </div>
             </div>
         </header>
 
         <main class="content">
             <div id="errorContainer"></div>
 
-            <section class="metrics-grid">
+            <section class="metrics-grid animated-block">
                 <article class="metric-card">
                     <div class="metric-header">
                         <span>Teplota</span>
-                        <span class="badge">Komfort</span>
                     </div>
                     <div class="metric-value temp" id="currentTemp">
                         --<span class="metric-unit">°C</span>
@@ -668,7 +737,6 @@
                 <article class="metric-card">
                     <div class="metric-header">
                         <span>Vlhkost</span>
-                        <span class="badge">Vlhkostní rovnováha</span>
                     </div>
                     <div class="metric-value humidity" id="currentHumidity">
                         --<span class="metric-unit">%</span>
@@ -683,7 +751,6 @@
                 <article class="metric-card">
                     <div class="metric-header">
                         <span>CO₂</span>
-                        <span class="badge">Kvalita vzduchu</span>
                     </div>
                     <div class="metric-value co2" id="currentCO2">
                         --<span class="metric-unit">ppm</span>
@@ -698,7 +765,7 @@
                 <article class="metric-card">
                     <div class="metric-header">
                         <span>Datové pokrytí</span>
-                        <span class="badge">Přehled</span>
+
                     </div>
                     <div class="metric-value" style="color: var(--accent);" id="dataPoints">
                         --
@@ -709,7 +776,7 @@
                 </article>
             </section>
 
-            <section class="quality-card">
+            <section class="quality-card animated-block">
                 <div class="quality-header">
                     <h2>Rozložení kvality vzduchu</h2>
                     <p>Podíl měření v jednotlivých pásmech CO₂ pro zvolené období.</p>
@@ -738,7 +805,7 @@
                 </div>
             </section>
 
-            <section class="trend-analysis">
+            <section class="trend-analysis animated-block">
                 <header>
                     <h2>Trendy</h2>
                     <p>Porovnáváme první a poslední měření v zadaném období a zvýrazňujeme, zda podmínky rostou, klesají nebo zůstávají stabilní.</p>
@@ -762,7 +829,7 @@
                 </div>
             </section>
 
-            <section class="charts-section">
+            <section class="charts-section animated-block">
                 <div class="charts-header">
                     <h2>Průzkumník trendů</h2>
                     <p>Grafy se rozprostírají přes celou šířku, takže teplotu, vlhkost i CO₂ přehledně porovnáte.</p>
@@ -809,6 +876,66 @@
     <script>
         let tempChart, humidityChart, co2Chart;
         let autoRefreshInterval;
+        let pageEl;
+        let hasLoadedData = false;
+
+        const dateTimeFormatter = new Intl.DateTimeFormat('cs-CZ', {
+            dateStyle: 'medium',
+            timeStyle: 'medium'
+        });
+
+        const timeFormatter = new Intl.DateTimeFormat('cs-CZ', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+
+        function parseTimestamp(point) {
+            if (!point) {
+                return null;
+            }
+
+            if (point.timestamp_iso) {
+                const isoDate = new Date(point.timestamp_iso);
+                if (!Number.isNaN(isoDate.getTime())) {
+                    return isoDate;
+                }
+            }
+
+            if (point.timestamp) {
+                const normalized = point.timestamp.replace(' ', 'T');
+                const fallbackDate = new Date(normalized);
+                if (!Number.isNaN(fallbackDate.getTime())) {
+                    return fallbackDate;
+                }
+            }
+
+            return null;
+        }
+
+        function formatTimestampDisplay(isoValue, fallback) {
+            const date = parseTimestamp({ timestamp_iso: isoValue, timestamp: fallback });
+            if (date) {
+                return dateTimeFormatter.format(date);
+            }
+            if (fallback) {
+                return fallback;
+            }
+            return 'Neznámý čas';
+        }
+
+        function animateValue(element) {
+            if (!element) {
+                return;
+            }
+            element.classList.remove('value-updated');
+            void element.offsetWidth;
+            element.classList.add('value-updated');
+        }
+
+        function safeValue(value) {
+            return value === undefined || value === null || Number.isNaN(value) ? '--' : value;
+        }
 
         function initCharts() {
             const commonOptions = {
@@ -1025,35 +1152,53 @@
                 return;
             }
 
-            document.getElementById('currentTemp').innerHTML =
-                `${stats.temperature.current}<span class="metric-unit">°C</span>`;
-            document.getElementById('currentHumidity').innerHTML =
-                `${stats.humidity.current}<span class="metric-unit">%</span>`;
+            clearError();
+
+            const temperatureStats = stats.temperature ?? {};
+            const humidityStats = stats.humidity ?? {};
+            const co2Stats = stats.co2 ?? {};
+
+            const tempElement = document.getElementById('currentTemp');
+            const tempCurrent = safeValue(temperatureStats.current);
+            tempElement.innerHTML = `${tempCurrent}<span class="metric-unit">°C</span>`;
+            animateValue(tempElement);
+
+            const humidityElement = document.getElementById('currentHumidity');
+            const humidityCurrent = safeValue(humidityStats.current);
+            humidityElement.innerHTML = `${humidityCurrent}<span class="metric-unit">%</span>`;
+            animateValue(humidityElement);
 
             const co2Element = document.getElementById('currentCO2');
-            co2Element.innerHTML = `${stats.co2.current}<span class="metric-unit">ppm</span>`;
+            const co2CurrentRaw = co2Stats.current;
+            const co2Current = safeValue(co2CurrentRaw);
+            co2Element.innerHTML = `${co2Current}<span class="metric-unit">ppm</span>`;
             co2Element.className = 'metric-value co2';
-            if (stats.co2.current >= 2000) {
-                co2Element.classList.add('danger');
-            } else if (stats.co2.current >= 1500) {
-                co2Element.classList.add('warning');
-            } else if (stats.co2.current >= 1000) {
-                co2Element.classList.add('caution');
+            if (typeof co2CurrentRaw === 'number') {
+                if (co2CurrentRaw >= 2000) {
+                    co2Element.classList.add('danger');
+                } else if (co2CurrentRaw >= 1500) {
+                    co2Element.classList.add('warning');
+                } else if (co2CurrentRaw >= 1000) {
+                    co2Element.classList.add('caution');
+                }
             }
+            animateValue(co2Element);
 
-            document.getElementById('minTemp').textContent = stats.temperature.min;
-            document.getElementById('maxTemp').textContent = stats.temperature.max;
-            document.getElementById('avgTemp').textContent = stats.temperature.avg;
+            document.getElementById('minTemp').textContent = safeValue(temperatureStats.min);
+            document.getElementById('maxTemp').textContent = safeValue(temperatureStats.max);
+            document.getElementById('avgTemp').textContent = safeValue(temperatureStats.avg);
 
-            document.getElementById('minHumidity').textContent = stats.humidity.min;
-            document.getElementById('maxHumidity').textContent = stats.humidity.max;
-            document.getElementById('avgHumidity').textContent = stats.humidity.avg;
+            document.getElementById('minHumidity').textContent = safeValue(humidityStats.min);
+            document.getElementById('maxHumidity').textContent = safeValue(humidityStats.max);
+            document.getElementById('avgHumidity').textContent = safeValue(humidityStats.avg);
 
-            document.getElementById('minCO2').textContent = stats.co2.min;
-            document.getElementById('maxCO2').textContent = stats.co2.max;
-            document.getElementById('avgCO2').textContent = stats.co2.avg;
+            document.getElementById('minCO2').textContent = safeValue(co2Stats.min);
+            document.getElementById('maxCO2').textContent = safeValue(co2Stats.max);
+            document.getElementById('avgCO2').textContent = safeValue(co2Stats.avg);
 
-            document.getElementById('dataPoints').textContent = stats.data_points;
+            const dataPointsElement = document.getElementById('dataPoints');
+            dataPointsElement.textContent = safeValue(stats.data_points);
+            animateValue(dataPointsElement);
 
             const quality = stats.co2_quality || { good_percent: 0, moderate_percent: 0, high_percent: 0, critical_percent: 0 };
             document.getElementById('co2Good').textContent = `${quality.good_percent ?? 0}%`;
@@ -1066,7 +1211,13 @@
 
             const lastData = data[data.length - 1];
             document.getElementById('lastUpdate').textContent =
-                `Poslední aktualizace: ${lastData.timestamp}`;
+                `Poslední aktualizace: ${formatTimestampDisplay(lastData.timestamp_iso, lastData.timestamp)}`;
+
+            if (!hasLoadedData && pageEl) {
+                pageEl.classList.remove('loading');
+                pageEl.classList.add('loaded');
+                hasLoadedData = true;
+            }
         }
 
         function updateCharts(data) {
@@ -1077,12 +1228,11 @@
             }
 
             const labels = sampledData.map((point) => {
-                const date = new Date(point.timestamp);
-                return date.toLocaleString('cs-CZ', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
+                const date = parseTimestamp(point);
+                if (!date) {
+                    return point.timestamp ?? '';
+                }
+                return timeFormatter.format(date);
             });
 
             tempChart.data.labels = labels;
@@ -1231,6 +1381,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            pageEl = document.querySelector('.page');
             initCharts();
             fetchData();
 

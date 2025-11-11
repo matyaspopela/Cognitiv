@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitiv • Historická analytika</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
+    <style>
+        :root {
+            --bg: #eef2ff;
+            --surface: #ffffff;
+            --surface-muted: rgba(255, 255, 255, 0.85);
+            --outline: rgba(15, 23, 42, 0.08);
+            --shadow: 0 28px 48px rgba(15, 23, 42, 0.12);
+            --shadow-soft: 0 18px 36px rgba(15, 23, 42, 0.08);
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #2563eb;
+            --accent-strong: #9333ea;
+            --success: #16a34a;
+            --warning: #f97316;
+            --danger: #dc2626;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(150deg, #eef2ff 0%, #f8fafc 45%, #e0f2fe 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(28px, 4vw, 48px);
+            padding: clamp(20px, 4vw, 40px);
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(16px, 3vw, 32px);
+            background: var(--surface);
+            border-radius: clamp(20px, 3vw, 32px);
+            padding: clamp(20px, 3vw, 32px);
+            border: 1px solid var(--outline);
+            box-shadow: var(--shadow-soft);
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: clamp(12px, 2vw, 20px);
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: clamp(18px, 2.5vw, 24px);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .nav-links {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 999px;
+            padding: 6px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+        }
+
+        .nav-links a {
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 18px;
+            border-radius: 999px;
+            color: var(--muted);
+            transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .hero {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(28px, 4vw, 38px);
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 15px;
+            max-width: 720px;
+            line-height: 1.6;
+        }
+
+        .filters {
+            display: grid;
+            gap: clamp(16px, 3vw, 24px);
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            padding: clamp(16px, 3vw, 24px);
+            background: var(--surface-muted);
+            border-radius: clamp(16px, 3vw, 24px);
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.45);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        input, select {
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #fff;
+            box-shadow: inset 0 1px 1.5px rgba(15, 23, 42, 0.08);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 999px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--text);
+            border: 1px solid rgba(148, 163, 184, 0.28);
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(28px, 4vw, 40px);
+        }
+
+        .grid {
+            display: grid;
+            gap: clamp(16px, 3vw, 24px);
+        }
+
+        .grid.two {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .panel {
+            background: var(--surface);
+            border-radius: clamp(18px, 3vw, 24px);
+            padding: clamp(20px, 3vw, 28px);
+            border: 1px solid var(--outline);
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .panel h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .panel p.meta {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .metric-card {
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            background: linear-gradient(145deg, rgba(37, 99, 235, 0.08), rgba(147, 51, 234, 0.08));
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .metric-footer {
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 999px;
+            padding: 6px 10px;
+        }
+
+        .trend.up {
+            background: rgba(22, 163, 74, 0.15);
+            color: var(--success);
+        }
+
+        .trend.down {
+            background: rgba(37, 99, 235, 0.15);
+            color: var(--accent);
+        }
+
+        .trend.flat {
+            background: rgba(148, 163, 184, 0.18);
+            color: var(--muted);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            text-align: left;
+        }
+
+        .table th {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pill.good {
+            background: rgba(22, 163, 74, 0.15);
+            color: var(--success);
+        }
+
+        .status-pill.moderate {
+            background: rgba(250, 204, 21, 0.18);
+            color: #b45309;
+        }
+
+        .status-pill.high {
+            background: rgba(249, 115, 22, 0.18);
+            color: var(--warning);
+        }
+
+        .status-pill.critical {
+            background: rgba(220, 38, 38, 0.18);
+            color: var(--danger);
+        }
+
+        .empty-state {
+            padding: 24px;
+            text-align: center;
+            color: var(--muted);
+            border: 1px dashed rgba(148, 163, 184, 0.3);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        footer {
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+            padding-bottom: 20px;
+        }
+
+        @media (max-width: 820px) {
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .chart-container {
+                height: 260px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <nav>
+                <a class="brand" href="/">Cognitiv</a>
+                <div class="nav-links">
+                    <a href="/">Domů</a>
+                    <a href="/connect">Připojit</a>
+                    <a href="/dashboard">Přehled</a>
+                    <a class="active" href="/history">Historie</a>
+                </div>
+            </nav>
+            <div class="hero">
+                <h1>Historická analytika prostředí</h1>
+                <p class="subtitle">
+                    Vyhodnocujte dlouhodobé trendy CO₂, teploty a vlhkosti. Filtrovatelná časová řada, přehled změn
+                    a automaticky detekované anomálie vám pomohou rychle najít souvislosti.
+                </p>
+            </div>
+            <section class="filters">
+                <div class="filter-group">
+                    <label for="startInput">Od</label>
+                    <input type="datetime-local" id="startInput">
+                </div>
+                <div class="filter-group">
+                    <label for="endInput">Do</label>
+                    <input type="datetime-local" id="endInput">
+                </div>
+                <div class="filter-group">
+                    <label for="bucketSelect">Granularita</label>
+                    <select id="bucketSelect">
+                        <option value="day">Denní</option>
+                        <option value="hour">Hodinová</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="deviceSelect">Zařízení</label>
+                    <select id="deviceSelect">
+                        <option value="">Všechna zařízení</option>
+                    </select>
+                </div>
+                <div class="actions">
+                    <button id="applyFilters" class="btn btn-primary">Načíst data</button>
+                    <button id="resetFilters" class="btn btn-ghost">Resetovat</button>
+                </div>
+            </section>
+        </header>
+
+        <main>
+            <section class="panel">
+                <div class="metrics" id="metricCards">
+                    <div class="empty-state">Načítám shrnutí…</div>
+                </div>
+            </section>
+
+            <section class="grid two">
+                <div class="panel">
+                    <div>
+                        <h2>CO₂ trendy</h2>
+                        <p class="meta" id="co2Meta">–</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="co2Chart"></canvas>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div>
+                        <h2>Teplota a vlhkost</h2>
+                        <p class="meta" id="climateMeta">–</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="climateChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div>
+                    <h2>Kvalita vzduchu podle hranic CO₂</h2>
+                    <p class="meta">Rozložení vzorků podle doporučených úrovní CO₂ (ppm).</p>
+                </div>
+                <table class="table" id="co2Table">
+                    <thead>
+                        <tr>
+                            <th>Úroveň</th>
+                            <th>Vzorků</th>
+                            <th>Podíl</th>
+                            <th>Popis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="empty-state">Zatím nejsou k dispozici žádná data.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="panel">
+                <div>
+                    <h2>Detekované anomálie</h2>
+                    <p class="meta">Výrazné výkyvy CO₂, kdy je hodnota nad 1500 ppm nebo se změnila o více než 350 ppm oproti předchozímu intervalu.</p>
+                </div>
+                <div id="anomalyList" class="grid">
+                    <div class="empty-state">Žádné anomálie nebyly nalezeny v daném období.</div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            Historická analytika Cognitiv • Přináší přehled o kvalitě prostředí v čase.
+        </footer>
+    </div>
+
+    <script>
+        const state = {
+            filters: {
+                start: null,
+                end: null,
+                bucket: 'day',
+                deviceId: ''
+            },
+            charts: {
+                co2: null,
+                climate: null
+            },
+            cache: {
+                devices: new Set()
+            }
+        };
+
+        function formatDateForInput(date) {
+            if (!date) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            const year = date.getFullYear();
+            const month = pad(date.getMonth() + 1);
+            const day = pad(date.getDate());
+            const hours = pad(date.getHours());
+            const minutes = pad(date.getMinutes());
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function toISOStringOrNull(value) {
+            if (!value) return null;
+            try {
+                const parsed = new Date(value);
+                if (Number.isNaN(parsed.getTime())) {
+                    return null;
+                }
+                return parsed.toISOString();
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function fetchJson(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(message || `Žádost selhala: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        function updateDeviceOptions(series) {
+            const select = document.getElementById('deviceSelect');
+            const previous = new Set(state.cache.devices);
+            state.cache.devices.clear();
+
+            series.forEach(item => {
+                if (item.device_id) {
+                    state.cache.devices.add(item.device_id);
+                }
+            });
+
+            if (state.cache.devices.size === 0) {
+                select.innerHTML = '<option value="">Všechna zařízení</option>';
+                return;
+            }
+
+            if (JSON.stringify(Array.from(previous)) === JSON.stringify(Array.from(state.cache.devices))) {
+                return; // list unchanged
+            }
+
+            const options = ['<option value="">Všechna zařízení</option>'];
+            Array.from(state.cache.devices).sort().forEach(deviceId => {
+                options.push(`<option value="${deviceId}">${deviceId}</option>`);
+            });
+            select.innerHTML = options.join('');
+        }
+
+        function renderMetricCards(summary) {
+            const container = document.getElementById('metricCards');
+            if (!summary || !summary.samples) {
+                container.innerHTML = '<div class="empty-state">V daném období nejsou žádná data.</div>';
+                return;
+            }
+
+            const cards = [
+                {
+                    id: 'co2',
+                    title: 'CO₂ (ppm)',
+                    value: summary.co2?.avg ?? '–',
+                    min: summary.co2?.min,
+                    max: summary.co2?.max,
+                    trend: summary.co2?.trend
+                },
+                {
+                    id: 'temperature',
+                    title: 'Teplota (°C)',
+                    value: summary.temperature?.avg ?? '–',
+                    min: summary.temperature?.min,
+                    max: summary.temperature?.max,
+                    trend: summary.temperature?.trend
+                },
+                {
+                    id: 'humidity',
+                    title: 'Vlhkost (%)',
+                    value: summary.humidity?.avg ?? '–',
+                    min: summary.humidity?.min,
+                    max: summary.humidity?.max,
+                    trend: summary.humidity?.trend
+                },
+                {
+                    id: 'samples',
+                    title: 'Vzorky',
+                    value: summary.samples,
+                    min: summary.range?.data_start || '–',
+                    max: summary.range?.data_end || '–',
+                    trend: null
+                }
+            ];
+
+            container.innerHTML = cards.map(card => {
+                const trend = card.trend;
+                let trendHtml = '';
+                if (trend && (trend.absolute !== null || trend.percent !== null)) {
+                    let trendClass = 'flat';
+                    let icon = '⟷';
+                    if (trend.absolute > 0.05) {
+                        trendClass = 'up';
+                        icon = '▲';
+                    } else if (trend.absolute < -0.05) {
+                        trendClass = 'down';
+                        icon = '▼';
+                    }
+                    const absolute = trend.absolute !== null ? `${trend.absolute > 0 ? '+' : ''}${trend.absolute}` : '–';
+                    const percent = trend.percent !== null ? ` (${trend.percent > 0 ? '+' : ''}${trend.percent} %)` : '';
+                    trendHtml = `<span class="trend ${trendClass}">${icon} ${absolute}${percent}</span>`;
+                }
+
+                const detail = card.id === 'samples'
+                    ? `<div class="metric-footer"><div>Od: ${card.min}</div><div>Do: ${card.max}</div></div>`
+                    : `<div class="metric-footer">Min ${card.min ?? '–'} · Max ${card.max ?? '–'}</div>`;
+
+                return `
+                    <article class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">${card.title}</span>
+                            ${trendHtml}
+                        </div>
+                        <div class="metric-value">${card.value ?? '–'}</div>
+                        ${detail}
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function renderCo2Table(co2Summary) {
+            const tbody = document.querySelector('#co2Table tbody');
+            if (!co2Summary) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">V daném období nejsou žádná data.</td></tr>';
+                return;
+            }
+
+            const rows = [
+                { id: 'good', label: 'Dobrá kvalita', desc: '< 1000 ppm' },
+                { id: 'moderate', label: 'Střední kvalita', desc: '1000 – 1500 ppm' },
+                { id: 'high', label: 'Zhoršená kvalita', desc: '1500 – 2000 ppm' },
+                { id: 'critical', label: 'Kritická kvalita', desc: '> 2000 ppm' }
+            ];
+
+            tbody.innerHTML = rows.map(row => {
+                const count = co2Summary[row.id] ?? 0;
+                const percent = co2Summary[`${row.id}_percent`] ?? 0;
+                return `
+                    <tr>
+                        <td><span class="status-pill ${row.id}">${row.label}</span></td>
+                        <td>${count}</td>
+                        <td>${percent}%</td>
+                        <td>${row.desc}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function detectAnomalies(series) {
+            if (!Array.isArray(series) || series.length === 0) {
+                return [];
+            }
+            const filtered = series.filter(item => item.co2?.avg !== null && item.co2?.avg !== undefined);
+            const anomalies = [];
+            for (let i = 0; i < filtered.length; i++) {
+                const current = filtered[i];
+                const previous = filtered[i - 1];
+                const value = current.co2.avg;
+                const change = previous ? value - previous.co2.avg : 0;
+                if (value >= 1500 || Math.abs(change) >= 350) {
+                    anomalies.push({
+                        timestamp: current.bucket_start,
+                        device: current.device_id || 'Všechna',
+                        value,
+                        change: previous ? change : null
+                    });
+                }
+            }
+            return anomalies;
+        }
+
+        function renderAnomalies(series) {
+            const container = document.getElementById('anomalyList');
+            const anomalies = detectAnomalies(series);
+            if (anomalies.length === 0) {
+                container.innerHTML = '<div class="empty-state">Žádné anomálie nebyly nalezeny v daném období.</div>';
+                return;
+            }
+            container.innerHTML = anomalies.map(anomaly => {
+                const change = anomaly.change !== null
+                    ? `${anomaly.change > 0 ? '+' : ''}${anomaly.change.toFixed(0)} ppm`
+                    : '—';
+                return `
+                    <article class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">${anomaly.timestamp}</span>
+                            <span class="trend ${anomaly.value >= 2000 ? 'up' : 'down'}">
+                                ${anomaly.value >= 2000 ? '⚠' : '▲'} ${anomaly.value.toFixed(0)} ppm
+                            </span>
+                        </div>
+                        <div class="metric-footer">Zařízení: ${anomaly.device}</div>
+                        <div class="metric-footer">Změna proti předchozímu intervalu: ${change}</div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function ensureChart(id, config) {
+            if (state.charts[id]) {
+                state.charts[id].data = config.data;
+                state.charts[id].options = config.options;
+                state.charts[id].update();
+                return state.charts[id];
+            }
+            const ctx = document.getElementById(`${id}Chart`).getContext('2d');
+            state.charts[id] = new Chart(ctx, config);
+            return state.charts[id];
+        }
+
+        function buildCo2Chart(series) {
+            const labels = series.map(item => item.bucket_start);
+            const datasetsMap = {};
+
+            series.forEach(item => {
+                const key = item.device_id || 'Všechna';
+                if (!datasetsMap[key]) {
+                    datasetsMap[key] = {
+                        label: `CO₂ • ${key}`,
+                        data: [],
+                        fill: false,
+                        tension: 0.25,
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        borderColor: key === 'Všechna' ? 'rgba(79, 70, 229, 0.85)' : undefined,
+                    };
+                }
+                datasetsMap[key].data.push(item.co2?.avg ?? null);
+            });
+
+            const colors = [
+                'rgba(79, 70, 229, 0.85)',
+                'rgba(59, 130, 246, 0.85)',
+                'rgba(14, 165, 233, 0.85)',
+                'rgba(167, 139, 250, 0.85)',
+                'rgba(139, 92, 246, 0.85)'
+            ];
+
+            let index = 0;
+            Object.values(datasetsMap).forEach(dataset => {
+                if (!dataset.borderColor) {
+                    dataset.borderColor = colors[index % colors.length];
+                    index += 1;
+                }
+            });
+
+            const config = {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: Object.values(datasetsMap)
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: { display: true, text: 'CO₂ (ppm)' },
+                            grid: { color: 'rgba(148, 163, 184, 0.2)' }
+                        },
+                        x: {
+                            ticks: { maxRotation: 0 },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        annotation: {
+                            annotations: {
+                                moderate: {
+                                    type: 'line',
+                                    yMin: 1000,
+                                    yMax: 1000,
+                                    borderColor: 'rgba(234, 179, 8, 0.6)',
+                                    borderWidth: 1,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: '1000 ppm',
+                                        enabled: true,
+                                        position: 'start'
+                                    }
+                                },
+                                high: {
+                                    type: 'line',
+                                    yMin: 1500,
+                                    yMax: 1500,
+                                    borderColor: 'rgba(249, 115, 22, 0.6)',
+                                    borderWidth: 1,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: '1500 ppm',
+                                        enabled: true,
+                                        position: 'start'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            ensureChart('co2', config);
+            document.getElementById('co2Meta').textContent = `Počet intervalů: ${series.length}`;
+        }
+
+        function buildClimateChart(series) {
+            const labels = series.map(item => item.bucket_start);
+            const datasetTemperature = {
+                label: 'Teplota (°C)',
+                data: series.map(item => item.temperature?.avg ?? null),
+                yAxisID: 'y',
+                borderColor: 'rgba(249, 115, 22, 0.85)',
+                backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                tension: 0.25,
+                borderWidth: 2,
+                pointRadius: 2,
+                fill: false
+            };
+            const datasetHumidity = {
+                label: 'Vlhkost (%)',
+                data: series.map(item => item.humidity?.avg ?? null),
+                yAxisID: 'y1',
+                borderColor: 'rgba(56, 189, 248, 0.85)',
+                backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 2,
+                fill: false
+            };
+
+            const config = {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [datasetTemperature, datasetHumidity]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            position: 'left',
+                            title: { display: true, text: 'Teplota (°C)' },
+                            grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: 'Vlhkost (%)' },
+                            grid: { drawOnChartArea: false }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            };
+
+            ensureChart('climate', config);
+            document.getElementById('climateMeta').textContent = `Počet intervalů: ${series.length}`;
+        }
+
+        async function loadHistoryData() {
+            try {
+                const params = new URLSearchParams();
+                params.append('bucket', state.filters.bucket);
+                if (state.filters.deviceId) {
+                    params.append('device_id', state.filters.deviceId);
+                }
+
+                const startIso = toISOStringOrNull(state.filters.start);
+                const endIso = toISOStringOrNull(state.filters.end);
+                if (startIso) params.append('start', startIso);
+                if (endIso) params.append('end', endIso);
+
+                const [summaryPayload, seriesPayload] = await Promise.all([
+                    fetchJson(`/history/summary?${params.toString()}`),
+                    fetchJson(`/history/series?${params.toString()}`)
+                ]);
+
+                if (summaryPayload.status !== 'success' || seriesPayload.status !== 'success') {
+                    throw new Error('Nepodařilo se načíst historická data.');
+                }
+
+                const summary = summaryPayload.summary;
+                const series = seriesPayload.series || [];
+
+                updateDeviceOptions(series);
+                renderMetricCards(summary);
+                renderCo2Table(summary?.co2_quality);
+
+                if (series.length > 0) {
+                    buildCo2Chart(series);
+                    buildClimateChart(series);
+                } else {
+                    document.getElementById('co2Meta').textContent = 'Žádná data k zobrazení.';
+                    document.getElementById('climateMeta').textContent = 'Žádná data k zobrazení.';
+                }
+
+                renderAnomalies(series);
+            } catch (error) {
+                console.error(error);
+                const container = document.getElementById('metricCards');
+                container.innerHTML = `<div class="empty-state">Nepodařilo se načíst data: ${error.message}</div>`;
+                document.getElementById('co2Meta').textContent = 'Chyba při načítání dat.';
+                document.getElementById('climateMeta').textContent = 'Chyba při načítání dat.';
+                document.querySelector('#co2Table tbody').innerHTML =
+                    '<tr><td colspan="4" class="empty-state">Nepodařilo se načíst data.</td></tr>';
+                document.getElementById('anomalyList').innerHTML =
+                    '<div class="empty-state">Nepodařilo se načíst data.</div>';
+            }
+        }
+
+        function resetFilters() {
+            const now = new Date();
+            const start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+            state.filters = {
+                start: formatDateForInput(start),
+                end: formatDateForInput(now),
+                bucket: 'day',
+                deviceId: ''
+            };
+
+            document.getElementById('startInput').value = state.filters.start;
+            document.getElementById('endInput').value = state.filters.end;
+            document.getElementById('bucketSelect').value = state.filters.bucket;
+            document.getElementById('deviceSelect').value = state.filters.deviceId;
+        }
+
+        function applyCurrentFilters() {
+            state.filters.start = document.getElementById('startInput').value || null;
+            state.filters.end = document.getElementById('endInput').value || null;
+            state.filters.bucket = document.getElementById('bucketSelect').value || 'day';
+            state.filters.deviceId = document.getElementById('deviceSelect').value || '';
+            loadHistoryData();
+        }
+
+        document.getElementById('applyFilters').addEventListener('click', applyCurrentFilters);
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            resetFilters();
+            loadHistoryData();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r') {
+                event.preventDefault();
+                applyCurrentFilters();
+            }
+        });
+
+        resetFilters();
+        loadHistoryData();
+    </script>
+</body>
+</html>
+

@@ -5,8 +5,8 @@
 #define CONFIG_H
 
 // WiFi Configuration
-#define WIFI_SSID "moto g32_7681"
-#define WIFI_PASSWORD "edasimon"
+#define WIFI_SSID "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 
 // For WPA2 Enterprise networks (username + password)
 // Uncomment these lines and comment out WIFI_PASSWORD above if using Enterprise WiFi

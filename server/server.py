@@ -6,11 +6,16 @@ Receives data from ESP32, stores in MongoDB, and serves dashboard
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import PyMongoError
 import certifi
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python < 3.9 fallback
+    from backports.zoneinfo import ZoneInfo
 
 from board_manager import (
     apply_wifi_credentials,
@@ -29,6 +34,29 @@ MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'cognitiv')
 MONGO_COLLECTION_NAME = os.getenv('MONGO_COLLECTION', 'sensor_data')
 SERVER_PORT = int(os.getenv('PORT', '5000'))
 DEBUG_MODE = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+
+
+def resolve_local_timezone():
+    try:
+        return ZoneInfo(LOCAL_TIMEZONE)
+    except Exception:
+        fallback_tz = datetime.now().astimezone().tzinfo
+        if fallback_tz is not None:
+            print(
+                f"⚠️  Nepodařilo se načíst časovou zónu '{LOCAL_TIMEZONE}'. "
+                f"Používám systémovou časovou zónu {fallback_tz}."
+            )
+            return fallback_tz
+        print(
+            f"⚠️  Nepodařilo se načíst časovou zónu '{LOCAL_TIMEZONE}'. "
+            "Používám UTC."
+        )
+        return ZoneInfo('UTC')
+
+
+LOCAL_TZ = resolve_local_timezone()
+UTC = timezone.utc
 
 CO2_GOOD_MAX = 1000
 CO2_MODERATE_MAX = 1500
@@ -46,6 +74,8 @@ def init_mongo_client():
             MONGO_URI,
             serverSelectionTimeoutMS=5000,
             tlsCAFile=certifi.where(),
+            tz_aware=True,
+            tzinfo=UTC,
         )
         # Trigger server selection to fail fast if misconfigured
         client.admin.command('ping')
@@ -60,6 +90,14 @@ def init_mongo_client():
 
 
 mongo_collection = init_mongo_client()
+
+
+def to_local_datetime(value):
+    if not value:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(LOCAL_TZ)
 
 def normalize_sensor_data(data):
     """Mapování příchozího JSONu na standardizované klíče."""
@@ -129,10 +167,56 @@ def validate_sensor_data(data):
 def format_timestamp(unix_timestamp):
     """Převod Unix časového razítka na čitelný formát"""
     try:
-        dt = datetime.fromtimestamp(float(unix_timestamp))
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        ts = float(unix_timestamp)
+        dt_utc = datetime.fromtimestamp(ts, tz=UTC)
+        return to_local_datetime(dt_utc).strftime('%Y-%m-%d %H:%M:%S')
+    except (TypeError, ValueError, OSError):
+        return datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+
+
+def parse_iso_datetime(value, default=None):
+    """Převede ISO8601 řetězec na datetime (bez časové zóny)."""
+    if not value:
+        return default
+    try:
+        sanitized = value.strip()
+        if sanitized.endswith('Z'):
+            sanitized = sanitized[:-1] + '+00:00'
+        dt = datetime.fromisoformat(sanitized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=LOCAL_TZ)
+        return dt.astimezone(UTC)
+    except ValueError:
+        raise ValueError(
+            f"Neplatný formát data: '{value}'. Použijte ISO 8601, např. 2024-01-31T12:00:00."
+        )
+
+
+def build_history_filter(start_dt, end_dt, device_id=None):
+    """Sestaví dotaz pro historická data podle zadaného rozsahu."""
+    query = {}
+    if start_dt or end_dt:
+        time_filter = {}
+        if start_dt:
+            time_filter['$gte'] = start_dt
+        if end_dt:
+            time_filter['$lte'] = end_dt
+        query['timestamp'] = time_filter
+    if device_id:
+        query['device_id'] = device_id
+    return query
+
+
+def to_readable_timestamp(dt):
+    if not dt:
+        return None
+    return to_local_datetime(dt).strftime('%Y-%m-%d %H:%M:%S')
+
+
+def round_or_none(value, ndigits=2):
+    if value is None:
+        return None
+    return round(value, ndigits)
 
 @app.route('/')
 def home():
@@ -144,6 +228,12 @@ def home():
 def dashboard():
     """Interaktivní dashboard"""
     return send_from_directory('static', 'dashboard.html')
+
+
+@app.route('/history')
+def history():
+    """Historická analytika"""
+    return send_from_directory('static', 'history.html')
 
 
 @app.route('/connect')
@@ -243,14 +333,16 @@ def receive_data():
             return jsonify({'error': message}), 400
         
         # Format timestamp
-        timestamp_str = format_timestamp(normalized['timestamp'])
+        timestamp_utc = datetime.fromtimestamp(float(normalized['timestamp']), tz=UTC)
+        timestamp_local = to_local_datetime(timestamp_utc)
+        timestamp_str = timestamp_local.strftime('%Y-%m-%d %H:%M:%S')
 
         temperature = float(normalized['temperature'])
         humidity = float(normalized['humidity'])
         co2 = int(normalized['co2'])
 
         document = {
-            'timestamp': datetime.fromtimestamp(float(normalized['timestamp'])),
+            'timestamp': timestamp_utc,
             'timestamp_str': timestamp_str,
             'device_id': normalized['device_id'],
             'temperature': temperature,
@@ -286,7 +378,7 @@ def get_data():
         device_id = request.args.get('device_id', type=str, default=None)
 
         # Calculate cutoff time
-        cutoff_time = datetime.now() - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
         if device_id:
@@ -304,12 +396,18 @@ def get_data():
             temperature = float(doc.get('temperature', 0))
             humidity = float(doc.get('humidity', 0))
             co2 = int(doc.get('co2', 0))
+            timestamp_local = None
+            if 'timestamp' in doc:
+                timestamp_local = to_local_datetime(doc['timestamp'])
+
             timestamp_str = doc.get('timestamp_str')
-            if not timestamp_str and 'timestamp' in doc:
-                timestamp_str = doc['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            if not timestamp_str and timestamp_local:
+                timestamp_str = timestamp_local.strftime('%Y-%m-%d %H:%M:%S')
+            timestamp_iso = timestamp_local.isoformat() if timestamp_local else None
 
             data_points.append({
                 'timestamp': timestamp_str,
+                'timestamp_iso': timestamp_iso,
                 'device_id': doc.get('device_id'),
                 'temperature': temperature,
                 'humidity': humidity,
@@ -329,12 +427,252 @@ def get_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/history/series', methods=['GET'])
+def history_series():
+    """Vrací agregované historické časové řady pro analýzu trendů."""
+    try:
+        now = datetime.now(UTC)
+        default_start = now - timedelta(days=30)
+
+        start_dt = parse_iso_datetime(request.args.get('start'), default_start)
+        end_dt = parse_iso_datetime(request.args.get('end'), now)
+
+        if start_dt and end_dt and start_dt > end_dt:
+            return jsonify({'error': 'Počáteční datum nesmí být pozdější než koncové.'}), 400
+
+        bucket = (request.args.get('bucket') or 'day').lower()
+        if bucket not in ('hour', 'day'):
+            return jsonify({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour' nebo 'day'."}), 400
+
+        device_id = request.args.get('device_id')
+
+        mongo_filter = build_history_filter(start_dt, end_dt, device_id)
+        bucket_unit = 'hour' if bucket == 'hour' else 'day'
+
+        group_id = {
+            'bucket': {
+                '$dateTrunc': {
+                    'date': '$timestamp',
+                    'unit': bucket_unit,
+                }
+            }
+        }
+        if not device_id:
+            group_id['device_id'] = '$device_id'
+
+        pipeline = [
+            {'$match': mongo_filter},
+            {
+                '$group': {
+                    '_id': group_id,
+                    'count': {'$sum': 1},
+                    'temperature_avg': {'$avg': '$temperature'},
+                    'temperature_min': {'$min': '$temperature'},
+                    'temperature_max': {'$max': '$temperature'},
+                    'humidity_avg': {'$avg': '$humidity'},
+                    'humidity_min': {'$min': '$humidity'},
+                    'humidity_max': {'$max': '$humidity'},
+                    'co2_avg': {'$avg': '$co2'},
+                    'co2_min': {'$min': '$co2'},
+                    'co2_max': {'$max': '$co2'},
+                }
+            },
+            {
+                '$sort': {
+                    '_id.bucket': 1,
+                    '_id.device_id': 1 if not device_id else 0
+                }
+            }
+        ]
+
+        cursor = mongo_collection.aggregate(pipeline, allowDiskUse=True)
+        series = []
+
+        for doc in cursor:
+            bucket_dt = doc['_id']['bucket']
+            entry = {
+                'bucket_start': to_readable_timestamp(bucket_dt),
+                'count': doc.get('count', 0),
+                'temperature': {
+                    'avg': round_or_none(doc.get('temperature_avg')),
+                    'min': round_or_none(doc.get('temperature_min')),
+                    'max': round_or_none(doc.get('temperature_max')),
+                },
+                'humidity': {
+                    'avg': round_or_none(doc.get('humidity_avg')),
+                    'min': round_or_none(doc.get('humidity_min')),
+                    'max': round_or_none(doc.get('humidity_max')),
+                },
+                'co2': {
+                    'avg': round_or_none(doc.get('co2_avg')),
+                    'min': doc.get('co2_min'),
+                    'max': doc.get('co2_max'),
+                }
+            }
+            if not device_id:
+                entry['device_id'] = doc['_id'].get('device_id')
+            series.append(entry)
+
+        return jsonify({
+            'status': 'success',
+            'bucket': bucket_unit,
+            'device_id': device_id,
+            'count': len(series),
+            'series': series
+        }), 200
+
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except PyMongoError as exc:
+        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
+
+@app.route('/history/summary', methods=['GET'])
+def history_summary():
+    """Shrnutí historických dat, trendy a anomálie."""
+    try:
+        now = datetime.now(UTC)
+        default_start = now - timedelta(days=30)
+
+        start_dt = parse_iso_datetime(request.args.get('start'), default_start)
+        end_dt = parse_iso_datetime(request.args.get('end'), now)
+
+        if start_dt and end_dt and start_dt > end_dt:
+            return jsonify({'error': 'Počáteční datum nesmí být pozdější než koncové.'}), 400
+
+        device_id = request.args.get('device_id')
+        mongo_filter = build_history_filter(start_dt, end_dt, device_id)
+
+        pipeline = [
+            {'$match': mongo_filter},
+            {
+                '$group': {
+                    '_id': None,
+                    'count': {'$sum': 1},
+                    'temp_min': {'$min': '$temperature'},
+                    'temp_max': {'$max': '$temperature'},
+                    'temp_avg': {'$avg': '$temperature'},
+                    'humidity_min': {'$min': '$humidity'},
+                    'humidity_max': {'$max': '$humidity'},
+                    'humidity_avg': {'$avg': '$humidity'},
+                    'co2_min': {'$min': '$co2'},
+                    'co2_max': {'$max': '$co2'},
+                    'co2_avg': {'$avg': '$co2'},
+                    'first_ts': {'$min': '$timestamp'},
+                    'last_ts': {'$max': '$timestamp'},
+                    'co2_good': {'$sum': {'$cond': [{'$lt': ['$co2', CO2_GOOD_MAX]}, 1, 0]}},
+                    'co2_moderate': {'$sum': {'$cond': [
+                        {'$and': [{'$gte': ['$co2', CO2_GOOD_MAX]}, {'$lt': ['$co2', CO2_MODERATE_MAX]}]}, 1, 0
+                    ]}},
+                    'co2_high': {'$sum': {'$cond': [
+                        {'$and': [{'$gte': ['$co2', CO2_MODERATE_MAX]}, {'$lt': ['$co2', CO2_HIGH_MAX]}]}, 1, 0
+                    ]}},
+                    'co2_critical': {'$sum': {'$cond': [{'$gte': ['$co2', CO2_HIGH_MAX]}, 1, 0]}}
+                }
+            }
+        ]
+
+        agg = list(mongo_collection.aggregate(pipeline, allowDiskUse=True))
+        if not agg:
+            return jsonify({
+                'status': 'success',
+                'message': 'V daném období nejsou žádná data.',
+                'summary': {}
+            }), 200
+
+        stats = agg[0]
+        count = stats.get('count', 0)
+
+        first_doc_cursor = mongo_collection.find(mongo_filter).sort('timestamp', 1).limit(1)
+        last_doc_cursor = mongo_collection.find(mongo_filter).sort('timestamp', -1).limit(1)
+        first_doc = next(first_doc_cursor, None)
+        last_doc = next(last_doc_cursor, None)
+
+        def calc_trend(metric):
+            if not first_doc or not last_doc:
+                return {'absolute': None, 'percent': None}
+            first_val = first_doc.get(metric)
+            last_val = last_doc.get(metric)
+            if first_val is None or last_val is None:
+                return {'absolute': None, 'percent': None}
+            absolute = round_or_none(last_val - first_val)
+            percent = None
+            if first_val not in (0, None):
+                percent = round_or_none(((last_val - first_val) / first_val) * 100)
+            return {'absolute': absolute, 'percent': percent}
+
+        co2_quality = {
+            'good': stats.get('co2_good', 0),
+            'moderate': stats.get('co2_moderate', 0),
+            'high': stats.get('co2_high', 0),
+            'critical': stats.get('co2_critical', 0),
+        }
+        if count > 0:
+            co2_quality.update({
+                'good_percent': round_or_none(co2_quality['good'] / count * 100),
+                'moderate_percent': round_or_none(co2_quality['moderate'] / count * 100),
+                'high_percent': round_or_none(co2_quality['high'] / count * 100),
+                'critical_percent': round_or_none(co2_quality['critical'] / count * 100),
+            })
+        else:
+            co2_quality.update({
+                'good_percent': 0,
+                'moderate_percent': 0,
+                'high_percent': 0,
+                'critical_percent': 0,
+            })
+
+        summary = {
+            'device_id': device_id,
+            'range': {
+                'requested_start': to_readable_timestamp(start_dt),
+                'requested_end': to_readable_timestamp(end_dt),
+                'data_start': to_readable_timestamp(stats.get('first_ts')),
+                'data_end': to_readable_timestamp(stats.get('last_ts')),
+            },
+            'samples': count,
+            'temperature': {
+                'min': round_or_none(stats.get('temp_min')),
+                'max': round_or_none(stats.get('temp_max')),
+                'avg': round_or_none(stats.get('temp_avg')),
+                'trend': calc_trend('temperature'),
+            },
+            'humidity': {
+                'min': round_or_none(stats.get('humidity_min')),
+                'max': round_or_none(stats.get('humidity_max')),
+                'avg': round_or_none(stats.get('humidity_avg')),
+                'trend': calc_trend('humidity'),
+            },
+            'co2': {
+                'min': stats.get('co2_min'),
+                'max': stats.get('co2_max'),
+                'avg': round_or_none(stats.get('co2_avg')),
+                'trend': calc_trend('co2'),
+            },
+            'co2_quality': co2_quality
+        }
+
+        return jsonify({
+            'status': 'success',
+            'summary': summary
+        }), 200
+
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except PyMongoError as exc:
+        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
 @app.route('/stats', methods=['GET'])
 def get_stats():
     """Statistické shrnutí dat"""
     try:
         hours = request.args.get('hours', type=int, default=24)
-        cutoff_time = datetime.now() - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
 
@@ -461,8 +799,8 @@ def status():
         latest_timestamp = None
         if latest_doc:
             latest_timestamp = latest_doc.get('timestamp_str')
-            if not latest_timestamp and latest_doc.get('timestamp'):
-                latest_timestamp = latest_doc['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            if not latest_timestamp:
+                latest_timestamp = to_readable_timestamp(latest_doc.get('timestamp'))
 
         return jsonify({
             'status': 'online',
@@ -470,7 +808,7 @@ def status():
             'collection': MONGO_COLLECTION_NAME,
             'data_points': total_documents,
             'latest_entry': latest_timestamp,
-            'server_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
         }), 200
 
     except PyMongoError as exc:
