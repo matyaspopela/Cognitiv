@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0"></script>
     <style>
         :root {
             --bg: #eef2ff;
@@ -128,44 +129,212 @@
         }
 
         .filters {
-            display: grid;
-            gap: clamp(16px, 3vw, 24px);
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            padding: clamp(16px, 3vw, 24px);
+            display: flex;
+            flex-direction: column;
+            gap: clamp(20px, 3vw, 28px);
+            padding: clamp(20px, 3vw, 28px);
             background: var(--surface-muted);
             border-radius: clamp(16px, 3vw, 24px);
             border: 1px solid rgba(148, 163, 184, 0.24);
             box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.45);
         }
 
-        .filter-group {
+        .filter-section {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
         }
 
-        label {
+        .filter-section-title {
             font-size: 13px;
             font-weight: 600;
             color: var(--muted);
             text-transform: uppercase;
             letter-spacing: 0.08em;
+            margin: 0;
         }
 
-        input, select {
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .preset-btn {
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: #fff;
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+        }
+
+        .preset-btn:hover {
+            background: rgba(37, 99, 235, 0.08);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .date-range-group {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .date-range-separator {
+            color: var(--muted);
+            font-size: 18px;
+            font-weight: 300;
+        }
+
+        .date-input-wrapper {
+            position: relative;
+        }
+
+        .date-input-wrapper::before {
+            content: '📅';
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        input[type="datetime-local"] {
             border: 1px solid rgba(148, 163, 184, 0.25);
             border-radius: 12px;
-            padding: 12px 14px;
+            padding: 12px 14px 12px 42px;
             font-size: 14px;
             font-family: inherit;
             background: #fff;
             box-shadow: inset 0 1px 1.5px rgba(15, 23, 42, 0.08);
+            width: 100%;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), inset 0 1px 1.5px rgba(15, 23, 42, 0.08);
+        }
+
+        .bucket-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .bucket-card {
+            padding: 16px;
+            border-radius: 14px;
+            border: 2px solid rgba(148, 163, 184, 0.25);
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bucket-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 100%);
+            transform: scaleX(0);
+            transition: transform 0.25s ease;
+        }
+
+        .bucket-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.15);
+        }
+
+        .bucket-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .bucket-card.active {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(147, 51, 234, 0.08) 100%);
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
+        }
+
+        .bucket-card.active::before {
+            transform: scaleX(1);
+        }
+
+        .bucket-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 6px;
+            color: var(--text);
+        }
+
+        .bucket-card-desc {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .device-select-wrapper {
+            position: relative;
+        }
+
+        .device-select-wrapper::before {
+            content: '📱';
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        select {
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px;
+            padding: 12px 14px 12px 42px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #fff;
+            box-shadow: inset 0 1px 1.5px rgba(15, 23, 42, 0.08);
+            width: 100%;
+            cursor: pointer;
+            appearance: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), inset 0 1px 1.5px rgba(15, 23, 42, 0.08);
         }
 
         .actions {
             display: flex;
             gap: 12px;
             align-items: center;
+            justify-content: flex-end;
+            margin-top: 8px;
         }
 
         .btn {
@@ -195,6 +364,66 @@
             background: rgba(255, 255, 255, 0.9);
             color: var(--text);
             border: 1px solid rgba(148, 163, 184, 0.28);
+        }
+
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(148, 163, 184, 0.3);
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
         main {
@@ -306,6 +535,16 @@
             height: 320px;
         }
 
+        #qualityPieChart {
+            width: 100%;
+            height: 100%;
+        }
+
+        #qualityPieChartContainer {
+            width: 100%;
+            position: relative;
+        }
+
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -381,6 +620,27 @@
             .chart-container {
                 height: 260px;
             }
+
+            .date-range-group {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .date-range-separator {
+                display: none;
+            }
+
+            .preset-buttons {
+                flex-direction: column;
+            }
+
+            .preset-btn {
+                width: 100%;
+            }
+
+            .bucket-selector {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -404,29 +664,70 @@
                 </p>
             </div>
             <section class="filters">
-                <div class="filter-group">
-                    <label for="startInput">Od</label>
-                    <input type="datetime-local" id="startInput">
+                <div class="filter-section">
+                    <h3 class="filter-section-title">Rychlý výběr období</h3>
+                    <div class="preset-buttons" id="presetButtons">
+                        <button class="preset-btn" data-preset="24h">Posledních 24 hodin</button>
+                        <button class="preset-btn" data-preset="7d">Posledních 7 dní</button>
+                        <button class="preset-btn" data-preset="30d" data-default>Posledních 30 dní</button>
+                        <button class="preset-btn" data-preset="90d">Posledních 90 dní</button>
+                        <button class="preset-btn" data-preset="custom">Vlastní rozsah</button>
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label for="endInput">Do</label>
-                    <input type="datetime-local" id="endInput">
+
+                <div class="filter-section" id="customDateRange" style="display: none;">
+                    <h3 class="filter-section-title">Vlastní časové období</h3>
+                    <div class="date-range-group">
+                        <div class="date-input-wrapper">
+                            <input type="datetime-local" id="startInput">
+                        </div>
+                        <span class="date-range-separator">→</span>
+                        <div class="date-input-wrapper">
+                            <input type="datetime-local" id="endInput">
+                        </div>
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label for="bucketSelect">Granularita</label>
-                    <select id="bucketSelect">
-                        <option value="day">Denní</option>
-                        <option value="hour">Hodinová</option>
-                    </select>
+
+                <div class="filter-section">
+                    <h3 class="filter-section-title">Granularita dat</h3>
+                    <div class="bucket-selector">
+                        <div class="bucket-card" data-bucket="raw">
+                            <div class="bucket-card-title">Všechna data</div>
+                            <div class="bucket-card-desc">Bez agregace</div>
+                        </div>
+                        <div class="bucket-card" data-bucket="hour">
+                            <div class="bucket-card-title">Hodinová</div>
+                            <div class="bucket-card-desc">Průměr za hodinu</div>
+                        </div>
+                        <div class="bucket-card active" data-bucket="day">
+                            <div class="bucket-card-title">Denní</div>
+                            <div class="bucket-card-desc">Průměr za den</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label for="deviceSelect">Zařízení</label>
-                    <select id="deviceSelect">
-                        <option value="">Všechna zařízení</option>
-                    </select>
+
+                <div class="filter-section">
+                    <h3 class="filter-section-title">Zařízení</h3>
+                    <div class="device-select-wrapper">
+                        <select id="deviceSelect">
+                            <option value="">Všechna zařízení</option>
+                        </select>
+                    </div>
                 </div>
+
+                <div class="filter-section">
+                    <h3 class="filter-section-title">Nastavení grafů</h3>
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="interpolationToggle">
+                            <span class="slider"></span>
+                        </label>
+                        <span>Interpolace grafů</span>
+                    </div>
+                </div>
+
                 <div class="actions">
-                    <button id="applyFilters" class="btn btn-primary">Načíst data</button>
+                    <button id="applyFilters" class="btn btn-primary">⟳ Načíst data</button>
                     <button id="resetFilters" class="btn btn-ghost">Resetovat</button>
                 </div>
             </section>
@@ -484,8 +785,18 @@
 
             <section class="panel">
                 <div>
+                    <h2>Rozložení kvality vzduchu</h2>
+                    <p class="meta">Přehled všech měření podle úrovní kvality vzduchu v daném období.</p>
+                </div>
+                <div id="qualityPieChartContainer" class="chart-container" style="height: 500px; min-height: 500px;">
+                    <div id="qualityPieChart"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div>
                     <h2>Detekované anomálie</h2>
-                    <p class="meta">Výrazné výkyvy CO₂, kdy je hodnota nad 1500 ppm nebo se změnila o více než 350 ppm oproti předchozímu intervalu.</p>
+                    <p class="meta">Rychlé změny (spiky) v koncentraci CO₂ větší než 400 ppm mezi po sobě jdoucími intervaly.</p>
                 </div>
                 <div id="anomalyList" class="grid">
                     <div class="empty-state">Žádné anomálie nebyly nalezeny v daném období.</div>
@@ -508,11 +819,14 @@
             },
             charts: {
                 co2: null,
-                climate: null
+                climate: null,
+                qualityPie: null
             },
             cache: {
-                devices: new Set()
-            }
+                devices: new Set(),
+                series: null
+            },
+            interpolation: false
         };
 
         function formatDateForInput(date) {
@@ -686,20 +1000,39 @@
             }
             const filtered = series.filter(item => item.co2?.avg !== null && item.co2?.avg !== undefined);
             const anomalies = [];
-            for (let i = 0; i < filtered.length; i++) {
+            const SPIKE_THRESHOLD = 400; // Minimum change in ppm to be considered a spike
+            const MIN_SPIKE_VALUE = 1000; // Minimum CO2 value to consider for spikes
+            
+            for (let i = 1; i < filtered.length; i++) {
                 const current = filtered[i];
                 const previous = filtered[i - 1];
-                const value = current.co2.avg;
-                const change = previous ? value - previous.co2.avg : 0;
-                if (value >= 1500 || Math.abs(change) >= 350) {
+                const currentValue = current.co2.avg;
+                const previousValue = previous.co2.avg;
+                const change = currentValue - previousValue;
+                const absChange = Math.abs(change);
+                
+                // Detect rapid spikes (large increases or decreases)
+                if (absChange >= SPIKE_THRESHOLD && (currentValue >= MIN_SPIKE_VALUE || previousValue >= MIN_SPIKE_VALUE)) {
+                    const isIncrease = change > 0;
+                    const spikeType = isIncrease ? 'nárůst' : 'pokles';
+                    const spikeIcon = isIncrease ? '📈' : '📉';
+                    
                     anomalies.push({
                         timestamp: current.bucket_start,
                         device: current.device_id || 'Všechna',
-                        value,
-                        change: previous ? change : null
+                        value: Math.round(currentValue),
+                        previousValue: Math.round(previousValue),
+                        change: Math.round(change),
+                        absChange: Math.round(absChange),
+                        spikeType: spikeType,
+                        icon: spikeIcon
                     });
                 }
             }
+            
+            // Sort by absolute change (largest spikes first)
+            anomalies.sort((a, b) => b.absChange - a.absChange);
+            
             return anomalies;
         }
 
@@ -707,23 +1040,25 @@
             const container = document.getElementById('anomalyList');
             const anomalies = detectAnomalies(series);
             if (anomalies.length === 0) {
-                container.innerHTML = '<div class="empty-state">Žádné anomálie nebyly nalezeny v daném období.</div>';
+                container.innerHTML = '<div class="empty-state">Žádné anomálie nebyly nalezeny v daném období. (Sledujeme rychlé změny CO₂ koncentrace větší než 400 ppm.)</div>';
                 return;
             }
             container.innerHTML = anomalies.map(anomaly => {
-                const change = anomaly.change !== null
-                    ? `${anomaly.change > 0 ? '+' : ''}${anomaly.change.toFixed(0)} ppm`
-                    : '—';
+                const changeClass = anomaly.change > 0 ? 'up' : 'down';
+                const changeSign = anomaly.change > 0 ? '+' : '';
                 return `
                     <article class="metric-card">
                         <div class="metric-header">
                             <span class="metric-title">${anomaly.timestamp}</span>
-                            <span class="trend ${anomaly.value >= 2000 ? 'up' : 'down'}">
-                                ${anomaly.value >= 2000 ? '⚠' : '▲'} ${anomaly.value.toFixed(0)} ppm
+                            <span class="trend ${changeClass}">
+                                ${anomaly.icon} ${changeSign}${anomaly.change} ppm
                             </span>
                         </div>
+                        <div class="metric-footer">
+                            <strong>${anomaly.previousValue} ppm</strong> → <strong>${anomaly.value} ppm</strong>
+                        </div>
                         <div class="metric-footer">Zařízení: ${anomaly.device}</div>
-                        <div class="metric-footer">Změna proti předchozímu intervalu: ${change}</div>
+                        <div class="metric-footer">Typ: ${anomaly.spikeType} o ${anomaly.absChange} ppm</div>
                     </article>
                 `;
             }).join('');
@@ -741,6 +1076,34 @@
             return state.charts[id];
         }
 
+        function smoothData(data, windowSize = 7) {
+            if (!data || data.length === 0) return data;
+            const smoothed = [];
+            const halfWindow = Math.floor(windowSize / 2);
+            
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] === null || data[i] === undefined) {
+                    smoothed.push(null);
+                    continue;
+                }
+                
+                let sum = 0;
+                let count = 0;
+                
+                // Calculate average over the window (centered moving average)
+                for (let j = Math.max(0, i - halfWindow); j <= Math.min(data.length - 1, i + halfWindow); j++) {
+                    if (data[j] !== null && data[j] !== undefined) {
+                        sum += data[j];
+                        count++;
+                    }
+                }
+                
+                smoothed.push(count > 0 ? sum / count : data[i]);
+            }
+            
+            return smoothed;
+        }
+
         function buildCo2Chart(series) {
             const labels = series.map(item => item.bucket_start);
             const datasetsMap = {};
@@ -750,15 +1113,21 @@
                 if (!datasetsMap[key]) {
                     datasetsMap[key] = {
                         label: `CO₂ • ${key}`,
-                        data: [],
+                        rawData: [],
                         fill: false,
                         tension: 0.25,
                         borderWidth: 2,
-                        pointRadius: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
                         borderColor: key === 'Všechna' ? 'rgba(79, 70, 229, 0.85)' : undefined,
                     };
                 }
-                datasetsMap[key].data.push(item.co2?.avg ?? null);
+                datasetsMap[key].rawData.push(item.co2?.avg ?? null);
+            });
+            
+            // Apply smoothing if interpolation is enabled
+            Object.values(datasetsMap).forEach(dataset => {
+                dataset.data = state.interpolation ? smoothData(dataset.rawData, 7) : dataset.rawData;
             });
 
             const colors = [
@@ -838,26 +1207,31 @@
 
         function buildClimateChart(series) {
             const labels = series.map(item => item.bucket_start);
+            const rawTemperature = series.map(item => item.temperature?.avg ?? null);
+            const rawHumidity = series.map(item => item.humidity?.avg ?? null);
+            
             const datasetTemperature = {
                 label: 'Teplota (°C)',
-                data: series.map(item => item.temperature?.avg ?? null),
+                data: state.interpolation ? smoothData(rawTemperature, 7) : rawTemperature,
                 yAxisID: 'y',
                 borderColor: 'rgba(249, 115, 22, 0.85)',
                 backgroundColor: 'rgba(249, 115, 22, 0.2)',
                 tension: 0.25,
                 borderWidth: 2,
-                pointRadius: 2,
+                pointRadius: 0,
+                pointHoverRadius: 6,
                 fill: false
             };
             const datasetHumidity = {
                 label: 'Vlhkost (%)',
-                data: series.map(item => item.humidity?.avg ?? null),
+                data: state.interpolation ? smoothData(rawHumidity, 7) : rawHumidity,
                 yAxisID: 'y1',
                 borderColor: 'rgba(56, 189, 248, 0.85)',
                 backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                tension: 0.3,
+                tension: 0.25,
                 borderWidth: 2,
-                pointRadius: 2,
+                pointRadius: 0,
+                pointHoverRadius: 6,
                 fill: false
             };
 
@@ -895,6 +1269,157 @@
             document.getElementById('climateMeta').textContent = `Počet intervalů: ${series.length}`;
         }
 
+        function buildQualityPieChart(co2Quality) {
+            // Destroy existing chart if it exists
+            if (state.charts.qualityPie) {
+                state.charts.qualityPie.destroy();
+                state.charts.qualityPie = null;
+            }
+
+            if (!co2Quality) {
+                document.getElementById('qualityPieChart').innerHTML = '<div class="empty-state">Žádná data k zobrazení.</div>';
+                return;
+            }
+
+            const data = [
+                {
+                    label: '< 1000 ppm',
+                    value: co2Quality.good || 0,
+                    color: '#16a34a'
+                },
+                {
+                    label: '1000-1500 ppm',
+                    value: co2Quality.moderate || 0,
+                    color: '#facc15'
+                },
+                {
+                    label: '1500-2000 ppm',
+                    value: co2Quality.high || 0,
+                    color: '#f97316'
+                },
+                {
+                    label: '> 2000 ppm',
+                    value: co2Quality.critical || 0,
+                    color: '#dc2626'
+                }
+            ].filter(item => item.value > 0);
+
+            if (data.length === 0) {
+                document.getElementById('qualityPieChart').innerHTML = '<div class="empty-state">Žádná data k zobrazení.</div>';
+                return;
+            }
+
+            const total = data.reduce((sum, item) => sum + item.value, 0);
+            const series = data.map(item => item.value);
+            const labels = data.map(item => {
+                const percent = ((item.value / total) * 100).toFixed(1);
+                return `${item.label} (${percent}%)`;
+            });
+
+            const options = {
+                series: series,
+                chart: {
+                    type: 'pie',
+                    height: 500,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    toolbar: {
+                        show: false
+                    },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800
+                    }
+                },
+                labels: labels,
+                colors: data.map(item => item.color),
+                legend: {
+                    show: true,
+                    position: 'right',
+                    horizontalAlign: 'left',
+                    floating: false,
+                    fontSize: '14px',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    fontWeight: 600,
+                    formatter: function(seriesName, opts) {
+                        return seriesName;
+                    },
+                    markers: {
+                        width: 12,
+                        height: 12,
+                        radius: 6
+                    },
+                    itemMargin: {
+                        horizontal: 10,
+                        vertical: 8
+                    },
+                    offsetY: 0,
+                    offsetX: 0
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                    },
+                    formatter: function(val, opts) {
+                        return val.toFixed(1) + '%';
+                    },
+                    dropShadow: {
+                        enabled: true,
+                        top: 1,
+                        left: 1,
+                        blur: 1,
+                        opacity: 0.45
+                    }
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '0%'
+                        },
+                        expandOnClick: true,
+                        customScale: 0.9
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    theme: 'light',
+                    style: {
+                        fontSize: '13px',
+                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                    },
+                    y: {
+                        formatter: function(val, opts) {
+                            const index = opts.dataPointIndex;
+                            const dataItem = data[index];
+                            const percent = ((val / total) * 100).toFixed(1);
+                            return `${dataItem.label}: ${val} měření (${percent}%)`;
+                        }
+                    }
+                },
+                stroke: {
+                    show: true,
+                    curve: 'smooth',
+                    width: 3,
+                    colors: ['#ffffff']
+                },
+                states: {
+                    hover: {
+                        filter: {
+                            type: 'darken',
+                            value: 0.1
+                        }
+                    }
+                }
+            };
+
+            const chartElement = document.getElementById('qualityPieChart');
+            state.charts.qualityPie = new ApexCharts(chartElement, options);
+            state.charts.qualityPie.render();
+        }
+
         async function loadHistoryData() {
             try {
                 const params = new URLSearchParams();
@@ -920,9 +1445,13 @@
                 const summary = summaryPayload.summary;
                 const series = seriesPayload.series || [];
 
+                // Cache the series data for interpolation toggle
+                state.cache.series = series;
+
                 updateDeviceOptions(series);
                 renderMetricCards(summary);
                 renderCo2Table(summary?.co2_quality);
+                buildQualityPieChart(summary?.co2_quality);
 
                 if (series.length > 0) {
                     buildCo2Chart(series);
@@ -946,6 +1475,57 @@
             }
         }
 
+        function applyPreset(preset) {
+            const now = new Date();
+            let start = null;
+            let end = formatDateForInput(now);
+            
+            switch(preset) {
+                case '24h':
+                    start = formatDateForInput(new Date(now.getTime() - (24 * 60 * 60 * 1000)));
+                    break;
+                case '7d':
+                    start = formatDateForInput(new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)));
+                    break;
+                case '30d':
+                    start = formatDateForInput(new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)));
+                    break;
+                case '90d':
+                    start = formatDateForInput(new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)));
+                    break;
+                case 'custom':
+                    document.getElementById('customDateRange').style.display = 'block';
+                    return;
+            }
+            
+            state.filters.start = start;
+            state.filters.end = end;
+            document.getElementById('startInput').value = start;
+            document.getElementById('endInput').value = end;
+            document.getElementById('customDateRange').style.display = 'none';
+            
+            updatePresetButtons(preset);
+            applyCurrentFilters();
+        }
+
+        function updatePresetButtons(activePreset) {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.preset === activePreset) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function updateBucketCards(activeBucket) {
+            document.querySelectorAll('.bucket-card').forEach(card => {
+                card.classList.remove('active');
+                if (card.dataset.bucket === activeBucket) {
+                    card.classList.add('active');
+                }
+            });
+        }
+
         function resetFilters() {
             const now = new Date();
             const start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
@@ -958,17 +1538,56 @@
 
             document.getElementById('startInput').value = state.filters.start;
             document.getElementById('endInput').value = state.filters.end;
-            document.getElementById('bucketSelect').value = state.filters.bucket;
             document.getElementById('deviceSelect').value = state.filters.deviceId;
+            document.getElementById('customDateRange').style.display = 'none';
+            
+            updatePresetButtons('30d');
+            updateBucketCards('day');
         }
 
         function applyCurrentFilters() {
             state.filters.start = document.getElementById('startInput').value || null;
             state.filters.end = document.getElementById('endInput').value || null;
-            state.filters.bucket = document.getElementById('bucketSelect').value || 'day';
             state.filters.deviceId = document.getElementById('deviceSelect').value || '';
             loadHistoryData();
         }
+
+        // Preset button handlers
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyPreset(btn.dataset.preset);
+            });
+        });
+
+        // Bucket card handlers
+        document.querySelectorAll('.bucket-card').forEach(card => {
+            card.addEventListener('click', () => {
+                state.filters.bucket = card.dataset.bucket;
+                updateBucketCards(state.filters.bucket);
+                applyCurrentFilters();
+            });
+        });
+
+        // Date input handlers - mark as custom when manually changed
+        document.getElementById('startInput').addEventListener('change', () => {
+            updatePresetButtons('custom');
+            document.getElementById('customDateRange').style.display = 'block';
+        });
+        document.getElementById('endInput').addEventListener('change', () => {
+            updatePresetButtons('custom');
+            document.getElementById('customDateRange').style.display = 'block';
+        });
+
+        // Interpolation toggle handler
+        function toggleInterpolation() {
+            state.interpolation = document.getElementById('interpolationToggle').checked;
+            if (state.cache.series && state.cache.series.length > 0) {
+                buildCo2Chart(state.cache.series);
+                buildClimateChart(state.cache.series);
+            }
+        }
+
+        document.getElementById('interpolationToggle').addEventListener('change', toggleInterpolation);
 
         document.getElementById('applyFilters').addEventListener('click', applyCurrentFilters);
         document.getElementById('resetFilters').addEventListener('click', () => {

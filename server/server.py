@@ -442,81 +442,114 @@ def history_series():
             return jsonify({'error': 'Počáteční datum nesmí být pozdější než koncové.'}), 400
 
         bucket = (request.args.get('bucket') or 'day').lower()
-        if bucket not in ('hour', 'day'):
-            return jsonify({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour' nebo 'day'."}), 400
+        if bucket not in ('hour', 'day', 'raw', 'none'):
+            return jsonify({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour', 'day', 'raw' nebo 'none'."}), 400
 
         device_id = request.args.get('device_id')
-
         mongo_filter = build_history_filter(start_dt, end_dt, device_id)
-        bucket_unit = 'hour' if bucket == 'hour' else 'day'
+        bucket_unit = None
 
-        group_id = {
-            'bucket': {
-                '$dateTrunc': {
-                    'date': '$timestamp',
-                    'unit': bucket_unit,
+        # Handle raw data (no aggregation)
+        if bucket in ('raw', 'none'):
+            cursor = mongo_collection.find(mongo_filter).sort('timestamp', 1)
+            series = []
+            for doc in cursor:
+                timestamp_local = to_local_datetime(doc.get('timestamp'))
+                entry = {
+                    'bucket_start': to_readable_timestamp(doc.get('timestamp')),
+                    'count': 1,
+                    'temperature': {
+                        'avg': round_or_none(doc.get('temperature')),
+                        'min': round_or_none(doc.get('temperature')),
+                        'max': round_or_none(doc.get('temperature')),
+                    },
+                    'humidity': {
+                        'avg': round_or_none(doc.get('humidity')),
+                        'min': round_or_none(doc.get('humidity')),
+                        'max': round_or_none(doc.get('humidity')),
+                    },
+                    'co2': {
+                        'avg': doc.get('co2'),
+                        'min': doc.get('co2'),
+                        'max': doc.get('co2'),
+                    }
                 }
-            }
-        }
-        if not device_id:
-            group_id['device_id'] = '$device_id'
+                if not device_id:
+                    entry['device_id'] = doc.get('device_id')
+                series.append(entry)
+        else:
+            # Aggregated data
+            bucket_unit = 'hour' if bucket == 'hour' else 'day'
 
-        pipeline = [
-            {'$match': mongo_filter},
-            {
-                '$group': {
-                    '_id': group_id,
-                    'count': {'$sum': 1},
-                    'temperature_avg': {'$avg': '$temperature'},
-                    'temperature_min': {'$min': '$temperature'},
-                    'temperature_max': {'$max': '$temperature'},
-                    'humidity_avg': {'$avg': '$humidity'},
-                    'humidity_min': {'$min': '$humidity'},
-                    'humidity_max': {'$max': '$humidity'},
-                    'co2_avg': {'$avg': '$co2'},
-                    'co2_min': {'$min': '$co2'},
-                    'co2_max': {'$max': '$co2'},
-                }
-            },
-            {
-                '$sort': {
-                    '_id.bucket': 1,
-                    '_id.device_id': 1 if not device_id else 0
-                }
-            }
-        ]
-
-        cursor = mongo_collection.aggregate(pipeline, allowDiskUse=True)
-        series = []
-
-        for doc in cursor:
-            bucket_dt = doc['_id']['bucket']
-            entry = {
-                'bucket_start': to_readable_timestamp(bucket_dt),
-                'count': doc.get('count', 0),
-                'temperature': {
-                    'avg': round_or_none(doc.get('temperature_avg')),
-                    'min': round_or_none(doc.get('temperature_min')),
-                    'max': round_or_none(doc.get('temperature_max')),
-                },
-                'humidity': {
-                    'avg': round_or_none(doc.get('humidity_avg')),
-                    'min': round_or_none(doc.get('humidity_min')),
-                    'max': round_or_none(doc.get('humidity_max')),
-                },
-                'co2': {
-                    'avg': round_or_none(doc.get('co2_avg')),
-                    'min': doc.get('co2_min'),
-                    'max': doc.get('co2_max'),
+            group_id = {
+                'bucket': {
+                    '$dateTrunc': {
+                        'date': '$timestamp',
+                        'unit': bucket_unit,
+                    }
                 }
             }
             if not device_id:
-                entry['device_id'] = doc['_id'].get('device_id')
-            series.append(entry)
+                group_id['device_id'] = '$device_id'
 
+            pipeline = [
+                {'$match': mongo_filter},
+                {
+                    '$group': {
+                        '_id': group_id,
+                        'count': {'$sum': 1},
+                        'temperature_avg': {'$avg': '$temperature'},
+                        'temperature_min': {'$min': '$temperature'},
+                        'temperature_max': {'$max': '$temperature'},
+                        'humidity_avg': {'$avg': '$humidity'},
+                        'humidity_min': {'$min': '$humidity'},
+                        'humidity_max': {'$max': '$humidity'},
+                        'co2_avg': {'$avg': '$co2'},
+                        'co2_min': {'$min': '$co2'},
+                        'co2_max': {'$max': '$co2'},
+                    }
+                },
+                {
+                    '$sort': {
+                        '_id.bucket': 1,
+                        '_id.device_id': 1 if not device_id else 0
+                    }
+                }
+            ]
+
+            cursor = mongo_collection.aggregate(pipeline, allowDiskUse=True)
+            series = []
+
+            for doc in cursor:
+                bucket_dt = doc['_id']['bucket']
+                entry = {
+                    'bucket_start': to_readable_timestamp(bucket_dt),
+                    'count': doc.get('count', 0),
+                    'temperature': {
+                        'avg': round_or_none(doc.get('temperature_avg')),
+                        'min': round_or_none(doc.get('temperature_min')),
+                        'max': round_or_none(doc.get('temperature_max')),
+                    },
+                    'humidity': {
+                        'avg': round_or_none(doc.get('humidity_avg')),
+                        'min': round_or_none(doc.get('humidity_min')),
+                        'max': round_or_none(doc.get('humidity_max')),
+                    },
+                    'co2': {
+                        'avg': round_or_none(doc.get('co2_avg')),
+                        'min': doc.get('co2_min'),
+                        'max': doc.get('co2_max'),
+                    }
+                }
+                if not device_id:
+                    entry['device_id'] = doc['_id'].get('device_id')
+                series.append(entry)
+
+        bucket_display = 'raw' if bucket in ('raw', 'none') else bucket_unit
+        
         return jsonify({
             'status': 'success',
-            'bucket': bucket_unit,
+            'bucket': bucket_display,
             'device_id': device_id,
             'count': len(series),
             'series': series

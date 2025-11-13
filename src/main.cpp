@@ -15,18 +15,15 @@
 // Arduino core
 #include <Wire.h>
 
+// ===== CONFIGURATION (must be loaded first for conditional compilation) =====
+#include "config.h"
+
 // ESP8266 libraries (LaskaKit AirBoard 8266)
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#ifdef WIFI_ENTERPRISE_ENABLED
-extern "C" {
-  #include "user_interface.h"
-  #include "wpa2_enterprise.h"
-}
-#endif
 // LaskaKit AirBoard 8266 specific I2C pins for μSup connectors
 #define I2C_SDA 0  // GPIO 0 (D3) - connected to μSup connectors
 #define I2C_SCL 2  // GPIO 2 (D4) - connected to μSup connectors
@@ -48,14 +45,10 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #include <SparkFun_SCD4x_Arduino_Library.h>
 #include <time.h>
 
-// ===== CONFIGURATION =====
-// Create include/config.h from include/config_template.h with your WiFi credentials
-#include "config.h"
-
 // Apply configuration
 const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
-const uint16_t WARNING_CO2_THRESHOLD = 1500;
+const uint16_t WARNING_CO2_THRESHOLD = 2000;
 // ========================================
 
 // Hardware objects
@@ -414,25 +407,26 @@ void connectWiFi() {
   #endif
   
   WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
   
-  #ifdef WIFI_ENTERPRISE_ENABLED
-    // WPA2 Enterprise (username + password)
-    Serial.println("Using WPA2 Enterprise authentication");
-    wifi_station_set_wpa2_enterprise_auth(1);
-    wifi_station_set_enterprise_identity((uint8*)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
-    wifi_station_set_enterprise_username((uint8*)WIFI_IDENTITY, strlen(WIFI_IDENTITY));
-    wifi_station_set_enterprise_password((uint8*)WIFI_EAP_PASSWORD, strlen(WIFI_EAP_PASSWORD));
-    WiFi.begin(WIFI_SSID);
-  #else
-    // Standard WPA/WPA2 Personal (password only)
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  #endif
+  // Standard WPA/WPA2 Personal (password only)
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+  int maxAttempts = 20;
+  
+  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
     delay(500);
     Serial.print(".");
     attempts++;
+    
+    // Print status every 5 seconds for debugging
+    if (attempts % 10 == 0) {
+      Serial.print(" [");
+      Serial.print(attempts * 500 / 1000);
+      Serial.print("s]");
+    }
   }
   
   if (WiFi.status() == WL_CONNECTED) {
@@ -442,6 +436,10 @@ void connectWiFi() {
     Serial.print("Signal strength: ");
     Serial.print(WiFi.RSSI());
     Serial.println(" dBm");
+    Serial.print("Gateway: ");
+    Serial.println(WiFi.gatewayIP());
+    Serial.print("Subnet: ");
+    Serial.println(WiFi.subnetMask());
     
     wifiState = CONNECTED;
     #ifdef HAS_DISPLAY
@@ -450,6 +448,12 @@ void connectWiFi() {
     delay(1000);
   } else {
     Serial.println("\n✗ WiFi connection failed!");
+    Serial.print("Final status code: ");
+    Serial.println(WiFi.status());
+    Serial.println("Possible issues:");
+    Serial.println("  - Wrong SSID or password");
+    Serial.println("  - Network not in range");
+    Serial.println("  - Router not responding");
     wifiState = ERROR;
     #ifdef HAS_DISPLAY
     displayStatus("WiFi Failed!", TFT_RED);
