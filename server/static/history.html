@@ -367,64 +367,6 @@
         }
 
 
-        .toggle-switch {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 26px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(148, 163, 184, 0.3);
-            transition: 0.3s;
-            border-radius: 26px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 20px;
-            width: 20px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.3s;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        input:checked + .slider {
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(22px);
-        }
-
-        input:focus + .slider {
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-        }
 
         main {
             display: flex;
@@ -535,6 +477,17 @@
             height: 320px;
         }
 
+        .charts-stacked {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(28px, 4vw, 40px);
+        }
+
+        .chart-full-width {
+            height: 500px;
+            min-height: 500px;
+        }
+
         #qualityPieChart {
             width: 100%;
             height: 100%;
@@ -621,6 +574,11 @@
                 height: 260px;
             }
 
+            .chart-full-width {
+                height: 400px;
+                min-height: 400px;
+            }
+
             .date-range-group {
                 grid-template-columns: 1fr;
                 gap: 16px;
@@ -657,7 +615,7 @@
                 </div>
             </nav>
             <div class="hero">
-                <h1>Historická analytika prostředí</h1>
+                <h1>Historie měření</h1>
                 <p class="subtitle">
                     Vyhodnocujte dlouhodobé trendy CO₂, teploty a vlhkosti. Filtrovatelná časová řada, přehled změn
                     a automaticky detekované anomálie vám pomohou rychle najít souvislosti.
@@ -715,17 +673,6 @@
                     </div>
                 </div>
 
-                <div class="filter-section">
-                    <h3 class="filter-section-title">Nastavení grafů</h3>
-                    <div class="toggle-switch">
-                        <label class="switch">
-                            <input type="checkbox" id="interpolationToggle">
-                            <span class="slider"></span>
-                        </label>
-                        <span>Interpolace grafů</span>
-                    </div>
-                </div>
-
                 <div class="actions">
                     <button id="applyFilters" class="btn btn-primary">⟳ Načíst data</button>
                     <button id="resetFilters" class="btn btn-ghost">Resetovat</button>
@@ -740,13 +687,13 @@
                 </div>
             </section>
 
-            <section class="grid two">
+            <section class="charts-stacked">
                 <div class="panel">
                     <div>
                         <h2>CO₂ trendy</h2>
                         <p class="meta" id="co2Meta">–</p>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container chart-full-width">
                         <canvas id="co2Chart"></canvas>
                     </div>
                 </div>
@@ -755,7 +702,7 @@
                         <h2>Teplota a vlhkost</h2>
                         <p class="meta" id="climateMeta">–</p>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container chart-full-width">
                         <canvas id="climateChart"></canvas>
                     </div>
                 </div>
@@ -825,8 +772,7 @@
             cache: {
                 devices: new Set(),
                 series: null
-            },
-            interpolation: false
+            }
         };
 
         function formatDateForInput(date) {
@@ -1076,34 +1022,6 @@
             return state.charts[id];
         }
 
-        function smoothData(data, windowSize = 7) {
-            if (!data || data.length === 0) return data;
-            const smoothed = [];
-            const halfWindow = Math.floor(windowSize / 2);
-            
-            for (let i = 0; i < data.length; i++) {
-                if (data[i] === null || data[i] === undefined) {
-                    smoothed.push(null);
-                    continue;
-                }
-                
-                let sum = 0;
-                let count = 0;
-                
-                // Calculate average over the window (centered moving average)
-                for (let j = Math.max(0, i - halfWindow); j <= Math.min(data.length - 1, i + halfWindow); j++) {
-                    if (data[j] !== null && data[j] !== undefined) {
-                        sum += data[j];
-                        count++;
-                    }
-                }
-                
-                smoothed.push(count > 0 ? sum / count : data[i]);
-            }
-            
-            return smoothed;
-        }
-
         function buildCo2Chart(series) {
             const labels = series.map(item => item.bucket_start);
             const datasetsMap = {};
@@ -1113,7 +1031,7 @@
                 if (!datasetsMap[key]) {
                     datasetsMap[key] = {
                         label: `CO₂ • ${key}`,
-                        rawData: [],
+                        data: [],
                         fill: false,
                         tension: 0.25,
                         borderWidth: 2,
@@ -1122,12 +1040,8 @@
                         borderColor: key === 'Všechna' ? 'rgba(79, 70, 229, 0.85)' : undefined,
                     };
                 }
-                datasetsMap[key].rawData.push(item.co2?.avg ?? null);
-            });
-            
-            // Apply smoothing if interpolation is enabled
-            Object.values(datasetsMap).forEach(dataset => {
-                dataset.data = state.interpolation ? smoothData(dataset.rawData, 7) : dataset.rawData;
+                const co2Value = item.co2?.avg;
+                datasetsMap[key].data.push(co2Value !== null && co2Value !== undefined ? Number(co2Value) : null);
             });
 
             const colors = [
@@ -1207,12 +1121,12 @@
 
         function buildClimateChart(series) {
             const labels = series.map(item => item.bucket_start);
-            const rawTemperature = series.map(item => item.temperature?.avg ?? null);
-            const rawHumidity = series.map(item => item.humidity?.avg ?? null);
-            
             const datasetTemperature = {
                 label: 'Teplota (°C)',
-                data: state.interpolation ? smoothData(rawTemperature, 7) : rawTemperature,
+                data: series.map(item => {
+                    const val = item.temperature?.avg;
+                    return val !== null && val !== undefined ? Number(val) : null;
+                }),
                 yAxisID: 'y',
                 borderColor: 'rgba(249, 115, 22, 0.85)',
                 backgroundColor: 'rgba(249, 115, 22, 0.2)',
@@ -1224,7 +1138,10 @@
             };
             const datasetHumidity = {
                 label: 'Vlhkost (%)',
-                data: state.interpolation ? smoothData(rawHumidity, 7) : rawHumidity,
+                data: series.map(item => {
+                    const val = item.humidity?.avg;
+                    return val !== null && val !== undefined ? Number(val) : null;
+                }),
                 yAxisID: 'y1',
                 borderColor: 'rgba(56, 189, 248, 0.85)',
                 backgroundColor: 'rgba(56, 189, 248, 0.2)',
@@ -1445,7 +1362,7 @@
                 const summary = summaryPayload.summary;
                 const series = seriesPayload.series || [];
 
-                // Cache the series data for interpolation toggle
+                // Cache the series data
                 state.cache.series = series;
 
                 updateDeviceOptions(series);
@@ -1577,17 +1494,6 @@
             updatePresetButtons('custom');
             document.getElementById('customDateRange').style.display = 'block';
         });
-
-        // Interpolation toggle handler
-        function toggleInterpolation() {
-            state.interpolation = document.getElementById('interpolationToggle').checked;
-            if (state.cache.series && state.cache.series.length > 0) {
-                buildCo2Chart(state.cache.series);
-                buildClimateChart(state.cache.series);
-            }
-        }
-
-        document.getElementById('interpolationToggle').addEventListener('change', toggleInterpolation);
 
         document.getElementById('applyFilters').addEventListener('click', applyCurrentFilters);
         document.getElementById('resetFilters').addEventListener('click', () => {
