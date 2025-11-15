@@ -11,6 +11,7 @@ urlpatterns = [
     path('status', views.status_view, name='status'),
     path('history/series', views.history_series, name='history_series'),
     path('history/summary', views.history_summary, name='history_summary'),
+    path('history/export', views.history_export, name='history_export'),
     path('connect/upload', views.connect_upload, name='connect_upload'),
 ]
 

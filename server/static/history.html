@@ -367,6 +367,11 @@
             border: 1px solid rgba(148, 163, 184, 0.28);
         }
 
+        .btn-ghost:hover {
+            background: rgba(37, 99, 235, 0.08);
+            border-color: var(--accent);
+        }
+
 
 
         main {
@@ -676,6 +681,7 @@
 
                 <div class="actions">
                     <button id="applyFilters" class="btn btn-primary">⟳ Načíst data</button>
+                    <button id="exportData" class="btn btn-ghost">📥 Exportovat data</button>
                     <button id="resetFilters" class="btn btn-ghost">Resetovat</button>
                 </div>
             </section>
@@ -1497,7 +1503,39 @@
             document.getElementById('customDateRange').style.display = 'block';
         });
 
+        function exportData() {
+            try {
+                // Get current filter values from UI
+                const startValue = document.getElementById('startInput').value || null;
+                const endValue = document.getElementById('endInput').value || null;
+                const deviceId = document.getElementById('deviceSelect').value || '';
+
+                const params = new URLSearchParams();
+                if (deviceId) {
+                    params.append('device_id', deviceId);
+                }
+
+                const startIso = toISOStringOrNull(startValue);
+                const endIso = toISOStringOrNull(endValue);
+                if (startIso) params.append('start', startIso);
+                if (endIso) params.append('end', endIso);
+
+                // Create download link
+                const exportUrl = `/history/export?${params.toString()}`;
+                const link = document.createElement('a');
+                link.href = exportUrl;
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Chyba při exportu dat:', error);
+                alert(`Nepodařilo se exportovat data: ${error.message}`);
+            }
+        }
+
         document.getElementById('applyFilters').addEventListener('click', applyCurrentFilters);
+        document.getElementById('exportData').addEventListener('click', exportData);
         document.getElementById('resetFilters').addEventListener('click', () => {
             resetFilters();
             loadHistoryData();

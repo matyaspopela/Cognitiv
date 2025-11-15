@@ -5,6 +5,8 @@ Receives data from ESP32, stores in MongoDB, and serves dashboard
 
 import os
 import json
+import csv
+import re
 from datetime import datetime, timedelta, timezone
 from django.http import JsonResponse, HttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
@@ -545,6 +547,93 @@ def history_series(request):
             'count': len(series),
             'series': series
         }, status=200)
+
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except PyMongoError as exc:
+        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
+    except Exception as exc:
+        return JsonResponse({'error': str(exc)}, status=500)
+
+
+@require_http_methods(["GET"])
+def history_export(request):
+    """Export historických dat do CSV souboru pro zadané časové období."""
+    try:
+        now = datetime.now(UTC)
+        default_start = now - timedelta(days=30)
+
+        start_dt = parse_iso_datetime(request.GET.get('start'), default_start)
+        end_dt = parse_iso_datetime(request.GET.get('end'), now)
+
+        if start_dt and end_dt and start_dt > end_dt:
+            return JsonResponse({'error': 'Počáteční datum nesmí být pozdější než koncové.'}, status=400)
+
+        device_id = request.GET.get('device_id')
+        mongo_filter = build_history_filter(start_dt, end_dt, device_id)
+
+        # Fetch raw data (not aggregated) for export
+        cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', 1)
+        
+        # Generate CSV
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        
+        # Create filename with date range (sanitize for filesystem)
+        def sanitize_filename(s):
+            """Remove or replace characters that are invalid in filenames"""
+            if not s:
+                return ''
+            # Replace spaces, colons, and other problematic chars
+            s = s.replace(' ', '_').replace(':', '-').replace('/', '-')
+            # Remove any remaining problematic characters
+            s = re.sub(r'[<>"|?*]', '', s)
+            return s
+        
+        start_str = sanitize_filename(to_readable_timestamp(start_dt)) if start_dt else 'start'
+        end_str = sanitize_filename(to_readable_timestamp(end_dt)) if end_dt else 'end'
+        device_safe = sanitize_filename(device_id) if device_id else ''
+        
+        if device_safe:
+            filename = f'cognitiv_export_{device_safe}_{start_str}_to_{end_str}.csv'
+        else:
+            filename = f'cognitiv_export_{start_str}_to_{end_str}.csv'
+        
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        # Write BOM for Excel compatibility
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        
+        # Write header
+        writer.writerow([
+            'Časové razítko',
+            'Zařízení',
+            'Teplota (°C)',
+            'Vlhkost (%)',
+            'CO₂ (ppm)'
+        ])
+        
+        # Write data rows
+        count = 0
+        for doc in cursor:
+            timestamp_local = to_local_datetime(doc.get('timestamp'))
+            timestamp_str = timestamp_local.strftime('%Y-%m-%d %H:%M:%S') if timestamp_local else ''
+            
+            writer.writerow([
+                timestamp_str,
+                doc.get('device_id', ''),
+                doc.get('temperature', ''),
+                doc.get('humidity', ''),
+                doc.get('co2', '')
+            ])
+            count += 1
+        
+        if count == 0:
+            # If no data, still return a valid CSV with a message row
+            writer.writerow(['Žádná data v zadaném období', '', '', '', ''])
+        
+        return response
 
     except ValueError as exc:
         return JsonResponse({'error': str(exc)}, status=400)
