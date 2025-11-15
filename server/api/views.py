@@ -94,7 +94,11 @@ def get_mongo_collection():
     """Get MongoDB collection, initializing if necessary"""
     global _mongo_collection
     if _mongo_collection is None:
-        _mongo_collection = init_mongo_client()
+        try:
+            _mongo_collection = init_mongo_client()
+        except Exception as e:
+            print(f"✗ Chyba při inicializaci MongoDB: {e}")
+            raise RuntimeError(f"Nepodařilo se připojit k MongoDB: {str(e)}")
     return _mongo_collection
 
 
@@ -355,7 +359,15 @@ def get_data(request):
         if device_id:
             mongo_filter['device_id'] = device_id
 
-        cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', -1)
+        try:
+            collection = get_mongo_collection()
+        except RuntimeError as e:
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Nepodařilo se připojit k databázi: {str(e)}'
+            }, status=503)
+
+        cursor = collection.find(mongo_filter).sort('timestamp', -1)
         if limit:
             cursor = cursor.limit(limit)
 
@@ -394,9 +406,17 @@ def get_data(request):
         }, status=200)
     
     except PyMongoError as exc:
-        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
+        print(f"✗ MongoDB chyba v get_data: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Databázová chyba: {exc}'
+        }, status=500)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        print(f"✗ Neočekávaná chyba v get_data: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e)
+        }, status=500)
 
 
 @require_http_methods(["GET"])
@@ -681,6 +701,14 @@ def get_stats(request):
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
 
+        try:
+            collection = get_mongo_collection()
+        except RuntimeError as e:
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Nepodařilo se připojit k databázi: {str(e)}'
+            }, status=503)
+
         pipeline = [
             {'$match': mongo_filter},
             {
@@ -708,7 +736,7 @@ def get_stats(request):
             }
         ]
 
-        agg_result = list(get_mongo_collection().aggregate(pipeline))
+        agg_result = list(collection.aggregate(pipeline))
         if not agg_result:
             return JsonResponse({
                 'status': 'success',
@@ -719,7 +747,7 @@ def get_stats(request):
         stats_doc = agg_result[0]
 
         # Fetch most recent document for "current" values
-        latest_doc = get_mongo_collection().find(mongo_filter).sort('timestamp', -1).limit(1)
+        latest_doc = collection.find(mongo_filter).sort('timestamp', -1).limit(1)
         latest_doc = next(latest_doc, None)
 
         current_temperature = None
@@ -789,17 +817,38 @@ def get_stats(request):
         }, status=200)
     
     except PyMongoError as exc:
-        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
+        print(f"✗ MongoDB chyba v get_stats: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Databázová chyba: {exc}'
+        }, status=500)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        print(f"✗ Neočekávaná chyba v get_stats: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e)
+        }, status=500)
 
 
 @require_http_methods(["GET"])
 def status_view(request):
     """Stav serveru"""
     try:
-        total_documents = get_mongo_collection().count_documents({})
-        latest_doc = get_mongo_collection().find().sort('timestamp', -1).limit(1)
+        try:
+            collection = get_mongo_collection()
+        except RuntimeError as e:
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Nepodařilo se připojit k databázi: {str(e)}',
+                'database': MONGO_DB_NAME,
+                'collection': MONGO_COLLECTION_NAME,
+                'data_points': 0,
+                'latest_entry': None,
+                'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+            }, status=503)
+
+        total_documents = collection.count_documents({})
+        latest_doc = collection.find().sort('timestamp', -1).limit(1)
         latest_doc = next(latest_doc, None)
 
         latest_timestamp = None
@@ -818,9 +867,27 @@ def status_view(request):
         }, status=200)
 
     except PyMongoError as exc:
-        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
+        print(f"✗ MongoDB chyba v status_view: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Databázová chyba: {exc}',
+            'database': MONGO_DB_NAME,
+            'collection': MONGO_COLLECTION_NAME,
+            'data_points': 0,
+            'latest_entry': None,
+            'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+        }, status=500)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        print(f"✗ Neočekávaná chyba v status_view: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'database': MONGO_DB_NAME,
+            'collection': MONGO_COLLECTION_NAME,
+            'data_points': 0,
+            'latest_entry': None,
+            'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+        }, status=500)
 
 
 @csrf_exempt

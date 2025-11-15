@@ -817,8 +817,8 @@
 
             <section class="charts-section animated-block">
                 <div class="charts-header">
-                    <h2>Průzkumník trendů</h2>
-                    <p>Grafy se rozprostírají přes celou šířku, takže teplotu, vlhkost i CO₂ přehledně porovnáte.</p>
+                    <h2>Grafy z časového úseku</h2>
+                    <p>Přehledné porovnání hodnot teploty, vlhkosti a koncentrace CO₂ v čase.</p>
                 </div>
                 <div class="chart-stack-wrapper">
                     <div class="chart-stack" id="chartStack">
@@ -1113,28 +1113,83 @@
                 const hours = document.getElementById('timeRange').value;
 
                 const dataResponse = await fetch(`/data?hours=${hours}`);
-                const dataJson = await dataResponse.json();
+                let dataJson;
+                try {
+                    dataJson = await dataResponse.json();
+                } catch (e) {
+                    console.error('Chyba parsování /data:', e);
+                    throw new Error(`Nepodařilo se parsovat odpověď z /data: ${e.message}`);
+                }
+                
+                console.log('Data response:', { status: dataResponse.status, ok: dataResponse.ok, json: dataJson });
+                
+                if (!dataResponse.ok) {
+                    const errorMsg = dataJson?.error || dataJson?.message || `HTTP ${dataResponse.status}: Chyba při načítání dat`;
+                    throw new Error(errorMsg);
+                }
+                // Only check status if it exists and is not success
+                if (dataJson.status && dataJson.status !== 'success') {
+                    const errorMsg = dataJson.error || dataJson.message || 'Chyba při načítání dat';
+                    throw new Error(errorMsg);
+                }
 
                 const statsResponse = await fetch(`/stats?hours=${hours}`);
-                const statsJson = await statsResponse.json();
-
-                if (dataJson.status === 'success' && statsJson.status === 'success') {
-                    updateUI(dataJson.data, statsJson.stats);
-                    updateServerStatus(true);
-                    clearError();
-                } else {
-                    throw new Error('Načtení dat se nezdařilo');
+                let statsJson;
+                try {
+                    statsJson = await statsResponse.json();
+                } catch (e) {
+                    console.error('Chyba parsování /stats:', e);
+                    throw new Error(`Nepodařilo se parsovat odpověď z /stats: ${e.message}`);
                 }
+                
+                console.log('Stats response:', { status: statsResponse.status, ok: statsResponse.ok, json: statsJson });
+                
+                if (!statsResponse.ok) {
+                    const errorMsg = statsJson?.error || statsJson?.message || `HTTP ${statsResponse.status}: Chyba při načítání statistik`;
+                    throw new Error(errorMsg);
+                }
+                // Only check status if it exists and is not success
+                if (statsJson.status && statsJson.status !== 'success') {
+                    const errorMsg = statsJson.error || statsJson.message || 'Chyba při načítání statistik';
+                    throw new Error(errorMsg);
+                }
+
+                // Both responses are successful - data might be empty, that's OK
+                updateUI(dataJson.data || [], statsJson.stats || {});
+                updateServerStatus(true);
             } catch (error) {
                 console.error('Chyba při načítání dat:', error);
                 updateServerStatus(false);
-                showError('Nepodařilo se spojit se serverem. Zkontrolujte, zda běží.');
+                showError(`Nepodařilo se spojit se serverem: ${error.message || 'Zkontrolujte, zda server běží.'}`);
+                // Exit loading state even on error and show empty state
+                if (pageEl && !hasLoadedData) {
+                    pageEl.classList.remove('loading');
+                    pageEl.classList.add('loaded');
+                    hasLoadedData = true;
+                }
+                // Still try to update UI with empty data so page structure is visible
+                updateUI([], {});
             }
         }
 
         function updateUI(data, stats) {
-            if (!data || data.length === 0 || !stats || Object.keys(stats).length === 0) {
-                showError('Nejsou k dispozici žádná data. Čekám na měření ze senzorů…');
+            // Exit loading state regardless of data availability
+            if (pageEl && !hasLoadedData) {
+                pageEl.classList.remove('loading');
+                pageEl.classList.add('loaded');
+                hasLoadedData = true;
+            }
+
+            // Normalize inputs
+            data = data || [];
+            stats = stats || {};
+
+            if (data.length === 0 || Object.keys(stats).length === 0) {
+                showError('V tomto úseku nejsou žádná data.');
+                // Still update UI elements with default/empty values so structure is visible
+                document.getElementById('currentTemp').innerHTML = '—<span class="metric-unit">°C</span>';
+                document.getElementById('currentHumidity').innerHTML = '—<span class="metric-unit">%</span>';
+                document.getElementById('currentCO2').innerHTML = '—<span class="metric-unit">ppm</span>';
                 return;
             }
 
@@ -1198,12 +1253,6 @@
             const lastData = data[data.length - 1];
             document.getElementById('lastUpdate').textContent =
                 `Poslední aktualizace: ${formatTimestampDisplay(lastData.timestamp_iso, lastData.timestamp)}`;
-
-            if (!hasLoadedData && pageEl) {
-                pageEl.classList.remove('loading');
-                pageEl.classList.add('loaded');
-                hasLoadedData = true;
-            }
         }
 
         function updateCharts(data) {
@@ -1355,7 +1404,12 @@
 
         function showError(message) {
             const errorContainer = document.getElementById('errorContainer');
-            errorContainer.innerHTML = `<div class="alert">⚠️ ${message}</div>`;
+            if (errorContainer) {
+                errorContainer.innerHTML = `<div class="alert">⚠️ ${message}</div>`;
+                errorContainer.style.display = 'block';
+            } else {
+                console.error('Error container not found! Message:', message);
+            }
         }
 
         function clearError() {
@@ -1367,12 +1421,28 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            pageEl = document.querySelector('.page');
-            initCharts();
-            fetchData();
+            console.log('Dashboard: DOMContentLoaded event fired');
+            try {
+                pageEl = document.querySelector('.page');
+                if (!pageEl) {
+                    console.error('Dashboard: .page element not found!');
+                }
+                console.log('Dashboard: Initializing charts and fetching data...');
+                initCharts();
+                fetchData();
 
-            autoRefreshInterval = setInterval(fetchData, 30000);
-            document.getElementById('timeRange').addEventListener('change', fetchData);
+                autoRefreshInterval = setInterval(fetchData, 30000);
+                const timeRangeEl = document.getElementById('timeRange');
+                if (timeRangeEl) {
+                    timeRangeEl.addEventListener('change', fetchData);
+                } else {
+                    console.error('Dashboard: timeRange element not found!');
+                }
+                console.log('Dashboard: Initialization complete');
+            } catch (error) {
+                console.error('Dashboard: Error during initialization:', error);
+                showError(`Chyba při inicializaci dashboardu: ${error.message}`);
+            }
         });
     </script>
 </body>
