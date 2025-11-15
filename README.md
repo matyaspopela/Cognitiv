@@ -42,7 +42,7 @@ A complete IoT solution for monitoring temperature, humidity, and CO₂ levels u
            ▼
 ┌─────────────────────────┐
 │  Local Server (PC)      │
-│  - Flask REST API       │
+│  - Django REST API       │
 │  - MongoDB Atlas Client │
 └──────────┬──────────────┘
            │
@@ -188,7 +188,7 @@ cd server
 pip install -r requirements.txt
 ```
 
-This installs the Flask server along with the MongoDB driver (`pymongo`).
+This installs the Django server along with the MongoDB driver (`pymongo`).
 
 ### Step 4: Hardware Assembly
 
@@ -717,7 +717,7 @@ Having issues? Check:
 - [SHT40 Datasheet](https://www.sensirion.com/en/environmental-sensors/humidity-sensors/digital-humidity-sensor-sht4x/)
 - [SCD41 Datasheet](https://www.sensirion.com/en/environmental-sensors/carbon-dioxide-sensors/carbon-dioxide-sensor-scd4x/)
 - [ESP32 Arduino Core Documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/)
-- [Flask Documentation](https://flask.palletsprojects.com/)
+- [Django Documentation](https://docs.djangoproject.com/)
 - [Chart.js Documentation](https://www.chartjs.org/docs/latest/)
 
 ---

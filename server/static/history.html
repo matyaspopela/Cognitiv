@@ -68,7 +68,7 @@
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            gap: clamp(12px, 2vw, 20px);
+            gap: clamp(12px, 2vw, 24px);
         }
 
         .brand {
@@ -76,9 +76,10 @@
             align-items: center;
             gap: 10px;
             font-weight: 700;
-            font-size: clamp(18px, 2.5vw, 24px);
+            font-size: clamp(20px, 2.5vw, 26px);
             letter-spacing: 0.04em;
             text-transform: uppercase;
+            color: var(--text);
         }
 
         .nav-links {
@@ -1412,6 +1413,7 @@
                     break;
                 case 'custom':
                     document.getElementById('customDateRange').style.display = 'block';
+                    updatePresetButtons('custom');
                     return;
             }
             

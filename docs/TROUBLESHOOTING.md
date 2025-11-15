@@ -220,7 +220,7 @@ Then update ESP32 firmware:
 const char* SERVER_URL = "http://192.168.1.100:5001/data";  // Note 5001
 ```
 
-### ❌ ModuleNotFoundError: No module named 'flask'
+### ❌ ModuleNotFoundError: No module named 'django'
 
 **Solutions**:
 ```powershell
@@ -229,10 +229,10 @@ cd server
 pip install -r requirements.txt
 
 # If still failing, try:
-python -m pip install flask flask-cors
+python -m pip install django django-cors-headers
 
 # Verify installation
-python -c "import flask; print(flask.__version__)"
+python -c "import django; print(django.__version__)"
 ```
 
 ### ❌ MongoDB Authentication Error
@@ -548,7 +548,7 @@ mongoexport --uri "$MONGO_URI" --collection sensor_data \
 5. **Check versions**:
    ```powershell
    python --version
-   pip show flask
+   pip show django
    ```
 
 ### Getting Help

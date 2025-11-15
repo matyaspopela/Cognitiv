@@ -1,13 +1,16 @@
 """
-IoT Environmental Monitoring System - Flask Server
+IoT Environmental Monitoring System - Django Views
 Receives data from ESP32, stores in MongoDB, and serves dashboard
 """
 
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 import os
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import datetime, timedelta, timezone
+from django.http import JsonResponse, HttpResponse, Http404
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.conf import settings
+from pathlib import Path
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import PyMongoError
 import certifi
@@ -25,16 +28,15 @@ from board_manager import (
 )
 from board_manager import BoardManagerError, upload_firmware
 
-app = Flask(__name__, static_folder='static')
-CORS(app)  # Enable CORS for frontend access
-
-# Konfigurace
+# Configuration
 MONGO_URI = os.getenv('MONGO_URI')
 MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'cognitiv')
 MONGO_COLLECTION_NAME = os.getenv('MONGO_COLLECTION', 'sensor_data')
-SERVER_PORT = int(os.getenv('PORT', '5000'))
-DEBUG_MODE = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+
+CO2_GOOD_MAX = 1000
+CO2_MODERATE_MAX = 1500
+CO2_HIGH_MAX = 2000
 
 
 def resolve_local_timezone():
@@ -57,10 +59,6 @@ def resolve_local_timezone():
 
 LOCAL_TZ = resolve_local_timezone()
 UTC = timezone.utc
-
-CO2_GOOD_MAX = 1000
-CO2_MODERATE_MAX = 1500
-CO2_HIGH_MAX = 2000
 
 
 def init_mongo_client():
@@ -89,7 +87,15 @@ def init_mongo_client():
         raise
 
 
-mongo_collection = init_mongo_client()
+# Lazy MongoDB connection initialization
+_mongo_collection = None
+
+def get_mongo_collection():
+    """Get MongoDB collection, initializing if necessary"""
+    global _mongo_collection
+    if _mongo_collection is None:
+        _mongo_collection = init_mongo_client()
+    return _mongo_collection
 
 
 def to_local_datetime(value):
@@ -98,6 +104,7 @@ def to_local_datetime(value):
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
     return value.astimezone(LOCAL_TZ)
+
 
 def normalize_sensor_data(data):
     """Mapování příchozího JSONu na standardizované klíče."""
@@ -164,6 +171,7 @@ def validate_sensor_data(data):
     except (ValueError, TypeError) as e:
         return False, f"Neplatný datový typ: {str(e)}"
 
+
 def format_timestamp(unix_timestamp):
     """Převod Unix časového razítka na čitelný formát"""
     try:
@@ -218,100 +226,63 @@ def round_or_none(value, ndigits=2):
         return None
     return round(value, ndigits)
 
-@app.route('/')
-def home():
+
+# Static file serving views
+def home(request):
     """Úvodní stránka"""
-    return send_from_directory('static', 'index.html')
+    static_dir = Path(settings.BASE_DIR) / 'static'
+    html_file = static_dir / 'index.html'
+    if html_file.exists():
+        return HttpResponse(html_file.read_text(encoding='utf-8'), content_type='text/html')
+    raise Http404("Page not found")
 
 
-@app.route('/dashboard')
-def dashboard():
+def dashboard(request):
     """Interaktivní dashboard"""
-    return send_from_directory('static', 'dashboard.html')
+    static_dir = Path(settings.BASE_DIR) / 'static'
+    html_file = static_dir / 'dashboard.html'
+    if html_file.exists():
+        return HttpResponse(html_file.read_text(encoding='utf-8'), content_type='text/html')
+    raise Http404("Page not found")
 
 
-@app.route('/history')
-def history():
+def history(request):
     """Historická analytika"""
-    return send_from_directory('static', 'history.html')
+    static_dir = Path(settings.BASE_DIR) / 'static'
+    html_file = static_dir / 'history.html'
+    if html_file.exists():
+        return HttpResponse(html_file.read_text(encoding='utf-8'), content_type='text/html')
+    raise Http404("Page not found")
 
 
-@app.route('/connect')
-def connect():
+def connect(request):
     """Průvodce připojením desky"""
-    return send_from_directory('static', 'connect.html')
+    static_dir = Path(settings.BASE_DIR) / 'static'
+    html_file = static_dir / 'connect.html'
+    if html_file.exists():
+        return HttpResponse(html_file.read_text(encoding='utf-8'), content_type='text/html')
+    raise Http404("Page not found")
 
 
-@app.route('/connect/upload', methods=['POST'])
-def connect_upload():
-    """Zápis WiFi údajů a nahrání firmware do připojené desky"""
-    payload = request.get_json(silent=True) or {}
+# API views
+@csrf_exempt
+def data_endpoint(request):
+    """Handle both GET and POST for /data endpoint"""
+    if request.method == 'POST':
+        return receive_data(request)
+    elif request.method == 'GET':
+        return get_data(request)
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-    ssid = (payload.get('ssid') or '').strip()
-    password = payload.get('password', '')
 
-    if not ssid:
-        return jsonify({
-            'status': 'error',
-            'message': 'Pro nahrání firmware je nutné zadat SSID.'
-        }), 400
-
-    if password is None:
-        password = ''
-
-    if not isinstance(password, str):
-        return jsonify({
-            'status': 'error',
-            'message': 'Heslo musí být textový řetězec.'
-        }), 400
-
-    try:
-        apply_wifi_credentials(ssid, password)
-    except ConfigWriteError as exc:
-        print(f"✗ Nepodařilo se upravit config.h: {exc}")
-        return jsonify({
-            'status': 'error',
-            'message': 'Konfigurační soubor se nepodařilo upravit. Zkontrolujte oprávnění serveru.'
-        }), 500
-
-    try:
-        return_code, stdout, stderr = run_platformio_upload()
-    except FileNotFoundError:
-        return jsonify({
-            'status': 'error',
-            'message': 'Na serveru není nainstalováno PlatformIO. Bez něj nelze nahrávat firmware.'
-        }), 500
-    except OSError as exc:
-        return jsonify({
-            'status': 'error',
-            'message': f'PlatformIO se nepodařilo spustit: {exc}'
-        }), 500
-
-    log_excerpt = summarize_logs(stdout, stderr)
-
-    if return_code != 0:
-        print(f"✗ Nahrávání přes PlatformIO pro SSID '{ssid}' selhalo.")
-        return jsonify({
-            'status': 'error',
-            'message': 'Nahrávání firmware selhalo. Podrobnosti najdete v logu.',
-            'log_excerpt': log_excerpt
-        }), 500
-
-    print(f"✓ Nahrávání přes PlatformIO pro SSID '{ssid}' proběhlo úspěšně.")
-    return jsonify({
-        'status': 'success',
-        'message': 'Firmware byl na desku úspěšně nahrán.',
-        'log_excerpt': log_excerpt
-    }), 200
-
-@app.route('/data', methods=['POST'])
-def receive_data():
+def receive_data(request):
     """Příjem dat ze senzoru"""
     try:
-        data = request.get_json()
+        data = json.loads(request.body)
         
         if not data:
-            return jsonify({'error': 'Nebyla přijata žádná data.'}), 400
+            return JsonResponse({'error': 'Nebyla přijata žádná data.'}, status=400)
         
         print(f"\n{'='*50}")
         print(f"Přijata data z {data.get('device_id', 'unknown')}")
@@ -324,13 +295,13 @@ def receive_data():
         except KeyError as exc:
             message = f"Chybí povinné pole: {exc.args[0]}"
             print(f"⚠️  Chyba validace: {message}")
-            return jsonify({'error': message}), 400
+            return JsonResponse({'error': message}, status=400)
 
         # Validate data
         is_valid, message = validate_sensor_data(normalized)
         if not is_valid:
             print(f"⚠️  Chyba validace: {message}")
-            return jsonify({'error': message}), 400
+            return JsonResponse({'error': message}, status=400)
         
         # Format timestamp
         timestamp_utc = datetime.fromtimestamp(float(normalized['timestamp']), tz=UTC)
@@ -352,30 +323,30 @@ def receive_data():
         }
 
         try:
-            mongo_collection.insert_one(document)
+            get_mongo_collection().insert_one(document)
             print(f"✓ Data uložena do MongoDB v {timestamp_str}")
         except PyMongoError as exc:
             print(f"✗ Chyba při ukládání do MongoDB: {exc}")
-            return jsonify({'error': 'Data se nepodařilo uložit.'}), 500
+            return JsonResponse({'error': 'Data se nepodařilo uložit.'}, status=500)
         
-        return jsonify({
+        return JsonResponse({
             'status': 'success',
             'message': 'Data byla přijata a uložena.',
             'timestamp': timestamp_str
-        }), 200
+        }, status=200)
     
     except Exception as e:
         print(f"✗ Neočekávaná chyba: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return JsonResponse({'error': str(e)}, status=500)
 
-@app.route('/data', methods=['GET'])
-def get_data():
+
+def get_data(request):
     """Vrací data pro dashboard (volitelná filtrace)"""
     try:
         # Get query parameters
-        hours = request.args.get('hours', type=int, default=24)
-        limit = request.args.get('limit', type=int, default=1000)
-        device_id = request.args.get('device_id', type=str, default=None)
+        hours = int(request.GET.get('hours', 24))
+        limit = int(request.GET.get('limit', 1000))
+        device_id = request.GET.get('device_id', None)
 
         # Calculate cutoff time
         cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
@@ -384,7 +355,7 @@ def get_data():
         if device_id:
             mongo_filter['device_id'] = device_id
 
-        cursor = mongo_collection.find(mongo_filter).sort('timestamp', -1)
+        cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', -1)
         if limit:
             cursor = cursor.limit(limit)
 
@@ -416,42 +387,42 @@ def get_data():
                 'humidity_avg': humidity
             })
 
-        return jsonify({
+        return JsonResponse({
             'status': 'success',
             'count': len(data_points),
             'data': data_points
-        }), 200
+        }, status=200)
     
     except PyMongoError as exc:
-        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return JsonResponse({'error': str(e)}, status=500)
 
 
-@app.route('/history/series', methods=['GET'])
-def history_series():
+@require_http_methods(["GET"])
+def history_series(request):
     """Vrací agregované historické časové řady pro analýzu trendů."""
     try:
         now = datetime.now(UTC)
         default_start = now - timedelta(days=30)
 
-        start_dt = parse_iso_datetime(request.args.get('start'), default_start)
-        end_dt = parse_iso_datetime(request.args.get('end'), now)
+        start_dt = parse_iso_datetime(request.GET.get('start'), default_start)
+        end_dt = parse_iso_datetime(request.GET.get('end'), now)
 
         if start_dt and end_dt and start_dt > end_dt:
-            return jsonify({'error': 'Počáteční datum nesmí být pozdější než koncové.'}), 400
+            return JsonResponse({'error': 'Počáteční datum nesmí být pozdější než koncové.'}, status=400)
 
-        bucket = (request.args.get('bucket') or 'day').lower()
+        bucket = (request.GET.get('bucket') or 'day').lower()
         if bucket not in ('hour', 'day', 'raw', 'none'):
-            return jsonify({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour', 'day', 'raw' nebo 'none'."}), 400
+            return JsonResponse({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour', 'day', 'raw' nebo 'none'."}, status=400)
 
-        device_id = request.args.get('device_id')
+        device_id = request.GET.get('device_id')
         mongo_filter = build_history_filter(start_dt, end_dt, device_id)
         bucket_unit = None
 
         # Handle raw data (no aggregation)
         if bucket in ('raw', 'none'):
-            cursor = mongo_collection.find(mongo_filter).sort('timestamp', 1)
+            cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', 1)
             series = []
             for doc in cursor:
                 timestamp_local = to_local_datetime(doc.get('timestamp'))
@@ -517,7 +488,7 @@ def history_series():
                 }
             ]
 
-            cursor = mongo_collection.aggregate(pipeline, allowDiskUse=True)
+            cursor = get_mongo_collection().aggregate(pipeline, allowDiskUse=True)
             series = []
 
             for doc in cursor:
@@ -547,36 +518,36 @@ def history_series():
 
         bucket_display = 'raw' if bucket in ('raw', 'none') else bucket_unit
         
-        return jsonify({
+        return JsonResponse({
             'status': 'success',
             'bucket': bucket_display,
             'device_id': device_id,
             'count': len(series),
             'series': series
-        }), 200
+        }, status=200)
 
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        return JsonResponse({'error': str(exc)}, status=400)
     except PyMongoError as exc:
-        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        return JsonResponse({'error': str(exc)}, status=500)
 
 
-@app.route('/history/summary', methods=['GET'])
-def history_summary():
+@require_http_methods(["GET"])
+def history_summary(request):
     """Shrnutí historických dat, trendy a anomálie."""
     try:
         now = datetime.now(UTC)
         default_start = now - timedelta(days=30)
 
-        start_dt = parse_iso_datetime(request.args.get('start'), default_start)
-        end_dt = parse_iso_datetime(request.args.get('end'), now)
+        start_dt = parse_iso_datetime(request.GET.get('start'), default_start)
+        end_dt = parse_iso_datetime(request.GET.get('end'), now)
 
         if start_dt and end_dt and start_dt > end_dt:
-            return jsonify({'error': 'Počáteční datum nesmí být pozdější než koncové.'}), 400
+            return JsonResponse({'error': 'Počáteční datum nesmí být pozdější než koncové.'}, status=400)
 
-        device_id = request.args.get('device_id')
+        device_id = request.GET.get('device_id')
         mongo_filter = build_history_filter(start_dt, end_dt, device_id)
 
         pipeline = [
@@ -608,19 +579,19 @@ def history_summary():
             }
         ]
 
-        agg = list(mongo_collection.aggregate(pipeline, allowDiskUse=True))
+        agg = list(get_mongo_collection().aggregate(pipeline, allowDiskUse=True))
         if not agg:
-            return jsonify({
+            return JsonResponse({
                 'status': 'success',
                 'message': 'V daném období nejsou žádná data.',
                 'summary': {}
-            }), 200
+            }, status=200)
 
         stats = agg[0]
         count = stats.get('count', 0)
 
-        first_doc_cursor = mongo_collection.find(mongo_filter).sort('timestamp', 1).limit(1)
-        last_doc_cursor = mongo_collection.find(mongo_filter).sort('timestamp', -1).limit(1)
+        first_doc_cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', 1).limit(1)
+        last_doc_cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', -1).limit(1)
         first_doc = next(first_doc_cursor, None)
         last_doc = next(last_doc_cursor, None)
 
@@ -688,23 +659,24 @@ def history_summary():
             'co2_quality': co2_quality
         }
 
-        return jsonify({
+        return JsonResponse({
             'status': 'success',
             'summary': summary
-        }), 200
+        }, status=200)
 
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        return JsonResponse({'error': str(exc)}, status=400)
     except PyMongoError as exc:
-        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        return JsonResponse({'error': str(exc)}, status=500)
 
-@app.route('/stats', methods=['GET'])
-def get_stats():
+
+@require_http_methods(["GET"])
+def get_stats(request):
     """Statistické shrnutí dat"""
     try:
-        hours = request.args.get('hours', type=int, default=24)
+        hours = int(request.GET.get('hours', 24))
         cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
@@ -736,18 +708,18 @@ def get_stats():
             }
         ]
 
-        agg_result = list(mongo_collection.aggregate(pipeline))
+        agg_result = list(get_mongo_collection().aggregate(pipeline))
         if not agg_result:
-            return jsonify({
+            return JsonResponse({
                 'status': 'success',
                 'message': 'Nejsou k dispozici žádná data.',
                 'stats': {}
-            }), 200
+            }, status=200)
         
         stats_doc = agg_result[0]
 
         # Fetch most recent document for "current" values
-        latest_doc = mongo_collection.find(mongo_filter).sort('timestamp', -1).limit(1)
+        latest_doc = get_mongo_collection().find(mongo_filter).sort('timestamp', -1).limit(1)
         latest_doc = next(latest_doc, None)
 
         current_temperature = None
@@ -811,22 +783,23 @@ def get_stats():
                 'critical_percent': 0
             }
         
-        return jsonify({
+        return JsonResponse({
             'status': 'success',
             'stats': stats
-        }), 200
+        }, status=200)
     
     except PyMongoError as exc:
-        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return JsonResponse({'error': str(e)}, status=500)
 
-@app.route('/status')
-def status():
+
+@require_http_methods(["GET"])
+def status_view(request):
     """Stav serveru"""
     try:
-        total_documents = mongo_collection.count_documents({})
-        latest_doc = mongo_collection.find().sort('timestamp', -1).limit(1)
+        total_documents = get_mongo_collection().count_documents({})
+        latest_doc = get_mongo_collection().find().sort('timestamp', -1).limit(1)
         latest_doc = next(latest_doc, None)
 
         latest_timestamp = None
@@ -835,29 +808,83 @@ def status():
             if not latest_timestamp:
                 latest_timestamp = to_readable_timestamp(latest_doc.get('timestamp'))
 
-        return jsonify({
+        return JsonResponse({
             'status': 'online',
             'database': MONGO_DB_NAME,
             'collection': MONGO_COLLECTION_NAME,
             'data_points': total_documents,
             'latest_entry': latest_timestamp,
             'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
-        }), 200
+        }, status=200)
 
     except PyMongoError as exc:
-        return jsonify({'error': f'Databázová chyba: {exc}'}), 500
+        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return JsonResponse({'error': str(e)}, status=500)
 
-if __name__ == '__main__':
-    print("\n" + "="*60)
-    print("IoT server pro monitorování prostředí")
-    print("="*60)
-    print(f"Databáze: {MONGO_DB_NAME}, kolekce: {MONGO_COLLECTION_NAME}")
-    print(f"Server naslouchá na portu: {SERVER_PORT}")
-    print("Ujistěte se, že je nastavena proměnná 'MONGO_URI' (Render > Environment).")
-    print("Službu publikujte např. na https://<vaše-služba>.onrender.com/")
-    print("="*60 + "\n")
-    
-    # Run server
-    app.run(host='0.0.0.0', port=SERVER_PORT, debug=DEBUG_MODE)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def connect_upload(request):
+    """Zápis WiFi údajů a nahrání firmware do připojené desky"""
+    try:
+        payload = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        payload = {}
+
+    ssid = (payload.get('ssid') or '').strip()
+    password = payload.get('password', '')
+
+    if not ssid:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Pro nahrání firmware je nutné zadat SSID.'
+        }, status=400)
+
+    if password is None:
+        password = ''
+
+    if not isinstance(password, str):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Heslo musí být textový řetězec.'
+        }, status=400)
+
+    try:
+        apply_wifi_credentials(ssid, password)
+    except ConfigWriteError as exc:
+        print(f"✗ Nepodařilo se upravit config.h: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Konfigurační soubor se nepodařilo upravit. Zkontrolujte oprávnění serveru.'
+        }, status=500)
+
+    try:
+        return_code, stdout, stderr = run_platformio_upload()
+    except FileNotFoundError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Na serveru není nainstalováno PlatformIO. Bez něj nelze nahrávat firmware.'
+        }, status=500)
+    except OSError as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'PlatformIO se nepodařilo spustit: {exc}'
+        }, status=500)
+
+    log_excerpt = summarize_logs(stdout, stderr)
+
+    if return_code != 0:
+        print(f"✗ Nahrávání přes PlatformIO pro SSID '{ssid}' selhalo.")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Nahrávání firmware selhalo. Podrobnosti najdete v logu.',
+            'log_excerpt': log_excerpt
+        }, status=500)
+
+    print(f"✓ Nahrávání přes PlatformIO pro SSID '{ssid}' proběhlo úspěšně.")
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Firmware byl na desku úspěšně nahrán.',
+        'log_excerpt': log_excerpt
+    }, status=200)

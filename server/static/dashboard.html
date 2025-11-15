@@ -75,58 +75,43 @@
             gap: clamp(12px, 2vw, 24px);
         }
 
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: clamp(12px, 2vw, 20px);
-        }
-
-        .brand-link {
+        .brand {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 10px 16px;
-            border-radius: 999px;
-            font-weight: 500;
-            font-size: 13px;
-            color: var(--muted);
-            transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
-            background: rgba(148, 163, 184, 0.12);
+            gap: 10px;
+            font-weight: 700;
+            font-size: clamp(20px, 2.5vw, 26px);
+            letter-spacing: 0.04em;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 600;
+            color: var(--text);
         }
 
-        .brand-link:hover {
-            background: rgba(37, 99, 235, 0.16);
-            color: var(--accent);
-            transform: translateY(-2px);
-        }
-
-        .header-nav {
+        .nav-links {
             display: inline-flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 14px;
-            padding: 6px 12px;
+            gap: 12px;
             background: rgba(255, 255, 255, 0.7);
             border-radius: 999px;
+            padding: 6px;
             border: 1px solid rgba(148, 163, 184, 0.2);
-            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
         }
 
-        .header-nav a {
-            padding: 8px 16px;
-            border-radius: 999px;
-            font-weight: 500;
+        .nav-links a {
             font-size: 14px;
+            font-weight: 500;
+            padding: 10px 18px;
+            border-radius: 999px;
             color: var(--muted);
-            transition: background 0.25s ease, color 0.25s ease;
+            transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
         }
 
-        .header-nav a:hover,
-        .header-nav a.active {
-            background: rgba(37, 99, 235, 0.14);
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(37, 99, 235, 0.12);
             color: var(--accent);
+            transform: translateY(-2px);
         }
 
         .status-group {
@@ -659,6 +644,7 @@
             text-align: center;
             color: var(--muted);
             font-size: 13px;
+            padding-bottom: 20px;
         }
 
         @media (max-width: 640px) {
@@ -676,15 +662,15 @@
         <div class="page loading">
         <header>
             <div class="header-bar">
-                <div class="header-brand">
-                    <a class="brand-link" href="/">↖ Domů</a>
-                    <nav class="header-nav">
+                <nav>
+                    <a class="brand" href="/">Cognitiv</a>
+                    <div class="nav-links">
                         <a href="/">Domů</a>
                         <a href="/connect">Připojit</a>
                         <a href="/dashboard" class="active">Přehled</a>
                         <a href="/history">Historie</a>
-                    </nav>
-                </div>
+                    </div>
+                </nav>
                 <div class="status-group">
                     <div class="status-indicator">
                         <span class="status-dot online" id="serverStatus"></span>

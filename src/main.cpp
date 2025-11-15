@@ -503,7 +503,7 @@ bool sendDataToServer(SensorData data) {
   } else {
     Serial.print("Error: ");
     if (httpResponseCode == -1) {
-      Serial.println("Connection failed - is Flask server running at " + String(SERVER_URL) + "?");
+      Serial.println("Connection failed - is Django server running at " + String(SERVER_URL) + "?");
     } else if (httpResponseCode == -11) {
       Serial.println("Timeout - check server IP address");
     } else {

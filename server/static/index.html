@@ -47,14 +47,27 @@
             padding: 24px clamp(20px, 4vw, 48px);
         }
 
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        header {
+            background: var(--surface);
+            border-radius: clamp(20px, 3vw, 32px);
+            padding: clamp(24px, 3vw, 36px);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-soft);
             margin-bottom: clamp(40px, 6vw, 80px);
         }
 
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: clamp(12px, 2vw, 24px);
+        }
+
         .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             font-weight: 700;
             font-size: clamp(20px, 2.5vw, 26px);
             letter-spacing: 0.04em;
@@ -63,35 +76,41 @@
         }
 
         .nav-links {
-            display: flex;
+            display: inline-flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: clamp(12px, 3vw, 24px);
-            font-size: 15px;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 999px;
+            padding: 6px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
         }
 
         .nav-links a {
-            color: var(--muted);
+            font-size: 14px;
             font-weight: 500;
-            padding: 10px 16px;
+            padding: 10px 18px;
             border-radius: 999px;
-            transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+            color: var(--muted);
+            transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
         }
 
         .nav-links a:hover,
         .nav-links a.active {
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(37, 99, 235, 0.12);
             color: var(--accent);
             transform: translateY(-2px);
         }
 
         .nav-links .cta {
-            background: var(--accent);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
             color: #fff;
-            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
 
         .nav-links .cta:hover {
-            background: #1d4ed8;
+            background: linear-gradient(135deg, #1d4ed8 0%, #7e22ce 100%);
             color: #fff;
         }
 
@@ -267,7 +286,7 @@
             color: var(--muted);
         }
 
-        .mission-image {
+        .mission-stats {
             flex: 1 1 260px;
             min-height: 220px;
             border-radius: 24px;
@@ -275,12 +294,34 @@
             border: 1px solid rgba(148, 163, 184, 0.24);
             box-shadow: 0 24px 44px rgba(15, 23, 42, 0.12);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
             padding: clamp(24px, 4vw, 32px);
-            color: var(--text);
+            gap: 16px;
+        }
+
+        .mission-stats-label {
+            font-size: 14px;
             font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .mission-stats-value {
+            font-size: clamp(42px, 5vw, 56px);
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .mission-stats-unit {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--muted);
+            margin-top: 8px;
         }
 
         .co2-status {
@@ -420,10 +461,11 @@
         }
 
         footer {
-            margin-top: clamp(60px, 8vw, 100px);
+            margin-top: clamp(40px, 5vw, 60px);
             text-align: center;
             color: var(--muted);
-            font-size: 14px;
+            font-size: 13px;
+            padding-bottom: 20px;
         }
 
         .footer-links {
@@ -447,7 +489,7 @@
 
             .nav-links {
                 width: 100%;
-                justify-content: space-between;
+                justify-content: flex-start;
             }
 
             .hero-visual {
@@ -458,23 +500,25 @@
 </head>
 <body>
     <div class="page">
-        <nav>
-            <a class="brand" href="/">Cognitiv</a>
-            <div class="nav-links">
-                <a href="/">Domů</a>
-                <a href="/connect">Připojit</a>
-                <a href="/history">Historie</a>
-                <a class="cta" href="/dashboard">Přehled</a>
-            </div>
-        </nav>
+        <header>
+            <nav>
+                <a class="brand" href="/">Cognitiv</a>
+                <div class="nav-links">
+                    <a href="/" class="active">Domů</a>
+                    <a href="/connect">Připojit</a>
+                    <a href="/dashboard">Přehled</a>
+                    <a href="/history">Historie</a>
+                </div>
+            </nav>
+        </header>
 
         <main>
             <section class="hero">
                 <div class="hero-copy">
-                    <h1>Podívejte se na své prostředí s jasností.</h1>
+                    <h1>Sledujte kvalitu vzduchu v reálném čase</h1>
                     <p>
-                        Cognitiv převádí surová data ze senzorů na rozhodnutí díky moderní vizualizaci.
-                        Sledujte trendy teploty, vlhkosti a CO₂ v dashboardu navrženém pro přehlednost.
+                        Cognitiv monitoruje teplotu, vlhkost a koncentraci CO₂ pomocí senzorů ESP32.
+                        Všechna data jsou zobrazena v přehledném dashboardu s grafy a statistikami.
                     </p>
                     <div class="hero-actions">
                         <a class="btn btn-primary" href="/dashboard">Otevřít živý přehled</a>
@@ -482,12 +526,12 @@
                     </div>
                 </div>
                 <div class="hero-visual">
-                    <h2>Navrženo pro přehlednost</h2>
-                    <p>Vstupte přímo do přehledného dashboardu s velkoformátovými grafy, promyšlenými barvami a minimem rušivých prvků, aby důležité signály nezanikly.</p>
+                    <h2>Přehledný dashboard</h2>
+                    <p>Dashboard zobrazuje aktuální hodnoty a trendy v přehledných grafech. Barevné indikátory okamžitě ukazují kvalitu vzduchu.</p>
                     <ul class="hero-highlights">
-                        <li>Vedený postup od úvodní stránky po živou analytiku</li>
-                        <li>Responzivní rozvržení pro nástěnné displeje i tablety</li>
-                        <li>Barevné náznaky, které okamžitě ukazují kvalitu vzduchu</li>
+                        <li>Živá data z vašich senzorů v reálném čase</li>
+                        <li>Responzivní design pro počítače i tablety</li>
+                        <li>Historická data pro analýzu dlouhodobých trendů</li>
                     </ul>
                 </div>
             </section>
@@ -495,7 +539,7 @@
             <section class="co2-status" id="co2Status">
                 <div class="co2-headline">
                     <span class="co2-pill">Živý stav vzduchu</span>
-                    <h2>CO₂ pohodlí na první pohled</h2>
+                    <h2>Aktuální koncentrace CO₂</h2>
                     <p id="co2Summary">Načítám nejnovější data z vašich zařízení…</p>
                 </div>
                 <div class="co2-reading">
@@ -510,16 +554,18 @@
 
             <section id="features" class="mission-section">
                 <div class="mission-text">
-                    <h2>Posuneme spolu kvalitu vzduchu v budovách o dech dál.</h2>
+                    <h2>Cíle projektu</h2>
                     <p>
-                        Cognitiv je projekt založený na vizi lepšího vzduchu, tedy lepšího prostředí pro kvalitní výuku, pracoviště nebo prostě život. Věřím, že tento systém ulehčí plánovat ventilaci v budovách, a to nejvíce v případech kde je možné nainstalovat chytré ventilační systémy.
+                        Cognitiv je systém pro monitorování kvality vzduchu v budovách. Projekt vznikl s cílem zlepšit prostředí ve školách, kancelářích a dalších veřejných prostorách.
                     </p>
                     <p>
-                        Jakožto moderní instituce, by naše školy měly klást důraz na kvalitu vzduchu, neboť je to element jenž dokázaně ovlivňuje schopnost koncentrace a bdělosti ve výuce.
+                        Kvalita vzduchu významně ovlivňuje schopnost koncentrace a produktivitu. Moderní školy by měly klást důraz na monitoring a řízení kvality vzduchu, zejména v prostorách s chytrými ventilačními systémy.
                     </p>
                 </div>
-                <div class="mission-image">
-                    Vizualizace zařízení Cognitiv<br />ESP8266 + SCD41 + cloudový přehled
+                <div class="mission-stats">
+                    <div class="mission-stats-label">Celkem nasbíráno</div>
+                    <div class="mission-stats-value" id="totalDataPoints">—</div>
+                    <div class="mission-stats-unit">měření</div>
                 </div>
             </section>
 
@@ -614,7 +660,28 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', loadCo2Status);
+    async function loadTotalStats() {
+        try {
+            const response = await fetch('/status');
+            const payload = await response.json();
+            
+            if (payload.status === 'online' && payload.data_points !== undefined) {
+                const totalPoints = payload.data_points;
+                const formatted = totalPoints.toLocaleString('cs-CZ');
+                document.getElementById('totalDataPoints').textContent = formatted;
+            } else {
+                document.getElementById('totalDataPoints').textContent = '0';
+            }
+        } catch (error) {
+            console.error('Nepodařilo se načíst celkové statistiky:', error);
+            document.getElementById('totalDataPoints').textContent = '—';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCo2Status();
+        loadTotalStats();
+    });
     </script>
 </body>
 </html>
