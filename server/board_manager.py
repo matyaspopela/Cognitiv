@@ -47,7 +47,7 @@ def _replace_define(content: str, key: str, value: str) -> str:
     return f"{before}\n{replacement}\n{after}"
 
 
-def apply_wifi_credentials(ssid: str, password: str) -> Path:
+def apply_wifi_credentials(ssid: str, password: str, device_id: str = None) -> Path:
     if not ssid or not isinstance(ssid, str):
         raise ConfigWriteError("SSID is required to update config.h")
 
@@ -56,6 +56,11 @@ def apply_wifi_credentials(ssid: str, password: str) -> Path:
 
     password_value = password if password is not None else ""
     updated_content = _replace_define(updated_content, "WIFI_PASSWORD", password_value)
+
+    if device_id:
+        if not isinstance(device_id, str):
+            raise ConfigWriteError("device_id must be a string")
+        updated_content = _replace_define(updated_content, "DEVICE_ID", device_id)
 
     try:
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -98,14 +103,14 @@ def summarize_logs(stdout: str, stderr: str, max_chars: int = 1200) -> str:
     return f"...{trimmed}"
 
 
-def upload_firmware(ssid: str, password: str) -> Tuple[int, str, str]:
+def upload_firmware(ssid: str, password: str, device_id: str = None) -> Tuple[int, str, str]:
     """
-    Apply WiFi credentials to include/config.h and invoke PlatformIO upload.
+    Apply WiFi credentials and device ID to include/config.h and invoke PlatformIO upload.
 
     Returns the (returncode, stdout, stderr) tuple from the PlatformIO run so callers
     can surface detailed feedback to the user interface.
     """
-    config_path = apply_wifi_credentials(ssid, password)
+    config_path = apply_wifi_credentials(ssid, password, device_id)
     if not config_path.exists():
         raise ConfigWriteError("Failed to prepare config.h for upload.")
 

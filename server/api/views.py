@@ -988,8 +988,15 @@ def connect_upload(request):
     except json.JSONDecodeError:
         payload = {}
 
+    board_name = (payload.get('boardName') or '').strip()
     ssid = (payload.get('ssid') or '').strip()
     password = payload.get('password', '')
+
+    if not board_name:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Pro nahrání firmware je nutné zadat název desky.'
+        }, status=400)
 
     if not ssid:
         return JsonResponse({
@@ -1007,7 +1014,7 @@ def connect_upload(request):
         }, status=400)
 
     try:
-        apply_wifi_credentials(ssid, password)
+        apply_wifi_credentials(ssid, password, board_name)
     except ConfigWriteError as exc:
         print(f"✗ Nepodařilo se upravit config.h: {exc}")
         return JsonResponse({
@@ -1031,16 +1038,16 @@ def connect_upload(request):
     log_excerpt = summarize_logs(stdout, stderr)
 
     if return_code != 0:
-        print(f"✗ Nahrávání přes PlatformIO pro SSID '{ssid}' selhalo.")
+        print(f"✗ Nahrávání přes PlatformIO pro desku '{board_name}' (SSID: '{ssid}') selhalo.")
         return JsonResponse({
             'status': 'error',
             'message': 'Nahrávání firmware selhalo. Podrobnosti najdete v logu.',
             'log_excerpt': log_excerpt
         }, status=500)
 
-    print(f"✓ Nahrávání přes PlatformIO pro SSID '{ssid}' proběhlo úspěšně.")
+    print(f"✓ Nahrávání přes PlatformIO pro desku '{board_name}' (SSID: '{ssid}') proběhlo úspěšně.")
     return JsonResponse({
         'status': 'success',
-        'message': 'Firmware byl na desku úspěšně nahrán.',
+        'message': f'Firmware byl na desku "{board_name}" úspěšně nahrán.',
         'log_excerpt': log_excerpt
     }, status=200)

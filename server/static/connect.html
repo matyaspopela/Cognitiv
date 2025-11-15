@@ -328,21 +328,28 @@
         <main>
             <section class="card">
                 <span class="status-pill">Krok 1</span>
-                <h1>Nastavte Wi-Fi bez terminálu</h1>
+                <h1>Připojte desku k serveru</h1>
                 <p>
                     Zadejte údaje Wi-Fi, které má deska používat, a zbytek nechte na serveru s PlatformIO.
-                    Není potřeba příkazová řádka ani ruční flashování – stačí desku připojit a kliknout na nahrání.
+                    Není potřeba terminál ani ruční flashování.
                 </p>
                 <div class="tips">
                     <span>• Během nahrávání nechte desku připojenou přes USB.</span>
                     <span>• Tento postup zopakujte pro každou desku, kterou chcete připravit.</span>
-                    <span>• V budoucnu přibude výběr desky a historie nahrávání.</span>
+                    <span>• Zadejte jedinečný název pro každou desku (např. třída, místnost) pro snadnou identifikaci.</span>
+                    <span>• Systém ukládá MAC adresu desky, aby bylo možné ji identifikovat.</span>
                 </div>
             </section>
 
             <section class="card">
                 <h2>Detaily Wi-Fi</h2>
                 <form id="connectForm">
+                    <label for="boardNameInput">
+                        Název desky
+                        <span>Název pro identifikaci desky (např. třída, místnost).</span>
+                        <input id="boardNameInput" name="boardName" placeholder="např. Třída 1A" required autocomplete="off">
+                    </label>
+
                     <label for="ssidInput">
                         Název sítě (SSID)
                         <span>Síť, ke které se má deska připojit.</span>
@@ -408,8 +415,14 @@
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
+        const boardName = document.getElementById('boardNameInput').value.trim();
         const ssid = document.getElementById('ssidInput').value.trim();
         const password = document.getElementById('passwordInput').value;
+
+        if (!boardName) {
+            setStatus('error', 'Název desky je povinný.');
+            return;
+        }
 
         if (!ssid) {
             setStatus('error', 'SSID je povinné.');
@@ -426,7 +439,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ ssid, password })
+                body: JSON.stringify({ boardName, ssid, password })
             });
 
             const payload = await response.json();
