@@ -1190,6 +1190,23 @@
                 document.getElementById('currentTemp').innerHTML = '—<span class="metric-unit">°C</span>';
                 document.getElementById('currentHumidity').innerHTML = '—<span class="metric-unit">%</span>';
                 document.getElementById('currentCO2').innerHTML = '—<span class="metric-unit">ppm</span>';
+                const dataPointsElement = document.getElementById('dataPoints');
+                if (dataPointsElement) {
+                    dataPointsElement.textContent = '—';
+                }
+                // Reset CO₂ quality distribution to 0 % so previous values are not shown
+                const qualityDefaults = {
+                    co2Good: '0%',
+                    co2Moderate: '0%',
+                    co2High: '0%',
+                    co2Critical: '0%',
+                };
+                Object.entries(qualityDefaults).forEach(([id, value]) => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.textContent = value;
+                    }
+                });
                 return;
             }
 

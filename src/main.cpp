@@ -238,7 +238,7 @@ void displayWarningScreen(SensorData data) {
   display.print(data.co2);
   display.println(" ppm");
   display.setCursor(0, 40);
-  display.println("Vyvetrejte okna.");
+  display.println("Vyvetrejte mistnost.");
 
   static bool invertToggle = false;
   invertToggle = !invertToggle;

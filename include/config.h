@@ -6,10 +6,10 @@
 
 // WiFi Configuration
 // Standard WPA/WPA2 Personal networks (password only)
-#define WIFI_SSID "gymzr hw"  // Replace with your WiFi network SSID
-#define WIFI_PASSWORD "1ENO8VNG0BMD7EF" 
-//#define WIFI_SSID "YOUR_WIFI_SSID"  // Replace with your WiFi network SSID
-//#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"  // Replace with your WiFi password
+//#define WIFI_SSID "gymzr hw"  // Replace with your WiFi network SSID
+//#define WIFI_PASSWORD "1ENO8VNG0BMD7EF" 
+#define WIFI_SSID "YOUR_WIFI_SSID"  // Replace with your WiFi network SSID
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"  // Replace with your WiFi password
 
 // Server Configuration
 // Replace with your Render service URL (e.g. https://your-app.onrender.com/data)
