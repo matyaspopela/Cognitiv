@@ -47,6 +47,20 @@
             padding: 24px clamp(20px, 4vw, 48px);
         }
 
+        .status-banner {
+            margin-bottom: clamp(16px, 2.5vw, 24px);
+            padding: 10px 16px;
+            border-radius: 14px;
+            background: rgba(234, 179, 8, 0.15);
+            border: 1px solid rgba(234, 179, 8, 0.35);
+            color: #92400e;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         header {
             background: var(--surface);
             border-radius: clamp(20px, 3vw, 32px);
@@ -513,6 +527,9 @@
         </header>
 
         <main>
+            <div class="status-banner">
+                ⚠️ Momentálně probíhá úprava senzoru a neprobíhá měření dat.
+            </div>
             <section class="hero">
                 <div class="hero-copy">
                     <h1>Sledujte kvalitu vzduchu v reálném čase</h1>
