@@ -275,47 +275,81 @@ def get_react_build_dir():
     possible_paths = [
         Path(settings.BASE_DIR).parent / 'frontend' / 'dist',
         Path(settings.BASE_DIR).parent.parent / 'frontend' / 'dist',
+        Path('/opt/render/project/src/frontend/dist'),  # Render default path
+        Path.cwd() / 'frontend' / 'dist',  # Current working directory
     ]
     
     # Add REACT_BUILD_DIR if it exists in settings
     if hasattr(settings, 'REACT_BUILD_DIR'):
-        possible_paths.insert(0, Path(settings.REACT_BUILD_DIR))
+        react_build_path = Path(settings.REACT_BUILD_DIR)
+        if react_build_path.exists():
+            possible_paths.insert(0, react_build_path)
     
     for react_build_dir in possible_paths:
-        if react_build_dir.exists() and (react_build_dir / 'index.html').exists():
-            return react_build_dir
+        try:
+            if react_build_dir.exists() and (react_build_dir / 'index.html').exists():
+                return react_build_dir
+        except (OSError, ValueError):
+            continue
     
     return None
 
 
-def serve_react_asset(request, asset_path):
-    """Serve React app assets (JS, CSS, etc.)"""
+def serve_react_asset(request, path):
+    """Serve React app assets (JS, CSS, etc.) from /assets/ path"""
     react_build_dir = get_react_build_dir()
     if not react_build_dir:
         raise Http404("React build not found")
     
-    asset_file = react_build_dir / asset_path
-    if not asset_file.exists() or not str(asset_file).startswith(str(react_build_dir)):
+    # Vite builds assets in an 'assets' subdirectory
+    # path parameter is everything after /assets/, so construct full path
+    asset_file = react_build_dir / 'assets' / path
+    
+    # Security check: ensure the resolved path is within the build directory
+    try:
+        asset_file_resolved = asset_file.resolve()
+        react_build_dir_resolved = react_build_dir.resolve()
+        # Check that the file is within the assets subdirectory
+        assets_dir = react_build_dir_resolved / 'assets'
+        if not str(asset_file_resolved).startswith(str(assets_dir)):
+            raise Http404("Asset not found")
+    except (OSError, ValueError):
         raise Http404("Asset not found")
     
-    # Determine content type
-    content_type = 'application/octet-stream'
-    if asset_path.endswith('.js'):
-        content_type = 'application/javascript'
-    elif asset_path.endswith('.css'):
-        content_type = 'text/css'
-    elif asset_path.endswith('.json'):
-        content_type = 'application/json'
-    elif asset_path.endswith('.png'):
-        content_type = 'image/png'
-    elif asset_path.endswith('.jpg') or asset_path.endswith('.jpeg'):
-        content_type = 'image/jpeg'
-    elif asset_path.endswith('.svg'):
-        content_type = 'image/svg+xml'
-    elif asset_path.endswith('.woff') or asset_path.endswith('.woff2'):
-        content_type = 'font/woff2' if asset_path.endswith('.woff2') else 'font/woff'
+    if not asset_file.exists():
+        raise Http404(f"Asset not found: {path}")
     
-    return HttpResponse(asset_file.read_bytes(), content_type=content_type)
+    # Determine content type based on file extension
+    content_type = 'application/octet-stream'
+    path_lower = path.lower()
+    if path_lower.endswith('.js'):
+        content_type = 'application/javascript; charset=utf-8'
+    elif path_lower.endswith('.mjs'):
+        content_type = 'application/javascript; charset=utf-8'
+    elif path_lower.endswith('.css'):
+        content_type = 'text/css; charset=utf-8'
+    elif path_lower.endswith('.json'):
+        content_type = 'application/json; charset=utf-8'
+    elif path_lower.endswith('.png'):
+        content_type = 'image/png'
+    elif path_lower.endswith('.jpg') or path_lower.endswith('.jpeg'):
+        content_type = 'image/jpeg'
+    elif path_lower.endswith('.svg'):
+        content_type = 'image/svg+xml'
+    elif path_lower.endswith('.woff'):
+        content_type = 'font/woff'
+    elif path_lower.endswith('.woff2'):
+        content_type = 'font/woff2'
+    elif path_lower.endswith('.ttf'):
+        content_type = 'font/ttf'
+    elif path_lower.endswith('.ico'):
+        content_type = 'image/x-icon'
+    
+    response = HttpResponse(asset_file.read_bytes(), content_type=content_type)
+    # Add cache headers for production
+    if not settings.DEBUG:
+        response['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return response
 
 
 def serve_react_app(request):
@@ -325,15 +359,26 @@ def serve_react_app(request):
     if react_build_dir:
         index_file = react_build_dir / 'index.html'
         if index_file.exists():
-            return HttpResponse(index_file.read_text(encoding='utf-8'), content_type='text/html')
+            html_content = index_file.read_text(encoding='utf-8')
+            response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
+            # Add no-cache headers for index.html to ensure fresh content
+            if not settings.DEBUG:
+                response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response['Pragma'] = 'no-cache'
+                response['Expires'] = '0'
+            return response
     
     # Fallback to old static HTML if React build doesn't exist
     static_dir = Path(settings.BASE_DIR) / 'static'
     fallback_file = static_dir / 'index.html'
     if fallback_file.exists():
-        return HttpResponse(fallback_file.read_text(encoding='utf-8'), content_type='text/html')
+        return HttpResponse(fallback_file.read_text(encoding='utf-8'), content_type='text/html; charset=utf-8')
     
-    raise Http404("React app not found. Please build the frontend first.")
+    # If we get here, provide a helpful error message
+    error_msg = f"React app not found. Build directory: {react_build_dir}"
+    if react_build_dir:
+        error_msg += f" (exists: {react_build_dir.exists()})"
+    raise Http404(error_msg)
 
 
 # API views
@@ -1169,6 +1214,35 @@ def admin_login(request):
 
 
 @require_http_methods(["GET"])
+def debug_build_info(request):
+    """Debug endpoint to check React build directory location"""
+    react_build_dir = get_react_build_dir()
+    info = {
+        'react_build_dir': str(react_build_dir) if react_build_dir else None,
+        'react_build_exists': react_build_dir.exists() if react_build_dir else False,
+        'index_html_exists': (react_build_dir / 'index.html').exists() if react_build_dir else False,
+        'assets_dir_exists': (react_build_dir / 'assets').exists() if react_build_dir else False,
+        'base_dir': str(settings.BASE_DIR),
+        'cwd': str(Path.cwd()),
+        'possible_paths': [
+            str(Path(settings.BASE_DIR).parent / 'frontend' / 'dist'),
+            str(Path(settings.BASE_DIR).parent.parent / 'frontend' / 'dist'),
+        ],
+    }
+    
+    if react_build_dir:
+        assets_dir = react_build_dir / 'assets'
+        if assets_dir.exists():
+            try:
+                asset_files = list(assets_dir.iterdir())[:10]  # First 10 files
+                info['sample_assets'] = [f.name for f in asset_files]
+            except Exception as e:
+                info['assets_error'] = str(e)
+    
+    return JsonResponse(info)
+
+
+@require_http_methods(["GET"])
 def admin_devices(request):
     """Get list of all devices with summary statistics"""
     if not check_admin_auth(request):
@@ -1250,6 +1324,38 @@ def admin_devices(request):
             'status': 'error',
             'message': f'Chyba: {str(exc)}'
         }, status=500)
+
+
+@require_http_methods(["GET"])
+def debug_build_info(request):
+    """Debug endpoint to check React build directory location"""
+    from django.http import JsonResponse
+    import os
+    
+    react_build_dir = get_react_build_dir()
+    info = {
+        'react_build_dir': str(react_build_dir) if react_build_dir else None,
+        'react_build_exists': react_build_dir.exists() if react_build_dir else False,
+        'index_html_exists': (react_build_dir / 'index.html').exists() if react_build_dir else False,
+        'assets_dir_exists': (react_build_dir / 'assets').exists() if react_build_dir else False,
+        'base_dir': str(settings.BASE_DIR),
+        'cwd': str(Path.cwd()),
+        'possible_paths': [
+            str(Path(settings.BASE_DIR).parent / 'frontend' / 'dist'),
+            str(Path(settings.BASE_DIR).parent.parent / 'frontend' / 'dist'),
+        ],
+    }
+    
+    if react_build_dir:
+        assets_dir = react_build_dir / 'assets'
+        if assets_dir.exists():
+            try:
+                asset_files = list(assets_dir.iterdir())[:10]  # First 10 files
+                info['sample_assets'] = [f.name for f in asset_files]
+            except Exception as e:
+                info['assets_error'] = str(e)
+    
+    return JsonResponse(info)
 
 
 @require_http_methods(["GET"])

@@ -27,13 +27,20 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files efficiently
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection (views use csrf_exempt where needed)
     'django.contrib.sessions.middleware.SessionMiddleware',  # For admin session management
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Add WhiteNoise middleware if available (for production)
+try:
+    import whitenoise
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+except ImportError:
+    # WhiteNoise not installed - will use Django's static file serving in development
+    pass
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Configure appropriately for production
@@ -60,20 +67,40 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # React build directory - handle both local and Render paths
-if os.path.exists(BASE_DIR.parent / 'frontend' / 'dist'):
+REACT_BUILD_DIR = None
+possible_build_dirs = [
+    BASE_DIR.parent / 'frontend' / 'dist',
+    BASE_DIR.parent.parent / 'frontend' / 'dist',
+]
+
+for build_dir in possible_build_dirs:
+    if os.path.exists(build_dir):
+        REACT_BUILD_DIR = build_dir
+        break
+
+# Default fallback if none found
+if REACT_BUILD_DIR is None:
     REACT_BUILD_DIR = BASE_DIR.parent / 'frontend' / 'dist'
-else:
-    # Fallback for Render build environment
-    REACT_BUILD_DIR = BASE_DIR.parent.parent / 'frontend' / 'dist' if os.path.exists(BASE_DIR.parent.parent / 'frontend' / 'dist') else BASE_DIR.parent / 'frontend' / 'dist'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-    REACT_BUILD_DIR,  # React build output
 ]
 
+# Only add React build directory if it exists
+if os.path.exists(REACT_BUILD_DIR):
+    STATICFILES_DIRS.append(REACT_BUILD_DIR)
+
 # WhiteNoise configuration for efficient static file serving
-# Use CompressedStaticFilesStorage for React apps (no manifest required)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# Use CompressedStaticFilesStorage for React apps (no manifest required) if available
+try:
+    import whitenoise
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+    # WhiteNoise additional configuration
+    WHITENOISE_ROOT = None  # We'll serve React assets via custom view
+    WHITENOISE_USE_FINDERS = True  # Use Django's static file finders
+except ImportError:
+    # WhiteNoise not installed - use default storage for development
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # Session configuration for admin authentication
 # Using signed cookies - no database or file storage needed
