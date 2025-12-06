@@ -270,13 +270,62 @@ def connect(request):
     raise Http404("Page not found")
 
 
+def get_react_build_dir():
+    """Get the React build directory path"""
+    possible_paths = [
+        Path(settings.BASE_DIR).parent / 'frontend' / 'dist',
+        Path(settings.BASE_DIR).parent.parent / 'frontend' / 'dist',
+    ]
+    
+    # Add REACT_BUILD_DIR if it exists in settings
+    if hasattr(settings, 'REACT_BUILD_DIR'):
+        possible_paths.insert(0, Path(settings.REACT_BUILD_DIR))
+    
+    for react_build_dir in possible_paths:
+        if react_build_dir.exists() and (react_build_dir / 'index.html').exists():
+            return react_build_dir
+    
+    return None
+
+
+def serve_react_asset(request, asset_path):
+    """Serve React app assets (JS, CSS, etc.)"""
+    react_build_dir = get_react_build_dir()
+    if not react_build_dir:
+        raise Http404("React build not found")
+    
+    asset_file = react_build_dir / asset_path
+    if not asset_file.exists() or not str(asset_file).startswith(str(react_build_dir)):
+        raise Http404("Asset not found")
+    
+    # Determine content type
+    content_type = 'application/octet-stream'
+    if asset_path.endswith('.js'):
+        content_type = 'application/javascript'
+    elif asset_path.endswith('.css'):
+        content_type = 'text/css'
+    elif asset_path.endswith('.json'):
+        content_type = 'application/json'
+    elif asset_path.endswith('.png'):
+        content_type = 'image/png'
+    elif asset_path.endswith('.jpg') or asset_path.endswith('.jpeg'):
+        content_type = 'image/jpeg'
+    elif asset_path.endswith('.svg'):
+        content_type = 'image/svg+xml'
+    elif asset_path.endswith('.woff') or asset_path.endswith('.woff2'):
+        content_type = 'font/woff2' if asset_path.endswith('.woff2') else 'font/woff'
+    
+    return HttpResponse(asset_file.read_bytes(), content_type=content_type)
+
+
 def serve_react_app(request):
     """Serve React app index.html for all non-API routes"""
-    react_build_dir = Path(settings.BASE_DIR).parent / 'frontend' / 'dist'
-    index_file = react_build_dir / 'index.html'
+    react_build_dir = get_react_build_dir()
     
-    if index_file.exists():
-        return HttpResponse(index_file.read_text(encoding='utf-8'), content_type='text/html')
+    if react_build_dir:
+        index_file = react_build_dir / 'index.html'
+        if index_file.exists():
+            return HttpResponse(index_file.read_text(encoding='utf-8'), content_type='text/html')
     
     # Fallback to old static HTML if React build doesn't exist
     static_dir = Path(settings.BASE_DIR) / 'static'
