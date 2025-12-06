@@ -12,7 +12,7 @@ import {
   Filler
 } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
-import { dataAPI } from '../services/api'
+import { dataAPI, adminAPI } from '../services/api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Chip from '../components/ui/Chip'
@@ -36,6 +36,8 @@ ChartJS.register(
 
 const Dashboard = () => {
   const [timeRange, setTimeRange] = useState('24')
+  const [selectedDevice, setSelectedDevice] = useState(null)
+  const [devices, setDevices] = useState([])
   const [data, setData] = useState([])
   const [stats, setStats] = useState({})
   const [serverStatus, setServerStatus] = useState(true)
@@ -45,6 +47,10 @@ const Dashboard = () => {
   const autoRefreshIntervalRef = useRef(null)
 
   useEffect(() => {
+    fetchDevices()
+  }, [])
+
+  useEffect(() => {
     fetchData()
     autoRefreshIntervalRef.current = setInterval(fetchData, 30000)
     return () => {
@@ -52,14 +58,26 @@ const Dashboard = () => {
         clearInterval(autoRefreshIntervalRef.current)
       }
     }
-  }, [timeRange])
+  }, [timeRange, selectedDevice])
+
+  const fetchDevices = async () => {
+    try {
+      const response = await adminAPI.getDevices()
+      if (response.data && response.data.status === 'success') {
+        setDevices(response.data.devices || [])
+      }
+    } catch (error) {
+      console.error('Chyba při načítání seznamu zařízení:', error)
+      // Don't show error to user, just log it - device filtering is optional
+    }
+  }
 
   const fetchData = async () => {
     try {
       const hours = parseInt(timeRange)
       const [dataResponse, statsResponse] = await Promise.all([
-        dataAPI.getData(hours),
-        dataAPI.getStats(hours)
+        dataAPI.getData(hours, 1000, selectedDevice),
+        dataAPI.getStats(hours, selectedDevice)
       ])
 
       const dataJson = dataResponse.data
@@ -309,20 +327,39 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="dashboard-page__controls">
-              <div className="dashboard-page__time-range">
-                <span className="dashboard-page__control-label">Časové období:</span>
-                <div className="dashboard-page__chips">
-                  {timeRangeOptions.map((option) => (
-                    <Chip
-                      key={option.value}
-                      variant="filter"
-                      selected={timeRange === option.value}
-                      onClick={() => setTimeRange(option.value)}
-                    >
-                      {option.label}
-                    </Chip>
-                  ))}
+              <div className="dashboard-page__filters">
+                <div className="dashboard-page__time-range">
+                  <span className="dashboard-page__control-label">Časové období:</span>
+                  <div className="dashboard-page__chips">
+                    {timeRangeOptions.map((option) => (
+                      <Chip
+                        key={option.value}
+                        variant="filter"
+                        selected={timeRange === option.value}
+                        onClick={() => setTimeRange(option.value)}
+                      >
+                        {option.label}
+                      </Chip>
+                    ))}
+                  </div>
                 </div>
+                {devices.length > 0 && (
+                  <div className="dashboard-page__device-filter">
+                    <span className="dashboard-page__control-label">Zařízení:</span>
+                    <select
+                      className="dashboard-page__device-select"
+                      value={selectedDevice || ''}
+                      onChange={(e) => setSelectedDevice(e.target.value || null)}
+                    >
+                      <option value="">Všechna zařízení</option>
+                      {devices.map((device) => (
+                        <option key={device.device_id} value={device.device_id}>
+                          {device.device_id}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <Button
                 variant="filled"

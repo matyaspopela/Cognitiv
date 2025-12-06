@@ -897,9 +897,12 @@ def get_stats(request):
     """Statistické shrnutí dat"""
     try:
         hours = int(request.GET.get('hours', 24))
+        device_id = request.GET.get('device_id', None)
         cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
+        if device_id:
+            mongo_filter['device_id'] = device_id
 
         try:
             collection = get_mongo_collection()

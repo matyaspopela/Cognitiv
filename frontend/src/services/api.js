@@ -41,8 +41,13 @@ export const dataAPI = {
     return apiClient.get(`/data?${params.toString()}`)
   },
 
-  getStats: async (hours = 24) => {
-    return apiClient.get(`/stats?hours=${hours}`)
+  getStats: async (hours = 24, deviceId = null) => {
+    const params = new URLSearchParams()
+    params.append('hours', hours.toString())
+    if (deviceId) {
+      params.append('device_id', deviceId)
+    }
+    return apiClient.get(`/stats?${params.toString()}`)
   },
 
   getStatus: async () => {
