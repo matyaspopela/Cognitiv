@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
+@import './design/tokens.css';
+
+/* Legacy variable mappings for backward compatibility */
+:root {
+  --bg: var(--md3-color-background-default);
+  --surface: var(--md3-color-surface-default);
+  --surface-muted: rgba(255, 255, 255, 0.75);
+  --border: rgba(255, 255, 255, 0.18);
+  
+  --text: var(--md3-color-text-primary);
+  --text-secondary: var(--md3-color-text-secondary);
+  --muted: var(--md3-color-text-hint);
+  
+  --primary: var(--md3-color-primary-500);
+  --primary-light: var(--md3-color-primary-400);
+  --primary-dark: var(--md3-color-primary-700);
+  --primary-soft: var(--md3-color-primary-50);
+  
+  --secondary: var(--md3-color-secondary-500);
+  --secondary-light: var(--md3-color-secondary-300);
+  --secondary-dark: var(--md3-color-secondary-700);
+  
+  --accent: var(--md3-color-accent-500);
+  --accent-strong: var(--md3-color-accent-700);
+  
+  --success: var(--md3-color-success-500);
+  --warning: var(--md3-color-warning-500);
+  --danger: var(--md3-color-error-500);
+  
+  --shadow-soft: var(--md3-elevation-2);
+  --shadow-medium: var(--md3-elevation-4);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: var(--md3-font-family-primary);
+  font-size: var(--md3-font-size-body-large);
+  line-height: var(--md3-line-height-normal);
+  color: var(--md3-color-text-primary);
+  background: #ffffff;
+  min-height: 100vh;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  z-index: -1;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color var(--md3-animation-normal) var(--md3-easing-ease);
+}
+
+a:hover {
+  color: var(--md3-color-primary-600);
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Glassmorphism utility classes */
+.glass {
+  background: var(--md3-color-surface-default);
+  backdrop-filter: var(--md3-glass-medium);
+  -webkit-backdrop-filter: var(--md3-glass-medium);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.glass-light {
+  background: var(--md3-color-surface-variant);
+  backdrop-filter: var(--md3-glass-light);
+  -webkit-backdrop-filter: var(--md3-glass-light);
+}
+
+.glass-strong {
+  background: var(--md3-color-surface-default);
+  backdrop-filter: var(--md3-glass-strong);
+  -webkit-backdrop-filter: var(--md3-glass-strong);
+}
+
+/* Elevation utility classes */
+.md3-elevation-0 { box-shadow: var(--md3-elevation-0); }
+.md3-elevation-1 { box-shadow: var(--md3-elevation-1); }
+.md3-elevation-2 { box-shadow: var(--md3-elevation-2); }
+.md3-elevation-3 { box-shadow: var(--md3-elevation-3); }
+.md3-elevation-4 { box-shadow: var(--md3-elevation-4); }
+.md3-elevation-5 { box-shadow: var(--md3-elevation-5); }
+
+/* Focus styles - removed blue outline, using blur instead */
+*:focus-visible {
+  outline: none;
+}
+

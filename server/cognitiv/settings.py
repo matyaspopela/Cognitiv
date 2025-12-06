@@ -20,20 +20,24 @@ ALLOWED_HOSTS = ['*']  # Configure appropriately for production
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.staticfiles',  # For serving static HTML files
+    'django.contrib.sessions',  # For admin session management
     'corsheaders',  # CORS support
     'api',  # Main API application
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files efficiently
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection (views use csrf_exempt where needed)
+    'django.contrib.sessions.middleware.SessionMiddleware',  # For admin session management
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Configure appropriately for production
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies for session-based auth
 
 ROOT_URLCONF = 'cognitiv.urls'
 
@@ -53,6 +57,23 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# React build directory
+REACT_BUILD_DIR = BASE_DIR.parent / 'frontend' / 'dist'
+
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
+    REACT_BUILD_DIR,  # React build output
 ]
+
+# WhiteNoise configuration for efficient static file serving
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Session configuration for admin authentication
+# Using signed cookies - no database or file storage needed
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS

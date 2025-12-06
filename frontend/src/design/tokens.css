@@ -1,0 +1,160 @@
+/**
+ * Modern Glassmorphism Design Tokens - CSS Variables
+ * Blue/Teal/Purple Color Scheme
+ */
+
+:root {
+  /* Primary - Blue */
+  --md3-color-primary-50: #E3F2FD;
+  --md3-color-primary-100: #BBDEFB;
+  --md3-color-primary-200: #90CAF9;
+  --md3-color-primary-300: #64B5F6;
+  --md3-color-primary-400: #42A5F5;
+  --md3-color-primary-500: #2196F3;
+  --md3-color-primary-600: #1E88E5;
+  --md3-color-primary-700: #1976D2;
+  --md3-color-primary-800: #1565C0;
+  --md3-color-primary-900: #0D47A1;
+
+  /* Secondary - Teal */
+  --md3-color-secondary-50: #E0F2F1;
+  --md3-color-secondary-100: #B2DFDB;
+  --md3-color-secondary-200: #80CBC4;
+  --md3-color-secondary-300: #4DB6AC;
+  --md3-color-secondary-400: #26A69A;
+  --md3-color-secondary-500: #009688;
+  --md3-color-secondary-600: #00897B;
+  --md3-color-secondary-700: #00796B;
+  --md3-color-secondary-800: #00695C;
+  --md3-color-secondary-900: #004D40;
+
+  /* Accent - Purple */
+  --md3-color-accent-50: #F3E5F5;
+  --md3-color-accent-100: #E1BEE7;
+  --md3-color-accent-200: #CE93D8;
+  --md3-color-accent-300: #BA68C8;
+  --md3-color-accent-400: #AB47BC;
+  --md3-color-accent-500: #9C27B0;
+  --md3-color-accent-600: #8E24AA;
+  --md3-color-accent-700: #7B1FA2;
+  --md3-color-accent-800: #6A1B9A;
+  --md3-color-accent-900: #4A148C;
+
+  /* Surface colors with transparency */
+  --md3-color-surface-default: rgba(255, 255, 255, 0.7);
+  --md3-color-surface-variant: rgba(255, 255, 255, 0.5);
+  --md3-color-surface-dim: rgba(255, 255, 255, 0.3);
+  --md3-color-surface-dark: rgba(0, 0, 0, 0.2);
+
+  /* Background */
+  --md3-color-background-default: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --md3-color-background-variant: linear-gradient(135deg, #2196F3 0%, #009688 50%, #9C27B0 100%);
+  --md3-color-background-paper: rgba(255, 255, 255, 0.9);
+
+  /* Text colors */
+  --md3-color-text-primary: #1A1A1A;
+  --md3-color-text-secondary: #4A4A4A;
+  --md3-color-text-disabled: #9E9E9E;
+  --md3-color-text-hint: #757575;
+  --md3-color-text-onDark: #FFFFFF;
+
+  /* Status colors */
+  --md3-color-error-50: #FFEBEE;
+  --md3-color-error-100: #FFCDD2;
+  --md3-color-error-500: #F44336;
+  --md3-color-error-700: #D32F2F;
+
+  --md3-color-success-50: #E8F5E9;
+  --md3-color-success-100: #C8E6C9;
+  --md3-color-success-500: #4CAF50;
+  --md3-color-success-700: #388E3C;
+
+  --md3-color-warning-50: #FFF3E0;
+  --md3-color-warning-100: #FFE0B2;
+  --md3-color-warning-500: #FF9800;
+  --md3-color-warning-700: #F57C00;
+
+  --md3-color-info-50: #E3F2FD;
+  --md3-color-info-100: #BBDEFB;
+  --md3-color-info-500: #2196F3;
+  --md3-color-info-700: #1976D2;
+
+  /* Elevation - Subtle shadows */
+  --md3-elevation-0: none;
+  --md3-elevation-1: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --md3-elevation-2: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --md3-elevation-3: 0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --md3-elevation-4: 0px 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --md3-elevation-5: 0px 30px 60px -12px rgba(0, 0, 0, 0.3);
+
+  /* Glassmorphism blur */
+  --md3-glass-light: blur(10px);
+  --md3-glass-medium: blur(16px);
+  --md3-glass-strong: blur(24px);
+
+  /* Typography - Geometric */
+  --md3-font-family-primary: 'Space Grotesk', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --md3-font-family-display: 'Montserrat', 'Space Grotesk', sans-serif;
+  --md3-font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --md3-font-size-display-large: 57px;
+  --md3-font-size-display-medium: 45px;
+  --md3-font-size-display-small: 36px;
+  --md3-font-size-headline-large: 32px;
+  --md3-font-size-headline-medium: 28px;
+  --md3-font-size-headline-small: 24px;
+  --md3-font-size-title-large: 22px;
+  --md3-font-size-title-medium: 16px;
+  --md3-font-size-title-small: 14px;
+  --md3-font-size-body-large: 16px;
+  --md3-font-size-body-medium: 14px;
+  --md3-font-size-body-small: 12px;
+  --md3-font-size-label-large: 14px;
+  --md3-font-size-label-medium: 12px;
+  --md3-font-size-label-small: 11px;
+
+  --md3-font-weight-regular: 400;
+  --md3-font-weight-medium: 500;
+  --md3-font-weight-semiBold: 600;
+  --md3-font-weight-bold: 700;
+
+  --md3-line-height-tight: 1.2;
+  --md3-line-height-normal: 1.5;
+  --md3-line-height-relaxed: 1.75;
+
+  /* Spacing - Balanced */
+  --md3-spacing-0: 0px;
+  --md3-spacing-1: 4px;
+  --md3-spacing-2: 8px;
+  --md3-spacing-3: 12px;
+  --md3-spacing-4: 16px;
+  --md3-spacing-5: 20px;
+  --md3-spacing-6: 24px;
+  --md3-spacing-8: 32px;
+  --md3-spacing-10: 40px;
+  --md3-spacing-12: 48px;
+  --md3-spacing-16: 64px;
+  --md3-spacing-20: 80px;
+  --md3-spacing-24: 96px;
+
+  /* Border radius - Rounded */
+  --md3-border-radius-none: 0px;
+  --md3-border-radius-xs: 6px;
+  --md3-border-radius-sm: 10px;
+  --md3-border-radius-md: 16px;
+  --md3-border-radius-lg: 20px;
+  --md3-border-radius-xl: 24px;
+  --md3-border-radius-2xl: 32px;
+  --md3-border-radius-full: 9999px;
+
+  /* Animation */
+  --md3-animation-fast: 150ms;
+  --md3-animation-normal: 250ms;
+  --md3-animation-slow: 350ms;
+  --md3-animation-slower: 500ms;
+
+  --md3-easing-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --md3-easing-easeIn: cubic-bezier(0.4, 0, 1, 1);
+  --md3-easing-easeOut: cubic-bezier(0, 0, 0.2, 1);
+  --md3-easing-easeInOut: cubic-bezier(0.4, 0, 0.2, 1);
+}

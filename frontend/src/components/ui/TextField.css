@@ -1,0 +1,110 @@
+@import '../../design/tokens.css';
+
+.md3-text-field {
+  display: inline-flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.md3-text-field--full-width {
+  width: 100%;
+}
+
+.md3-text-field__container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  background: #ffffff;
+  border-radius: var(--md3-border-radius-lg);
+  padding: 0 var(--md3-spacing-4);
+  border: 1px solid #e0e0e0;
+  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
+}
+
+.md3-text-field__container--focused {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #e0e0e0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  position: relative;
+}
+
+.md3-text-field__container--error {
+  background: #ffffff;
+  border-color: var(--md3-color-error-500);
+}
+
+.md3-text-field__container--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.md3-text-field__input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--md3-font-family-primary);
+  font-size: var(--md3-font-size-body-large);
+  color: var(--md3-color-text-primary);
+  outline: none;
+  padding: 0;
+  margin-top: var(--md3-spacing-4);
+}
+
+.md3-text-field__input::placeholder {
+  color: var(--md3-color-text-hint);
+  opacity: 0.6;
+}
+
+.md3-text-field__input:disabled {
+  cursor: not-allowed;
+}
+
+.md3-text-field__label {
+  position: absolute;
+  left: var(--md3-spacing-4);
+  color: var(--md3-color-text-secondary);
+  font-size: var(--md3-font-size-body-large);
+  font-family: var(--md3-font-family-primary);
+  pointer-events: none;
+  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
+  transform-origin: left top;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.md3-text-field__label--floating {
+  top: var(--md3-spacing-2);
+  transform: translateY(0) scale(0.85);
+  color: var(--md3-color-primary-600);
+  font-weight: var(--md3-font-weight-medium);
+}
+
+.md3-text-field__container--error .md3-text-field__label--floating {
+  color: var(--md3-color-error-500);
+}
+
+.md3-text-field__required {
+  color: var(--md3-color-error-500);
+}
+
+.md3-text-field__underline {
+  display: none;
+}
+
+.md3-text-field__underline--active {
+  display: none;
+}
+
+.md3-text-field__helper {
+  margin-top: var(--md3-spacing-2);
+  margin-left: var(--md3-spacing-4);
+  font-size: var(--md3-font-size-body-small);
+  color: var(--md3-color-text-secondary);
+}
+
+.md3-text-field__helper--error {
+  color: var(--md3-color-error-500);
+}

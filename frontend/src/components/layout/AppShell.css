@@ -1,0 +1,22 @@
+@import '../../design/tokens.css';
+
+.md3-app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.md3-app-shell__main {
+  flex: 1;
+  padding-top: 64px;
+  min-height: calc(100vh - 64px);
+}
+
+@media (max-width: 960px) {
+  .md3-app-shell__main {
+    padding-top: 56px;
+    padding-bottom: 80px;
+    min-height: calc(100vh - 56px - 80px);
+  }
+}

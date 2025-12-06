@@ -270,6 +270,23 @@ def connect(request):
     raise Http404("Page not found")
 
 
+def serve_react_app(request):
+    """Serve React app index.html for all non-API routes"""
+    react_build_dir = Path(settings.BASE_DIR).parent / 'frontend' / 'dist'
+    index_file = react_build_dir / 'index.html'
+    
+    if index_file.exists():
+        return HttpResponse(index_file.read_text(encoding='utf-8'), content_type='text/html')
+    
+    # Fallback to old static HTML if React build doesn't exist
+    static_dir = Path(settings.BASE_DIR) / 'static'
+    fallback_file = static_dir / 'index.html'
+    if fallback_file.exists():
+        return HttpResponse(fallback_file.read_text(encoding='utf-8'), content_type='text/html')
+    
+    raise Http404("React app not found. Please build the frontend first.")
+
+
 # API views
 @csrf_exempt
 def data_endpoint(request):
@@ -1051,3 +1068,255 @@ def connect_upload(request):
         'message': f'Firmware byl na desku "{board_name}" úspěšně nahrán.',
         'log_excerpt': log_excerpt
     }, status=200)
+
+
+# Admin API endpoints
+ADMIN_USERNAME = 'gymzr_admin'
+ADMIN_PASSWORD = '8266brainguard'
+
+
+def check_admin_auth(request):
+    """Check if request has valid admin authentication"""
+    # Check session-based authentication
+    if request.session.get('admin_authenticated', False):
+        return True
+    # Also check header for API calls (for development/testing)
+    username = request.headers.get('X-Admin-User')
+    return username == ADMIN_USERNAME
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_login(request):
+    """Admin login endpoint"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            request.session['admin_authenticated'] = True
+            request.session['admin_username'] = username
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Přihlášení úspěšné',
+                'username': username
+            }, status=200)
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Neplatné přihlašovací údaje'
+            }, status=401)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neplatný formát požadavku'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba při přihlašování: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def admin_devices(request):
+    """Get list of all devices with summary statistics"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+
+    try:
+        collection = get_mongo_collection()
+    except RuntimeError as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Nepodařilo se připojit k databázi: {str(e)}'
+        }, status=503)
+
+    try:
+        # Get all unique device IDs
+        device_ids = collection.distinct('device_id')
+        
+        devices = []
+        now = datetime.now(UTC)
+        cutoff_time = now - timedelta(hours=24)  # Consider device online if seen in last 24h
+
+        for device_id in device_ids:
+            # Get total count for this device
+            total_count = collection.count_documents({'device_id': device_id})
+            
+            # Get latest reading
+            latest_doc = collection.find_one(
+                {'device_id': device_id},
+                sort=[('timestamp', -1)]
+            )
+            
+            # Determine status
+            status = 'offline'
+            last_seen = None
+            current_readings = None
+            
+            if latest_doc:
+                last_seen_dt = latest_doc.get('timestamp')
+                if last_seen_dt:
+                    if isinstance(last_seen_dt, datetime):
+                        last_seen = to_readable_timestamp(last_seen_dt)
+                        if last_seen_dt >= cutoff_time:
+                            status = 'online'
+                    else:
+                        last_seen = str(last_seen_dt)
+                
+                current_readings = {
+                    'temperature': latest_doc.get('temperature'),
+                    'humidity': latest_doc.get('humidity'),
+                    'co2': latest_doc.get('co2')
+                }
+
+            devices.append({
+                'device_id': device_id,
+                'status': status,
+                'total_data_points': total_count,
+                'last_seen': last_seen,
+                'current_readings': current_readings
+            })
+
+        # Sort by device_id
+        devices.sort(key=lambda x: x['device_id'])
+
+        return JsonResponse({
+            'status': 'success',
+            'devices': devices
+        }, status=200)
+
+    except PyMongoError as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Databázová chyba: {exc}'
+        }, status=500)
+    except Exception as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(exc)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def admin_device_stats(request, device_id):
+    """Get detailed statistics for a specific device"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+
+    try:
+        collection = get_mongo_collection()
+    except RuntimeError as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Nepodařilo se připojit k databázi: {str(e)}'
+        }, status=503)
+
+    try:
+        # Check if device exists
+        device_count = collection.count_documents({'device_id': device_id})
+        if device_count == 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Zařízení "{device_id}" nebylo nalezeno'
+            }, status=404)
+
+        # Get all data for this device
+        mongo_filter = {'device_id': device_id}
+        
+        # Aggregate statistics
+        pipeline = [
+            {'$match': mongo_filter},
+            {
+                '$group': {
+                    '_id': None,
+                    'total_data_points': {'$sum': 1},
+                    'temp_min': {'$min': '$temperature'},
+                    'temp_max': {'$max': '$temperature'},
+                    'temp_avg': {'$avg': '$temperature'},
+                    'humidity_min': {'$min': '$humidity'},
+                    'humidity_max': {'$max': '$humidity'},
+                    'humidity_avg': {'$avg': '$humidity'},
+                    'co2_min': {'$min': '$co2'},
+                    'co2_max': {'$max': '$co2'},
+                    'co2_avg': {'$avg': '$co2'},
+                    'first_seen': {'$min': '$timestamp'},
+                    'last_seen': {'$max': '$timestamp'},
+                }
+            }
+        ]
+
+        agg_result = list(collection.aggregate(pipeline))
+        
+        if not agg_result:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Nepodařilo se získat statistiky zařízení'
+            }, status=500)
+
+        stats_doc = agg_result[0]
+        
+        # Get latest reading for current values
+        latest_doc = collection.find_one(
+            mongo_filter,
+            sort=[('timestamp', -1)]
+        )
+
+        # Determine status
+        status = 'offline'
+        if latest_doc:
+            latest_ts = latest_doc.get('timestamp')
+            if latest_ts and isinstance(latest_ts, datetime):
+                cutoff_time = datetime.now(UTC) - timedelta(hours=24)
+                if latest_ts >= cutoff_time:
+                    status = 'online'
+
+        stats = {
+            'device_id': device_id,
+            'status': status,
+            'total_data_points': stats_doc.get('total_data_points', 0),
+            'first_seen': to_readable_timestamp(stats_doc.get('first_seen')),
+            'last_seen': to_readable_timestamp(stats_doc.get('last_seen')),
+            'temperature': {
+                'current': round_or_none(latest_doc.get('temperature') if latest_doc else None),
+                'min': round_or_none(stats_doc.get('temp_min')),
+                'max': round_or_none(stats_doc.get('temp_max')),
+                'avg': round_or_none(stats_doc.get('temp_avg'))
+            },
+            'humidity': {
+                'current': round_or_none(latest_doc.get('humidity') if latest_doc else None),
+                'min': round_or_none(stats_doc.get('humidity_min')),
+                'max': round_or_none(stats_doc.get('humidity_max')),
+                'avg': round_or_none(stats_doc.get('humidity_avg'))
+            },
+            'co2': {
+                'current': latest_doc.get('co2') if latest_doc else None,
+                'min': stats_doc.get('co2_min'),
+                'max': stats_doc.get('co2_max'),
+                'avg': round_or_none(stats_doc.get('co2_avg'))
+            }
+        }
+
+        return JsonResponse({
+            'status': 'success',
+            'stats': stats
+        }, status=200)
+
+    except PyMongoError as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Databázová chyba: {exc}'
+        }, status=500)
+    except Exception as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(exc)}'
+        }, status=500)

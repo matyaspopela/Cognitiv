@@ -1,0 +1,70 @@
+@import '../../design/tokens.css';
+
+.md3-card {
+  background: var(--md3-color-surface-default);
+  backdrop-filter: var(--md3-glass-medium);
+  -webkit-backdrop-filter: var(--md3-glass-medium);
+  border-radius: var(--md3-border-radius-lg);
+  padding: var(--md3-spacing-6);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
+}
+
+.md3-card--elevated {
+  box-shadow: var(--md3-elevation-1);
+}
+
+.md3-card--elevation-0 {
+  box-shadow: none;
+}
+
+.md3-card--elevation-1 {
+  box-shadow: var(--md3-elevation-1);
+}
+
+.md3-card--elevation-2 {
+  box-shadow: var(--md3-elevation-2);
+}
+
+.md3-card--elevation-3 {
+  box-shadow: var(--md3-elevation-3);
+}
+
+.md3-card--elevation-4 {
+  box-shadow: var(--md3-elevation-4);
+}
+
+.md3-card--elevation-5 {
+  box-shadow: var(--md3-elevation-5);
+}
+
+.md3-card--filled {
+  background: var(--md3-color-surface-variant);
+  backdrop-filter: var(--md3-glass-light);
+  -webkit-backdrop-filter: var(--md3-glass-light);
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.md3-card--outlined {
+  background: var(--md3-color-surface-default);
+  backdrop-filter: var(--md3-glass-medium);
+  -webkit-backdrop-filter: var(--md3-glass-medium);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+
+.md3-card--clickable {
+  cursor: pointer;
+}
+
+.md3-card--clickable:hover {
+  box-shadow: var(--md3-elevation-3);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.md3-card--clickable:active {
+  box-shadow: var(--md3-elevation-1);
+  transform: translateY(0);
+}

@@ -13,5 +13,9 @@ urlpatterns = [
     path('history/summary', views.history_summary, name='history_summary'),
     path('history/export', views.history_export, name='history_export'),
     path('connect/upload', views.connect_upload, name='connect_upload'),
+    # Admin API endpoints
+    path('admin/login', views.admin_login, name='admin_login'),
+    path('admin/devices', views.admin_devices, name='admin_devices'),
+    path('admin/devices/<str:device_id>/stats', views.admin_device_stats, name='admin_device_stats'),
 ]
 
