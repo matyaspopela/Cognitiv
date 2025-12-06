@@ -19,6 +19,7 @@ import Chip from '../components/ui/Chip'
 import Badge from '../components/ui/Badge'
 import Snackbar from '../components/ui/Snackbar'
 import ProgressBar from '../components/ui/ProgressBar'
+import AIAssistant from '../components/ai/AIAssistant'
 import './Dashboard.css'
 
 ChartJS.register(
@@ -593,6 +594,8 @@ const Dashboard = () => {
           </div>
         </footer>
       </div>
+
+      <AIAssistant />
 
       <Snackbar
         message={error}

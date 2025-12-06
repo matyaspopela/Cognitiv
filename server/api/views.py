@@ -1475,3 +1475,49 @@ def admin_device_stats(request, device_id):
             'status': 'error',
             'message': f'Chyba: {str(exc)}'
         }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ai_chat(request):
+    """AI assistant chat endpoint using Gemini API"""
+    try:
+        data = json.loads(request.body) if request.body else {}
+        user_query = data.get('message', '').strip()
+        device_id = data.get('device_id', None)
+        
+        if not user_query:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Zpráva je povinná'
+            }, status=400)
+        
+        # Import here to avoid circular imports
+        from .ai_service import process_ai_query
+        
+        result = process_ai_query(user_query, device_id)
+        
+        if result['status'] == 'error':
+            return JsonResponse({
+                'status': 'error',
+                'message': result.get('response', 'An error occurred'),
+                'error': result.get('error')
+            }, status=500)
+        
+        return JsonResponse({
+            'status': 'success',
+            'response': result['response'],
+            'dataUsed': result.get('dataUsed', {})
+        }, status=200)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neplatný JSON v těle požadavku'
+        }, status=400)
+    except Exception as e:
+        print(f"Error in ai_chat endpoint: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Došlo k chybě: {str(e)}'
+        }, status=500)

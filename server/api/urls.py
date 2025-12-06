@@ -17,6 +17,8 @@ urlpatterns = [
     path('admin/login', views.admin_login, name='admin_login'),
     path('admin/devices', views.admin_devices, name='admin_devices'),
     path('admin/devices/<str:device_id>/stats', views.admin_device_stats, name='admin_device_stats'),
+    # AI Assistant endpoint
+    path('ai/chat', views.ai_chat, name='ai_chat'),
     # Debug endpoint (remove in production if needed)
     path('debug/build-info', views.debug_build_info, name='debug_build_info'),
 ]

@@ -109,4 +109,14 @@ export const adminAPI = {
   },
 }
 
+// AI Assistant API
+export const aiAPI = {
+  chat: async (message, deviceId = null) => {
+    return apiClient.post('/ai/chat', {
+      message,
+      device_id: deviceId,
+    })
+  },
+}
+
 export default apiClient
