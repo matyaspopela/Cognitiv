@@ -87,11 +87,31 @@ export const historyAPI = {
 
 // Connect API
 export const connectAPI = {
-  uploadFirmware: async (boardName, ssid, password) => {
+  uploadFirmware: async (
+    boardName, 
+    ssid, 
+    password, 
+    enableBundling = null, 
+    enableDeepSleep = null, 
+    deepSleepDurationSeconds = null,
+    enableScheduledShutdown = null,
+    shutdownHour = null,
+    shutdownMinute = null,
+    wakeHour = null,
+    wakeMinute = null
+  ) => {
     return apiClient.post('/connect/upload', {
       boardName,
       ssid,
       password,
+      enableBundling,
+      enableDeepSleep,
+      deepSleepDurationSeconds,
+      enableScheduledShutdown,
+      shutdownHour,
+      shutdownMinute,
+      wakeHour,
+      wakeMinute,
     })
   },
 }

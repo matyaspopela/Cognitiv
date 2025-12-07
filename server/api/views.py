@@ -1105,6 +1105,14 @@ def connect_upload(request):
     board_name = (payload.get('boardName') or '').strip()
     ssid = (payload.get('ssid') or '').strip()
     password = payload.get('password', '')
+    enable_bundling = payload.get('enableBundling')
+    enable_deep_sleep = payload.get('enableDeepSleep')
+    deep_sleep_duration_seconds = payload.get('deepSleepDurationSeconds')
+    enable_scheduled_shutdown = payload.get('enableScheduledShutdown')
+    shutdown_hour = payload.get('shutdownHour')
+    shutdown_minute = payload.get('shutdownMinute')
+    wake_hour = payload.get('wakeHour')
+    wake_minute = payload.get('wakeMinute')
 
     if not board_name:
         return JsonResponse({
@@ -1127,8 +1135,123 @@ def connect_upload(request):
             'message': 'Heslo musí být textový řetězec.'
         }, status=400)
 
+    # Convert boolean values (handle None, bool, string "true"/"false")
+    if enable_bundling is not None:
+        if isinstance(enable_bundling, str):
+            enable_bundling = enable_bundling.lower() in ('true', '1', 'yes')
+        enable_bundling = bool(enable_bundling)
+    else:
+        enable_bundling = None
+
+    if enable_deep_sleep is not None:
+        if isinstance(enable_deep_sleep, str):
+            enable_deep_sleep = enable_deep_sleep.lower() in ('true', '1', 'yes')
+        enable_deep_sleep = bool(enable_deep_sleep)
+    else:
+        enable_deep_sleep = None
+
+    # Parse deep sleep duration (only if deep sleep is enabled)
+    deep_sleep_duration = None
+    if enable_deep_sleep and deep_sleep_duration_seconds is not None:
+        try:
+            deep_sleep_duration = int(deep_sleep_duration_seconds)
+            if deep_sleep_duration < 10 or deep_sleep_duration > 4260:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Doba hlubokého spánku musí být mezi 10 sekundami a 4260 sekundami (71 minut).'
+                }, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Neplatná doba hlubokého spánku. Musí být číslo mezi 10 a 4260 sekundami.'
+            }, status=400)
+
+    # Parse scheduled shutdown settings
+    scheduled_shutdown = None
+    shutdown_h = None
+    shutdown_m = None
+    wake_h = None
+    wake_m = None
+    
+    if enable_scheduled_shutdown is not None:
+        if isinstance(enable_scheduled_shutdown, str):
+            scheduled_shutdown = enable_scheduled_shutdown.lower() in ('true', '1', 'yes')
+        else:
+            scheduled_shutdown = bool(enable_scheduled_shutdown)
+        
+        if scheduled_shutdown:
+            # Validate and parse shutdown time
+            if shutdown_hour is not None:
+                try:
+                    shutdown_h = int(shutdown_hour)
+                    if shutdown_h < 0 or shutdown_h > 23:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Hodina vypnutí musí být mezi 0 a 23.'
+                        }, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Neplatná hodina vypnutí. Musí být číslo mezi 0 a 23.'
+                    }, status=400)
+            
+            if shutdown_minute is not None:
+                try:
+                    shutdown_m = int(shutdown_minute)
+                    if shutdown_m < 0 or shutdown_m > 59:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Minuta vypnutí musí být mezi 0 a 59.'
+                        }, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Neplatná minuta vypnutí. Musí být číslo mezi 0 a 59.'
+                    }, status=400)
+            
+            # Validate and parse wake time
+            if wake_hour is not None:
+                try:
+                    wake_h = int(wake_hour)
+                    if wake_h < 0 or wake_h > 23:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Hodina probuzení musí být mezi 0 a 23.'
+                        }, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Neplatná hodina probuzení. Musí být číslo mezi 0 a 23.'
+                    }, status=400)
+            
+            if wake_minute is not None:
+                try:
+                    wake_m = int(wake_minute)
+                    if wake_m < 0 or wake_m > 59:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Minuta probuzení musí být mezi 0 a 59.'
+                        }, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Neplatná minuta probuzení. Musí být číslo mezi 0 a 59.'
+                    }, status=400)
+
     try:
-        apply_wifi_credentials(ssid, password, board_name)
+        apply_wifi_credentials(
+            ssid, 
+            password, 
+            board_name, 
+            enable_bundling, 
+            enable_deep_sleep, 
+            deep_sleep_duration,
+            scheduled_shutdown,
+            shutdown_h,
+            shutdown_m,
+            wake_h,
+            wake_m
+        )
     except ConfigWriteError as exc:
         print(f"✗ Nepodařilo se upravit config.h: {exc}")
         return JsonResponse({
