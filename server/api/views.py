@@ -546,8 +546,8 @@ def history_series(request):
             return JsonResponse({'error': 'Počáteční datum nesmí být pozdější než koncové.'}, status=400)
 
         bucket = (request.GET.get('bucket') or 'day').lower()
-        if bucket not in ('hour', 'day', 'raw', 'none'):
-            return JsonResponse({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour', 'day', 'raw' nebo 'none'."}, status=400)
+        if bucket not in ('hour', 'day', 'raw', 'none', '10min'):
+            return JsonResponse({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour', 'day', 'raw', 'none' nebo '10min'."}, status=400)
 
         device_id = request.GET.get('device_id')
         mongo_filter = build_history_filter(start_dt, end_dt, device_id)
@@ -583,43 +583,114 @@ def history_series(request):
                 series.append(entry)
         else:
             # Aggregated data
-            bucket_unit = 'hour' if bucket == 'hour' else 'day'
+            if bucket == '10min':
+                # 10-minute buckets: round timestamp down to nearest 10-minute boundary
+                # Calculate milliseconds to subtract: (minute % 10) * 60 + seconds
+                # Then subtract from timestamp in milliseconds
+                pipeline = [
+                    {'$match': mongo_filter},
+                    {
+                        '$addFields': {
+                            'minute_remainder_ms': {
+                                '$multiply': [
+                                    {
+                                        '$mod': [
+                                            {'$minute': '$timestamp'},
+                                            10
+                                        ]
+                                    },
+                                    60000  # minutes to milliseconds
+                                ]
+                            },
+                            'seconds_ms': {
+                                '$multiply': [
+                                    {'$second': '$timestamp'},
+                                    1000  # seconds to milliseconds
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        '$addFields': {
+                            'total_ms_to_subtract': {
+                                '$add': ['$minute_remainder_ms', '$seconds_ms']
+                            }
+                        }
+                    },
+                    {
+                        '$addFields': {
+                            'bucket': {
+                                '$subtract': [
+                                    '$timestamp',
+                                    '$total_ms_to_subtract'
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        '$group': {
+                            '_id': {
+                                'bucket': '$bucket',
+                                **({} if device_id else {'device_id': '$device_id'})
+                            },
+                            'count': {'$sum': 1},
+                            'temperature_avg': {'$avg': '$temperature'},
+                            'temperature_min': {'$min': '$temperature'},
+                            'temperature_max': {'$max': '$temperature'},
+                            'humidity_avg': {'$avg': '$humidity'},
+                            'humidity_min': {'$min': '$humidity'},
+                            'humidity_max': {'$max': '$humidity'},
+                            'co2_avg': {'$avg': '$co2'},
+                            'co2_min': {'$min': '$co2'},
+                            'co2_max': {'$max': '$co2'},
+                        }
+                    },
+                    {
+                        '$sort': {
+                            '_id.bucket': 1,
+                            '_id.device_id': 1 if not device_id else 0
+                        }
+                    }
+                ]
+                bucket_unit = '10min'
+            else:
+                bucket_unit = 'hour' if bucket == 'hour' else 'day'
 
-            group_id = {
-                'bucket': {
-                    '$dateTrunc': {
-                        'date': '$timestamp',
-                        'unit': bucket_unit,
+                group_id = {
+                    'bucket': {
+                        '$dateTrunc': {
+                            'date': '$timestamp',
+                            'unit': bucket_unit,
+                        }
                     }
                 }
-            }
-            if not device_id:
-                group_id['device_id'] = '$device_id'
+                if not device_id:
+                    group_id['device_id'] = '$device_id'
 
-            pipeline = [
-                {'$match': mongo_filter},
-                {
-                    '$group': {
-                        '_id': group_id,
-                        'count': {'$sum': 1},
-                        'temperature_avg': {'$avg': '$temperature'},
-                        'temperature_min': {'$min': '$temperature'},
-                        'temperature_max': {'$max': '$temperature'},
-                        'humidity_avg': {'$avg': '$humidity'},
-                        'humidity_min': {'$min': '$humidity'},
-                        'humidity_max': {'$max': '$humidity'},
-                        'co2_avg': {'$avg': '$co2'},
-                        'co2_min': {'$min': '$co2'},
-                        'co2_max': {'$max': '$co2'},
+                pipeline = [
+                    {'$match': mongo_filter},
+                    {
+                        '$group': {
+                            '_id': group_id,
+                            'count': {'$sum': 1},
+                            'temperature_avg': {'$avg': '$temperature'},
+                            'temperature_min': {'$min': '$temperature'},
+                            'temperature_max': {'$max': '$temperature'},
+                            'humidity_avg': {'$avg': '$humidity'},
+                            'humidity_min': {'$min': '$humidity'},
+                            'humidity_max': {'$max': '$humidity'},
+                            'co2_avg': {'$avg': '$co2'},
+                            'co2_min': {'$min': '$co2'},
+                            'co2_max': {'$max': '$co2'},
+                        }
+                    },
+                    {
+                        '$sort': {
+                            '_id.bucket': 1,
+                            '_id.device_id': 1 if not device_id else 0
+                        }
                     }
-                },
-                {
-                    '$sort': {
-                        '_id.bucket': 1,
-                        '_id.device_id': 1 if not device_id else 0
-                    }
-                }
-            ]
+                ]
 
             cursor = get_mongo_collection().aggregate(pipeline, allowDiskUse=True)
             series = []
@@ -1106,6 +1177,7 @@ def connect_upload(request):
     ssid = (payload.get('ssid') or '').strip()
     password = payload.get('password', '')
     enable_bundling = payload.get('enableBundling')
+    enable_wifi_on_demand = payload.get('enableWifiOnDemand')
     enable_deep_sleep = payload.get('enableDeepSleep')
     deep_sleep_duration_seconds = payload.get('deepSleepDurationSeconds')
     enable_scheduled_shutdown = payload.get('enableScheduledShutdown')
@@ -1142,6 +1214,21 @@ def connect_upload(request):
         enable_bundling = bool(enable_bundling)
     else:
         enable_bundling = None
+
+    # Parse WiFi-on-demand setting
+    if enable_wifi_on_demand is not None:
+        if isinstance(enable_wifi_on_demand, str):
+            enable_wifi_on_demand = enable_wifi_on_demand.lower() in ('true', '1', 'yes')
+        enable_wifi_on_demand = bool(enable_wifi_on_demand)
+        
+        # Auto-enable bundling and deep sleep if WiFi-on-demand is enabled
+        if enable_wifi_on_demand:
+            enable_bundling = True
+            enable_deep_sleep = True
+            if deep_sleep_duration_seconds is None:
+                deep_sleep_duration_seconds = 10  # Default 10 seconds for WiFi-on-demand
+    else:
+        enable_wifi_on_demand = None
 
     if enable_deep_sleep is not None:
         if isinstance(enable_deep_sleep, str):
@@ -1244,6 +1331,7 @@ def connect_upload(request):
             password, 
             board_name, 
             enable_bundling, 
+            enable_wifi_on_demand,
             enable_deep_sleep, 
             deep_sleep_duration,
             scheduled_shutdown,

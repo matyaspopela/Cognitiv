@@ -61,6 +61,16 @@
 //  Only used when ENABLE_DEEP_SLEEP is 1
 #define DEEP_SLEEP_DURATION_US 60000000
 
+// WiFi-on-demand configuration
+// ENABLE_WIFI_ON_DEMAND: Set to 1 to enable WiFi-on-demand mode, 0 to disable (normal mode)
+//  When enabled: WiFi connects only when buffer is ready for transmission, then disconnects immediately after
+//  When disabled: WiFi stays connected (normal mode)
+//  Note: Requires ENABLE_BUNDLING to be enabled (enforced at compile time)
+//  Note: Automatically enables ENABLE_DEEP_SLEEP
+//  Note: DEEP_SLEEP_DURATION_US should be 10000000 (10 seconds) for optimal power savings
+//  Power consumption: ~99% reduction vs continuous WiFi connection
+#define ENABLE_WIFI_ON_DEMAND 0
+
 // Scheduled shutdown configuration
 // ENABLE_SCHEDULED_SHUTDOWN: Set to 1 to enable scheduled shutdown, 0 to disable
 //  When enabled: Device stops measuring at SHUTDOWN_HOUR:SHUTDOWN_MINUTE and sleeps until next day

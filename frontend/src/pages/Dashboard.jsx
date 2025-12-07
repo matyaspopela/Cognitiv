@@ -12,7 +12,7 @@ import {
   Filler
 } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
-import { dataAPI, adminAPI } from '../services/api'
+import { dataAPI, adminAPI, historyAPI } from '../services/api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Chip from '../components/ui/Chip'
@@ -20,6 +20,7 @@ import Badge from '../components/ui/Badge'
 import Snackbar from '../components/ui/Snackbar'
 import ProgressBar from '../components/ui/ProgressBar'
 import AIAssistant from '../components/ai/AIAssistant'
+import SettingsModal from '../components/ui/SettingsModal'
 import './Dashboard.css'
 
 ChartJS.register(
@@ -37,6 +38,7 @@ ChartJS.register(
 const Dashboard = () => {
   const [timeRange, setTimeRange] = useState('24')
   const [selectedDevice, setSelectedDevice] = useState(null)
+  const [bucket, setBucket] = useState('raw')
   const [devices, setDevices] = useState([])
   const [data, setData] = useState([])
   const [stats, setStats] = useState({})
@@ -58,7 +60,7 @@ const Dashboard = () => {
         clearInterval(autoRefreshIntervalRef.current)
       }
     }
-  }, [timeRange, selectedDevice])
+  }, [timeRange, selectedDevice, bucket])
 
   const fetchDevices = async () => {
     try {
@@ -75,16 +77,75 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       const hours = parseInt(timeRange)
-      const [dataResponse, statsResponse] = await Promise.all([
-        dataAPI.getData(hours, 1000, selectedDevice),
-        dataAPI.getStats(hours, selectedDevice)
-      ])
+      const now = new Date()
+      const start = new Date(now.getTime() - hours * 60 * 60 * 1000)
+      const startIso = start.toISOString()
+      const endIso = now.toISOString()
 
-      const dataJson = dataResponse.data
-      const statsJson = statsResponse.data
+      let dataJson, statsJson
 
-      if (dataJson.status !== 'success' || statsJson.status !== 'success') {
-        throw new Error('Failed to load data')
+      // Use history API if granularity is set (not raw)
+      if (bucket !== 'raw' && bucket !== 'none') {
+        const [seriesResponse, summaryResponse] = await Promise.all([
+          historyAPI.getSeries(startIso, endIso, bucket, selectedDevice),
+          historyAPI.getSummary(startIso, endIso, selectedDevice)
+        ])
+
+        const seriesData = seriesResponse.data || seriesResponse
+        const summaryData = summaryResponse.data || summaryResponse
+
+        if (seriesData.status !== 'success' || summaryData.status !== 'success') {
+          throw new Error('Failed to load data')
+        }
+
+        // Convert series data to format expected by Dashboard charts
+        const convertedData = (seriesData.series || []).map(item => ({
+          timestamp: item.bucket_start,
+          timestamp_iso: item.bucket_start ? new Date(item.bucket_start).toISOString() : null,
+          device_id: item.device_id,
+          temperature: item.temperature?.avg ?? null,
+          temp_avg: item.temperature?.avg ?? null,
+          humidity: item.humidity?.avg ?? null,
+          humidity_avg: item.humidity?.avg ?? null,
+          co2: item.co2?.avg ?? null
+        }))
+
+        dataJson = { status: 'success', data: convertedData }
+        statsJson = { status: 'success', stats: {
+          temperature: {
+            current: summaryData.summary?.temperature?.avg ?? null,
+            min: summaryData.summary?.temperature?.min ?? null,
+            max: summaryData.summary?.temperature?.max ?? null,
+            avg: summaryData.summary?.temperature?.avg ?? null
+          },
+          humidity: {
+            current: summaryData.summary?.humidity?.avg ?? null,
+            min: summaryData.summary?.humidity?.min ?? null,
+            max: summaryData.summary?.humidity?.max ?? null,
+            avg: summaryData.summary?.humidity?.avg ?? null
+          },
+          co2: {
+            current: summaryData.summary?.co2?.avg ?? null,
+            min: summaryData.summary?.co2?.min ?? null,
+            max: summaryData.summary?.co2?.max ?? null,
+            avg: summaryData.summary?.co2?.avg ?? null
+          },
+          data_points: summaryData.summary?.samples ?? 0,
+          co2_quality: summaryData.summary?.co2_quality ?? {}
+        }}
+      } else {
+        // Use original data API for raw data
+        const [dataResponse, statsResponse] = await Promise.all([
+          dataAPI.getData(hours, 1000, selectedDevice),
+          dataAPI.getStats(hours, selectedDevice)
+        ])
+
+        dataJson = dataResponse.data
+        statsJson = statsResponse.data
+
+        if (dataJson.status !== 'success' || statsJson.status !== 'success') {
+          throw new Error('Failed to load data')
+        }
       }
 
       setData(dataJson.data || [])
@@ -296,12 +357,25 @@ const Dashboard = () => {
   ]
 
   const [showSnackbar, setShowSnackbar] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
     if (error) {
       setShowSnackbar(true)
     }
   }, [error])
+
+  const handleSettingsApply = (newSettings) => {
+    if (newSettings.timeRange) {
+      setTimeRange(newSettings.timeRange)
+    }
+    if (newSettings.deviceId !== undefined) {
+      setSelectedDevice(newSettings.deviceId || null)
+    }
+    if (newSettings.bucket) {
+      setBucket(newSettings.bucket)
+    }
+  }
 
   return (
     <div className={`dashboard-page ${hasLoadedData ? 'loaded' : 'loading'}`}>
@@ -327,40 +401,13 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="dashboard-page__controls">
-              <div className="dashboard-page__filters">
-                <div className="dashboard-page__time-range">
-                  <span className="dashboard-page__control-label">Časové období:</span>
-                  <div className="dashboard-page__chips">
-                    {timeRangeOptions.map((option) => (
-                      <Chip
-                        key={option.value}
-                        variant="filter"
-                        selected={timeRange === option.value}
-                        onClick={() => setTimeRange(option.value)}
-                      >
-                        {option.label}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-                {devices.length > 0 && (
-                  <div className="dashboard-page__device-filter">
-                    <span className="dashboard-page__control-label">Zařízení:</span>
-                    <select
-                      className="dashboard-page__device-select"
-                      value={selectedDevice || ''}
-                      onChange={(e) => setSelectedDevice(e.target.value || null)}
-                    >
-                      <option value="">Všechna zařízení</option>
-                      {devices.map((device) => (
-                        <option key={device.device_id} value={device.device_id}>
-                          {device.device_id}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+              <Button
+                variant="outlined"
+                size="medium"
+                onClick={() => setIsSettingsOpen(true)}
+              >
+                ⚙️ Nastavení
+              </Button>
               <Button
                 variant="filled"
                 size="medium"
@@ -633,6 +680,19 @@ const Dashboard = () => {
       </div>
 
       <AIAssistant />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onApply={handleSettingsApply}
+        mode="dashboard"
+        initialSettings={{
+          timeRange,
+          deviceId: selectedDevice || '',
+          bucket: bucket
+        }}
+        devices={devices}
+      />
 
       <Snackbar
         message={error}

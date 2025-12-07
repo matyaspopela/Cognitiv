@@ -214,3 +214,5 @@
 - **Battery Life**: Extended from hours/days to weeks/months
 - **Solar Compatibility**: Makes solar-powered deployments viable
 
+
+

@@ -49,6 +49,25 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
+
+// WiFi-on-demand configuration validation
+#if ENABLE_WIFI_ON_DEMAND
+  #ifndef ENABLE_BUNDLING
+    #error "ENABLE_BUNDLING must be enabled when ENABLE_WIFI_ON_DEMAND is enabled"
+  #elif ENABLE_BUNDLING == 0
+    #error "ENABLE_BUNDLING must be enabled (set to 1) when ENABLE_WIFI_ON_DEMAND is enabled"
+  #endif
+  
+  #ifndef ENABLE_DEEP_SLEEP
+    #define ENABLE_DEEP_SLEEP 1  // Auto-enable deep sleep
+  #elif ENABLE_DEEP_SLEEP == 0
+    #define ENABLE_DEEP_SLEEP 1  // Force enable deep sleep
+  #endif
+  
+  #if DEEP_SLEEP_DURATION_US != 10000000
+    #warning "DEEP_SLEEP_DURATION_US should be 10000000 (10 seconds) for optimal WiFi-on-demand mode"
+  #endif
+#endif
 // ========================================
 
 // Hardware objects
@@ -142,16 +161,26 @@ void setup() {
     displayStatus("Sensor Error!", TFT_RED);
     #endif
     Serial.println("ERROR: Sensor initialization failed!");
-    // Continue anyway to attempt WiFi connection
+    // Continue anyway
   }
   
-  // Connect to WiFi
-  connectWiFi();
+  // Connect to WiFi (skip in WiFi-on-demand mode)
+  #if ENABLE_WIFI_ON_DEMAND
+    Serial.println("WiFi-on-demand mode: Skipping WiFi connection in setup");
+    Serial.println("WiFi will be connected only when buffer is ready for transmission");
+  #else
+    connectWiFi();
+  #endif
   
-  // Initialize time
-  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-  Serial.println("Waiting for NTP time sync...");
-  delay(2000);
+  // Initialize time (only if WiFi connected, or skip in WiFi-on-demand mode)
+  #if ENABLE_WIFI_ON_DEMAND
+    Serial.println("WiFi-on-demand mode: Skipping NTP sync in setup");
+    Serial.println("Time will be synced when WiFi connects for transmission");
+  #else
+    configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+    Serial.println("Waiting for NTP time sync...");
+    delay(2000);
+  #endif
   
   Serial.println("\nSetup complete!\n");
 }
@@ -184,15 +213,22 @@ void loop() {
   #endif
   
   // Check WiFi connection
-  if (WiFi.status() != WL_CONNECTED) {
-    wifiState = DISCONNECTED;
-    #ifdef HAS_DISPLAY
-    displayStatus("WiFi Lost!", TFT_RED);
-    #endif
-    connectWiFi();
-  } else {
-    wifiState = CONNECTED;
-  }
+  #if ENABLE_WIFI_ON_DEMAND
+    // WiFi-on-demand mode: Don't check WiFi connection here
+    // WiFi will be connected only when buffer is ready for transmission
+    wifiState = DISCONNECTED;  // Assume disconnected until we connect
+  #else
+    // Normal mode: Check WiFi connection
+    if (WiFi.status() != WL_CONNECTED) {
+      wifiState = DISCONNECTED;
+      #ifdef HAS_DISPLAY
+      displayStatus("WiFi Lost!", TFT_RED);
+      #endif
+      connectWiFi();
+    } else {
+      wifiState = CONNECTED;
+    }
+  #endif
   
   // Read sensors at specified interval
   if (sensorsInitialized && (millis() - lastReadingTime >= READING_INTERVAL)) {
@@ -208,13 +244,29 @@ void loop() {
       #endif
       
       // Send to server if WiFi connected
-      if (wifiState == CONNECTED) {
-        #if ENABLE_BUNDLING
-          // Bundling mode: Add to buffer and transmit in batches
-          addToBuffer(reading);
+      #if ENABLE_BUNDLING
+        // Bundling mode: Add to buffer and transmit in batches
+        addToBuffer(reading);
+        
+        // Check if bundle should be transmitted
+        if (shouldTransmitBundle()) {
+          #if ENABLE_WIFI_ON_DEMAND
+            // WiFi-on-demand: Connect WiFi only now
+            if (WiFi.status() != WL_CONNECTED) {
+              Serial.println("--- WiFi-On-Demand: Connecting WiFi ---");
+              connectWiFi();
+              if (WiFi.status() == WL_CONNECTED) {
+                wifiState = CONNECTED;
+                // Sync time now that WiFi is connected
+                configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+                Serial.println("Syncing time via NTP...");
+                delay(1000);  // Brief delay for NTP sync
+              }
+            }
+          #endif
           
-          // Check if bundle should be transmitted
-          if (shouldTransmitBundle()) {
+          // Transmit bundle (only if WiFi connected)
+          if (wifiState == CONNECTED || WiFi.status() == WL_CONNECTED) {
             if (sendDataToServer(readingBuffer, bufferCount)) {
               serverState = CONNECTED;
               Serial.println("✓ Bundle sent successfully");
@@ -222,9 +274,27 @@ void loop() {
               serverState = ERROR;
               Serial.println("✗ Failed to send bundle");
             }
+            
+            #if ENABLE_WIFI_ON_DEMAND
+              // WiFi-on-demand: Disconnect WiFi immediately after transmission
+              Serial.println("--- WiFi-On-Demand: Disconnecting WiFi ---");
+              WiFi.disconnect();
+              WiFi.mode(WIFI_OFF);
+              wifiState = DISCONNECTED;
+              Serial.println("WiFi disconnected");
+            #endif
+          } else {
+            Serial.println("✗ WiFi not connected, cannot send bundle");
+            serverState = ERROR;
           }
-        #else
-          // Immediate mode: Send each reading right away (normal HTTP request mode)
+        }
+      #else
+        // Immediate mode: Send each reading right away (normal HTTP request mode)
+        #if ENABLE_WIFI_ON_DEMAND
+          #error "ENABLE_BUNDLING must be enabled when ENABLE_WIFI_ON_DEMAND is enabled"
+        #endif
+        
+        if (wifiState == CONNECTED) {
           if (sendSingleReading(reading)) {
             serverState = CONNECTED;
             Serial.println("✓ Data sent successfully");
@@ -232,11 +302,16 @@ void loop() {
             serverState = ERROR;
             Serial.println("✗ Failed to send data");
           }
-        #endif
-      }
+        }
+      #endif
       
-      // Enter deep sleep after completing cycle (if enabled)
-      #if ENABLE_DEEP_SLEEP
+      // Enter deep sleep after completing cycle
+      #if ENABLE_WIFI_ON_DEMAND
+        // WiFi-on-demand: Always deep sleep (10 seconds)
+        Serial.println("\n--- WiFi-On-Demand: Entering Deep Sleep (10s) ---");
+        enterDeepSleep();
+      #elif ENABLE_DEEP_SLEEP
+        // Optional deep sleep (existing behavior)
         enterDeepSleep();
       #endif
     } else {
@@ -245,16 +320,29 @@ void loop() {
       displayStatus("Sensor Error!", TFT_RED);
       #endif
       
-      // Enter deep sleep even if reading invalid (if enabled)
+      // Enter deep sleep even if reading invalid
       // Prevents infinite loop on sensor errors
-      #if ENABLE_DEEP_SLEEP
+      #if ENABLE_WIFI_ON_DEMAND
+        // WiFi-on-demand: Always deep sleep (10 seconds)
+        Serial.println("\n--- WiFi-On-Demand: Entering Deep Sleep (10s) ---");
+        enterDeepSleep();
+      #elif ENABLE_DEEP_SLEEP
         enterDeepSleep();
       #endif
     }
   }
   
+  // WiFi-on-demand mode: Always enter deep sleep if no reading occurred
+  // This ensures we don't stay awake waiting for next reading interval
+  #if ENABLE_WIFI_ON_DEMAND
+    // If we haven't entered deep sleep yet (no reading cycle), enter it now
+    // This handles cases where sensors aren't initialized or reading interval hasn't passed
+    Serial.println("\n--- WiFi-On-Demand: Entering Deep Sleep (10s) ---");
+    enterDeepSleep();
+  #endif
+  
   // If deep sleep is disabled, continue normal loop
-  #if !ENABLE_DEEP_SLEEP
+  #if !ENABLE_DEEP_SLEEP && !ENABLE_WIFI_ON_DEMAND
     delay(100);
   #endif
 }

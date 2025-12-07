@@ -1,0 +1,304 @@
+import { useState, useEffect } from 'react'
+import Card from './Card'
+import Button from './Button'
+import Chip from './Chip'
+import TextField from './TextField'
+import './SettingsModal.css'
+
+const SettingsModal = ({ 
+  isOpen, 
+  onClose, 
+  onApply,
+  mode = 'dashboard', // 'dashboard' or 'history'
+  initialSettings = {},
+  devices = []
+}) => {
+  const [settings, setSettings] = useState({
+    // Dashboard settings
+    timeRange: '24',
+    bucket: 'raw',
+    
+    // History settings
+    start: null,
+    end: null,
+    selectedPreset: '30d',
+    deviceId: '',
+    
+    ...initialSettings
+  })
+
+  useEffect(() => {
+    if (isOpen) {
+      // Reset to initial settings when modal opens
+      const defaultBucket = mode === 'dashboard' ? 'raw' : 'day'
+      setSettings({
+        timeRange: '24',
+        start: null,
+        end: null,
+        bucket: defaultBucket,
+        selectedPreset: '30d',
+        deviceId: '',
+        ...initialSettings
+      })
+    }
+  }, [isOpen, initialSettings, mode])
+
+  const formatDateForInput = (date) => {
+    if (!date) return ''
+    if (typeof date === 'string') return date
+    const pad = (n) => String(n).padStart(2, '0')
+    const year = date.getFullYear()
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  const handleApply = () => {
+    if (onApply) {
+      onApply(settings)
+    }
+    onClose()
+  }
+
+  const handleCancel = () => {
+    // Reset to initial settings
+    setSettings({
+      timeRange: '24',
+      start: null,
+      end: null,
+      bucket: 'day',
+      selectedPreset: '30d',
+      deviceId: '',
+      ...initialSettings
+    })
+    onClose()
+  }
+
+  const applyPreset = (preset) => {
+    const now = new Date()
+    let start = null
+    let end = formatDateForInput(now)
+
+    switch (preset) {
+      case '24h':
+        start = formatDateForInput(new Date(now.getTime() - 24 * 60 * 60 * 1000))
+        break
+      case '7d':
+        start = formatDateForInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
+        break
+      case '30d':
+        start = formatDateForInput(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
+        break
+      case '90d':
+        start = formatDateForInput(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000))
+        break
+    }
+
+    setSettings(prev => ({ 
+      ...prev, 
+      start, 
+      end,
+      selectedPreset: preset 
+    }))
+  }
+
+  if (!isOpen) return null
+
+  const timeRangeOptions = [
+    { value: '1', label: '1h' },
+    { value: '6', label: '6h' },
+    { value: '24', label: '24h' },
+    { value: '168', label: '7d' },
+    { value: '720', label: '30d' },
+  ]
+
+  const presetOptions = [
+    { id: '24h', label: '24h' },
+    { id: '7d', label: '7d' },
+    { id: '30d', label: '30d' },
+    { id: '90d', label: '90d' },
+    { id: 'custom', label: 'Vlastní' },
+  ]
+
+  const bucketOptions = [
+    { value: 'raw', label: 'Bez granularity', desc: 'Všechna data bez agregace' },
+    { value: '10min', label: '10 minut', desc: 'Průměr za 10 minut' },
+    { value: 'hour', label: 'Hodinová', desc: 'Průměr za hodinu' },
+    { value: 'day', label: 'Denní', desc: 'Průměr za den' },
+  ]
+
+  return (
+    <div 
+      className="settings-modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleCancel()
+      }}
+    >
+      <Card className="settings-modal" elevation={5}>
+        <div className="settings-modal__header">
+          <h2 className="settings-modal__title">Nastavení</h2>
+          <Button
+            variant="text"
+            size="small"
+            onClick={handleCancel}
+            aria-label="Zavřít"
+          >
+            ✕
+          </Button>
+        </div>
+
+        <div className="settings-modal__content">
+          {mode === 'dashboard' && (
+            <>
+              <div className="settings-modal__section">
+                <h3 className="settings-modal__section-title">Časové období</h3>
+                <div className="settings-modal__chips">
+                  {timeRangeOptions.map((option) => (
+                    <Chip
+                      key={option.value}
+                      variant="filter"
+                      selected={settings.timeRange === option.value}
+                      onClick={() => setSettings(prev => ({ ...prev, timeRange: option.value }))}
+                    >
+                      {option.label}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+
+              <div className="settings-modal__section">
+                <h3 className="settings-modal__section-title">Granularita dat</h3>
+                <div className="settings-modal__buckets">
+                  {bucketOptions.map((bucket) => (
+                    <Card
+                      key={bucket.value}
+                      className={`settings-modal__bucket-card ${settings.bucket === bucket.value ? 'settings-modal__bucket-card--active' : ''}`}
+                      elevation={settings.bucket === bucket.value ? 2 : 1}
+                      onClick={() => setSettings(prev => ({ ...prev, bucket: bucket.value }))}
+                    >
+                      <div className="settings-modal__bucket-title">{bucket.label}</div>
+                      <div className="settings-modal__bucket-desc">{bucket.desc}</div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {mode === 'history' && (
+            <>
+              <div className="settings-modal__section">
+                <h3 className="settings-modal__section-title">Rychlý výběr období</h3>
+                <div className="settings-modal__chips">
+                  {presetOptions.map((preset) => (
+                    <Chip
+                      key={preset.id}
+                      variant="filter"
+                      selected={settings.selectedPreset === preset.id}
+                      onClick={() => {
+                        if (preset.id === 'custom') {
+                          setSettings(prev => ({ ...prev, selectedPreset: 'custom' }))
+                        } else {
+                          applyPreset(preset.id)
+                        }
+                      }}
+                    >
+                      {preset.label}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`settings-modal__section ${settings.selectedPreset === 'custom' ? 'settings-modal__section--active' : ''}`}>
+                <h3 className="settings-modal__section-title">Vlastní časové období</h3>
+                <div className="settings-modal__date-range">
+                  <TextField
+                    type="datetime-local"
+                    label="Od"
+                    value={settings.start || ''}
+                    onChange={(e) => {
+                      setSettings(prev => ({ 
+                        ...prev, 
+                        start: e.target.value,
+                        selectedPreset: 'custom'
+                      }))
+                    }}
+                    fullWidth
+                  />
+                  <TextField
+                    type="datetime-local"
+                    label="Do"
+                    value={settings.end || ''}
+                    onChange={(e) => {
+                      setSettings(prev => ({ 
+                        ...prev, 
+                        end: e.target.value,
+                        selectedPreset: 'custom'
+                      }))
+                    }}
+                    fullWidth
+                  />
+                </div>
+              </div>
+
+              <div className="settings-modal__section">
+                <h3 className="settings-modal__section-title">Granularita dat</h3>
+                <div className="settings-modal__buckets">
+                  {bucketOptions.map((bucket) => (
+                    <Card
+                      key={bucket.value}
+                      className={`settings-modal__bucket-card ${settings.bucket === bucket.value ? 'settings-modal__bucket-card--active' : ''}`}
+                      elevation={settings.bucket === bucket.value ? 2 : 1}
+                      onClick={() => setSettings(prev => ({ ...prev, bucket: bucket.value }))}
+                    >
+                      <div className="settings-modal__bucket-title">{bucket.label}</div>
+                      <div className="settings-modal__bucket-desc">{bucket.desc}</div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="settings-modal__section">
+            <h3 className="settings-modal__section-title">Zařízení</h3>
+            <select
+              className="settings-modal__device-select"
+              value={settings.deviceId || ''}
+              onChange={(e) => setSettings(prev => ({ ...prev, deviceId: e.target.value }))}
+            >
+              <option value="">Všechna zařízení</option>
+              {devices.map((device) => (
+                <option key={typeof device === 'string' ? device : device.device_id} value={typeof device === 'string' ? device : device.device_id}>
+                  {typeof device === 'string' ? device : device.device_id}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="settings-modal__footer">
+          <Button
+            variant="outlined"
+            size="medium"
+            onClick={handleCancel}
+          >
+            Zrušit
+          </Button>
+          <Button
+            variant="filled"
+            size="medium"
+            onClick={handleApply}
+          >
+            Použít
+          </Button>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+export default SettingsModal
+

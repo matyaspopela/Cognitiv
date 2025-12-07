@@ -13,6 +13,7 @@ const Connect = () => {
   const [ssid, setSsid] = useState('')
   const [password, setPassword] = useState('')
   const [enableBundling, setEnableBundling] = useState(true)
+  const [enableWifiOnDemand, setEnableWifiOnDemand] = useState(false)
   const [enableDeepSleep, setEnableDeepSleep] = useState(false)
   const [deepSleepDuration, setDeepSleepDuration] = useState(60) // Default: 60 seconds
   const [enableScheduledShutdown, setEnableScheduledShutdown] = useState(false)
@@ -29,6 +30,17 @@ const Connect = () => {
 
   const clearStatus = () => {
     setStatus({ type: '', message: '', show: false })
+  }
+
+  // Handle WiFi-on-demand checkbox change
+  const handleWifiOnDemandChange = (checked) => {
+    setEnableWifiOnDemand(checked)
+    if (checked) {
+      // Auto-enable bundling and deep sleep
+      setEnableBundling(true)
+      setEnableDeepSleep(true)
+      setDeepSleepDuration(10)  // Fixed at 10 seconds for WiFi-on-demand
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -79,6 +91,7 @@ const Connect = () => {
         ssid.trim(), 
         password,
         enableBundling,
+        enableWifiOnDemand,
         enableDeepSleep,
         enableDeepSleep ? parseInt(deepSleepDuration, 10) : null,
         enableScheduledShutdown,
@@ -105,6 +118,7 @@ const Connect = () => {
       setSsid('')
       setPassword('')
       setEnableBundling(true)
+      setEnableWifiOnDemand(false)
       setEnableDeepSleep(false)
       setDeepSleepDuration(60)
       setEnableScheduledShutdown(false)
@@ -126,6 +140,7 @@ const Connect = () => {
     setSsid('')
     setPassword('')
     setEnableBundling(true)
+    setEnableWifiOnDemand(false)
     setEnableDeepSleep(false)
     setDeepSleepDuration(60)
     setEnableScheduledShutdown(false)
@@ -208,15 +223,36 @@ const Connect = () => {
                   <label className="connect-page__checkbox-label">
                     <input
                       type="checkbox"
+                      checked={enableWifiOnDemand}
+                      onChange={(e) => handleWifiOnDemandChange(e.target.checked)}
+                      disabled={loading}
+                      className="connect-page__checkbox"
+                    />
+                    <span className="connect-page__checkbox-text">
+                      <strong>WiFi-On-Demand Mode</strong>
+                      <span className="connect-page__checkbox-description">
+                        Připojí WiFi pouze když je buffer plný a data jsou připravena k odeslání. 
+                        Po odeslání se WiFi vypne a deska přejde do hlubokého spánku na 10 sekund. 
+                        Maximální úspora energie (~99%).
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="connect-page__setting-item">
+                  <label className="connect-page__checkbox-label">
+                    <input
+                      type="checkbox"
                       checked={enableBundling}
                       onChange={(e) => setEnableBundling(e.target.checked)}
-                      disabled={loading}
+                      disabled={loading || enableWifiOnDemand}
                       className="connect-page__checkbox"
                     />
                     <span className="connect-page__checkbox-text">
                       <strong>HTTP Bundling</strong>
                       <span className="connect-page__checkbox-description">
                         Seskupuje HTTP požadavky do balíčků (snižuje počet požadavků o ~90%)
+                        {enableWifiOnDemand && " (Automaticky zapnuto v režimu WiFi-On-Demand)"}
                       </span>
                     </span>
                   </label>
@@ -228,17 +264,18 @@ const Connect = () => {
                       type="checkbox"
                       checked={enableDeepSleep}
                       onChange={(e) => setEnableDeepSleep(e.target.checked)}
-                      disabled={loading}
+                      disabled={loading || enableWifiOnDemand}
                       className="connect-page__checkbox"
                     />
                     <span className="connect-page__checkbox-text">
                       <strong>Deep Sleep Mode</strong>
                       <span className="connect-page__checkbox-description">
                         Režim hlubokého spánku pro úsporu energie (vyžaduje připojení EN + IO16 pinů)
+                        {enableWifiOnDemand && " (Automaticky zapnuto v režimu WiFi-On-Demand)"}
                       </span>
                     </span>
                   </label>
-                  {enableDeepSleep && (
+                  {enableDeepSleep && !enableWifiOnDemand && (
                     <div className="connect-page__deep-sleep-duration">
                       <TextField
                         label="Doba spánku (sekundy)"
@@ -249,6 +286,19 @@ const Connect = () => {
                         value={deepSleepDuration}
                         onChange={(e) => setDeepSleepDuration(e.target.value)}
                         disabled={loading}
+                        fullWidth
+                        style={{ marginTop: 'var(--md3-spacing-3)' }}
+                      />
+                    </div>
+                  )}
+                  {enableWifiOnDemand && (
+                    <div className="connect-page__deep-sleep-duration">
+                      <TextField
+                        label="Doba spánku (sekundy)"
+                        helperText="WiFi-On-Demand režim používá pevně nastavenou dobu 10 sekund pro optimální úsporu energie"
+                        type="number"
+                        value="10"
+                        disabled={true}
                         fullWidth
                         style={{ marginTop: 'var(--md3-spacing-3)' }}
                       />

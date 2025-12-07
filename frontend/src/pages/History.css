@@ -46,6 +46,15 @@
   margin: 0;
 }
 
+.history-page__header-actions {
+  display: flex;
+  gap: var(--md3-spacing-4);
+  flex-wrap: wrap;
+  margin-top: var(--md3-spacing-6);
+  padding-top: var(--md3-spacing-4);
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 .history-page__filters-card {
   padding: var(--md3-spacing-8);
 }

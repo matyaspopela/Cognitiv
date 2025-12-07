@@ -20,6 +20,8 @@ import Chip from '../components/ui/Chip'
 import TextField from '../components/ui/TextField'
 import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
+import AIAssistant from '../components/ai/AIAssistant'
+import SettingsModal from '../components/ui/SettingsModal'
 import './History.css'
 
 ChartJS.register(
@@ -51,6 +53,7 @@ const History = () => {
   const [qualityPieChart, setQualityPieChart] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const formatDateForInput = (date) => {
     if (!date) return ''
@@ -562,9 +565,28 @@ const History = () => {
 
   const bucketOptions = [
     { value: 'raw', label: 'Všechna data', desc: 'Bez agregace' },
+    { value: '10min', label: '10 minut', desc: 'Průměr za 10 minut' },
     { value: 'hour', label: 'Hodinová', desc: 'Průměr za hodinu' },
     { value: 'day', label: 'Denní', desc: 'Průměr za den' },
   ]
+
+  const handleSettingsApply = (newSettings) => {
+    if (newSettings.start !== undefined) {
+      setFilters(prev => ({ ...prev, start: newSettings.start }))
+    }
+    if (newSettings.end !== undefined) {
+      setFilters(prev => ({ ...prev, end: newSettings.end }))
+    }
+    if (newSettings.bucket) {
+      setFilters(prev => ({ ...prev, bucket: newSettings.bucket }))
+    }
+    if (newSettings.deviceId !== undefined) {
+      setFilters(prev => ({ ...prev, deviceId: newSettings.deviceId }))
+    }
+    if (newSettings.selectedPreset) {
+      setSelectedPreset(newSettings.selectedPreset)
+    }
+  }
 
   return (
     <div className="history-page">
@@ -578,83 +600,14 @@ const History = () => {
                 a automaticky detekované anomálie vám pomohou rychle najít souvislosti.
               </p>
             </div>
-          </Card>
-
-          <Card className="history-page__filters-card" elevation={2}>
-            <div className="history-page__filter-section">
-              <h3 className="history-page__filter-title">Rychlý výběr období</h3>
-              <div className="history-page__presets">
-                {presetOptions.map((preset) => (
-                  <Chip
-                    key={preset.id}
-                    variant="filter"
-                    selected={selectedPreset === preset.id}
-                    onClick={() => applyPreset(preset.id)}
-                  >
-                    {preset.label}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-
-            <div className={`history-page__filter-section ${selectedPreset === 'custom' ? 'history-page__filter-section--active' : ''}`}>
-              <h3 className="history-page__filter-title">Vlastní časové období</h3>
-              <div className="history-page__date-range">
-                <TextField
-                  type="datetime-local"
-                  label="Od"
-                  value={filters.start || ''}
-                  onChange={(e) => {
-                    setSelectedPreset('custom')
-                    setFilters(prev => ({ ...prev, start: e.target.value }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  type="datetime-local"
-                  label="Do"
-                  value={filters.end || ''}
-                  onChange={(e) => {
-                    setSelectedPreset('custom')
-                    setFilters(prev => ({ ...prev, end: e.target.value }))
-                  }}
-                  fullWidth
-                />
-              </div>
-            </div>
-
-            <div className="history-page__filter-section">
-              <h3 className="history-page__filter-title">Granularita dat</h3>
-              <div className="history-page__buckets">
-                {bucketOptions.map((bucket) => (
-                  <Card
-                    key={bucket.value}
-                    className={`history-page__bucket-card ${filters.bucket === bucket.value ? 'history-page__bucket-card--active' : ''}`}
-                    elevation={filters.bucket === bucket.value ? 2 : 1}
-                    onClick={() => setFilters(prev => ({ ...prev, bucket: bucket.value }))}
-                  >
-                    <div className="history-page__bucket-title">{bucket.label}</div>
-                    <div className="history-page__bucket-desc">{bucket.desc}</div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            <div className="history-page__filter-section">
-              <h3 className="history-page__filter-title">Zařízení</h3>
-              <select
-                className="history-page__device-select"
-                value={filters.deviceId}
-                onChange={(e) => setFilters(prev => ({ ...prev, deviceId: e.target.value }))}
+            <div className="history-page__header-actions">
+              <Button
+                variant="outlined"
+                size="medium"
+                onClick={() => setIsSettingsOpen(true)}
               >
-                <option value="">Všechna zařízení</option>
-                {Array.from(devices).sort().map(deviceId => (
-                  <option key={deviceId} value={deviceId}>{deviceId}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="history-page__actions">
+                ⚙️ Nastavení
+              </Button>
               <Button variant="filled" size="medium" onClick={loadHistoryData} disabled={loading || !filters.start || !filters.end}>
                 {loading ? 'Načítám...' : '⟳ Načíst data'}
               </Button>
@@ -672,9 +625,6 @@ const History = () => {
                 }}
               >
                 📥 Exportovat
-              </Button>
-              <Button variant="text" size="medium" onClick={resetFilters}>
-                Resetovat
               </Button>
             </div>
           </Card>
@@ -901,6 +851,23 @@ const History = () => {
           </div>
         </footer>
       </div>
+
+      <AIAssistant />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onApply={handleSettingsApply}
+        mode="history"
+        initialSettings={{
+          start: filters.start,
+          end: filters.end,
+          bucket: filters.bucket,
+          deviceId: filters.deviceId,
+          selectedPreset: selectedPreset
+        }}
+        devices={Array.from(devices).sort()}
+      />
     </div>
   )
 }

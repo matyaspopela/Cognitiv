@@ -57,6 +57,7 @@ def apply_wifi_credentials(
     password: str, 
     device_id: str = None,
     enable_bundling: bool = None,
+    enable_wifi_on_demand: bool = None,
     enable_deep_sleep: bool = None,
     deep_sleep_duration_seconds: int = None,
     enable_scheduled_shutdown: bool = None,
@@ -83,6 +84,20 @@ def apply_wifi_credentials(
     if enable_bundling is not None:
         bundling_value = "1" if enable_bundling else "0"
         updated_content = _replace_define(updated_content, "ENABLE_BUNDLING", bundling_value, is_string=False)
+
+    # Update WiFi-on-demand setting if provided
+    if enable_wifi_on_demand is not None:
+        wifi_on_demand_value = "1" if enable_wifi_on_demand else "0"
+        updated_content = _replace_define(updated_content, "ENABLE_WIFI_ON_DEMAND", wifi_on_demand_value, is_string=False)
+        
+        # Auto-enable bundling if WiFi-on-demand is enabled
+        if enable_wifi_on_demand:
+            updated_content = _replace_define(updated_content, "ENABLE_BUNDLING", "1", is_string=False)
+            # Auto-enable deep sleep
+            updated_content = _replace_define(updated_content, "ENABLE_DEEP_SLEEP", "1", is_string=False)
+            # Set deep sleep duration to 10 seconds if not specified
+            if deep_sleep_duration_seconds is None:
+                updated_content = _replace_define(updated_content, "DEEP_SLEEP_DURATION_US", "10000000", is_string=False)
 
     # Update deep sleep setting if provided
     if enable_deep_sleep is not None:
@@ -190,6 +205,7 @@ def upload_firmware(
     password: str, 
     device_id: str = None,
     enable_bundling: bool = None,
+    enable_wifi_on_demand: bool = None,
     enable_deep_sleep: bool = None,
     deep_sleep_duration_seconds: int = None,
     enable_scheduled_shutdown: bool = None,
@@ -209,6 +225,7 @@ def upload_firmware(
         password, 
         device_id,
         enable_bundling,
+        enable_wifi_on_demand,
         enable_deep_sleep,
         deep_sleep_duration_seconds,
         enable_scheduled_shutdown,
