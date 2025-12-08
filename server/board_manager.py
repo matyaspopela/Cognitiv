@@ -173,18 +173,43 @@ def run_platformio_upload(extra_env: dict | None = None) -> Tuple[int, str, str]
     if extra_env:
         env.update(extra_env)
 
-    cmd = ["platformio", "run", "-d", str(PROJECT_ROOT), "--target", "upload"]
-
-    completed = subprocess.run(
-        cmd,
-        cwd=str(PROJECT_ROOT),
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
+    # Try both 'pio' and 'platformio' commands (pio is the newer CLI)
+    import sys
+    is_windows = sys.platform.startswith('win')
+    
+    # Try pio first (newer CLI), then platformio
+    for cmd_name in ['pio', 'platformio']:
+        if is_windows:
+            # On Windows with shell=True, use string format
+            cmd = f'{cmd_name} run -d "{PROJECT_ROOT}" --target upload'
+        else:
+            # On Unix-like systems, use list format
+            cmd = [cmd_name, "run", "-d", str(PROJECT_ROOT), "--target", "upload"]
+        
+        try:
+            completed = subprocess.run(
+                cmd,
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=False,
+                shell=is_windows,  # Use shell on Windows for better PATH resolution
+            )
+            # If command was found and executed (even if failed), return the result
+            return completed.returncode, completed.stdout, completed.stderr
+        except FileNotFoundError:
+            # Command not found, try next one
+            continue
+        except Exception as exc:
+            # Other error, return it
+            return 1, "", str(exc)
+    
+    # Neither command found
+    raise FileNotFoundError(
+        "PlatformIO CLI not found. Please install PlatformIO Core. "
+        "Tried commands: 'pio', 'platformio'"
     )
-
-    return completed.returncode, completed.stdout, completed.stderr
 
 
 def summarize_logs(stdout: str, stderr: str, max_chars: int = 1200) -> str:

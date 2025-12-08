@@ -23,12 +23,11 @@ except ImportError:  # Python < 3.9 fallback
     from backports.zoneinfo import ZoneInfo
 
 from board_manager import (
-    apply_wifi_credentials,
-    run_platformio_upload,
     summarize_logs,
     ConfigWriteError,
+    BoardManagerError,
+    upload_firmware,
 )
-from board_manager import BoardManagerError, upload_firmware
 
 # Configuration
 MONGO_URI = os.getenv('MONGO_URI')
@@ -1326,7 +1325,8 @@ def connect_upload(request):
                     }, status=400)
 
     try:
-        apply_wifi_credentials(
+        # Use upload_firmware() which handles both config update and upload
+        return_code, stdout, stderr = upload_firmware(
             ssid, 
             password, 
             board_name, 
@@ -1346,18 +1346,23 @@ def connect_upload(request):
             'status': 'error',
             'message': 'Konfigurační soubor se nepodařilo upravit. Zkontrolujte oprávnění serveru.'
         }, status=500)
-
-    try:
-        return_code, stdout, stderr = run_platformio_upload()
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
+        print(f"✗ PlatformIO CLI nebyl nalezen: {exc}")
         return JsonResponse({
             'status': 'error',
-            'message': 'Na serveru není nainstalováno PlatformIO. Bez něj nelze nahrávat firmware.'
+            'message': 'Na serveru není nainstalováno PlatformIO. Bez něj nelze nahrávat firmware. Zkontrolujte, zda je PlatformIO Core nainstalován a dostupný v PATH.'
         }, status=500)
     except OSError as exc:
+        print(f"✗ PlatformIO se nepodařilo spustit: {exc}")
         return JsonResponse({
             'status': 'error',
             'message': f'PlatformIO se nepodařilo spustit: {exc}'
+        }, status=500)
+    except BoardManagerError as exc:
+        print(f"✗ Chyba při nahrávání firmware: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba při nahrávání firmware: {exc}'
         }, status=500)
 
     log_excerpt = summarize_logs(stdout, stderr)

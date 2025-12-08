@@ -6,16 +6,15 @@
 
 // WiFi Configuration
 // Standard WPA/WPA2 Personal networks (password only)
-
-#define WIFI_SSID ""  // Replace with your WiFi network SSID
-#define WIFI_PASSWORD ""  // Replace with your WiFi password
+#define WIFI_SSID "gymzr hw"
+#define WIFI_PASSWORD "1ENO8VNG0BMD7EF"
 
 // Server Configuration
-// Replace with your Render service URL (e.g. https://your-app.onrender.com/data)
-#define SERVER_URL "https://cognitiv.onrender.com/data"
+// Replace with your Render service URL (e.g. https://your-app.onrender.com/api/data)
+#define SERVER_URL "https://cognitiv.onrender.com/api/data"
 
 // Device ID (unique name for this sensor)
-#define DEVICE_ID "esp12s_school_01"
+#define DEVICE_ID "ESP8266A2"
 
 // Timezone (in seconds from UTC)
 // Examples: EST = -18000, CET = 3600, UTC = 0
@@ -31,7 +30,7 @@
 //  When enabled: Readings are buffered and sent in batches
 //  When disabled: Each reading is sent immediately (normal HTTP request mode)
 //  Useful for testing: Set to 0 to get immediate transmissions
-#define ENABLE_BUNDLING 1
+#define ENABLE_BUNDLING 0
 
 // BUNDLE_INTERVAL_MS: Time interval between bundle transmissions (milliseconds)
 //  300000 = 5 minutes, 600000 = 10 minutes, 180000 = 3 minutes
