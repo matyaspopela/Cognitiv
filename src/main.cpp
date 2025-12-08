@@ -21,6 +21,7 @@
 // ESP8266 libraries (LaskaKit AirBoard 8266)
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecureBearSSL.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -119,6 +120,7 @@ SensorData readSensors();
 void connectWiFi();
 bool sendDataToServer(SensorData* readings, uint8_t count);
 bool sendSingleReading(SensorData data);
+bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray);
 void addToBuffer(SensorData data);
 bool shouldTransmitBundle();
 void enterDeepSleep();
@@ -681,113 +683,40 @@ void enterDeepSleep() {
   delay(1000);  // Safety delay (unreachable)
 }
 
-bool sendDataToServer(SensorData* readings, uint8_t count) {
+// Helper function to send JSON to any URL (HTTP or HTTPS)
+bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray) {
   if (WiFi.status() != WL_CONNECTED) {
     return false;
   }
   
-  if (count == 0) {
-    Serial.println("No readings to send");
-    return false;
-  }
-  
-  BearSSL::WiFiClientSecure client;
-  client.setInsecure();  // TODO: replace with certificate pinning for production security
   HTTPClient http;
-  if (!http.begin(client, SERVER_URL)) {
-    Serial.println("Failed to initialize HTTPS connection");
-    return false;
-  }
-  http.addHeader("Content-Type", "application/json");
+  bool isHttps = (strncmp(url, "https://", 8) == 0);
   
-  // Create JSON array payload
-  StaticJsonDocument<2560> doc;  // Increased from 256 to 2560 for array support
-  JsonArray readingsArray = doc.to<JsonArray>();
-  
-  for (uint8_t i = 0; i < count; i++) {
-    JsonObject readingObj = readingsArray.createNestedObject();
-    readingObj["timestamp"] = readings[i].timestamp;
-    readingObj["device_id"] = DEVICE_ID;
-    readingObj["temperature"] = round(readings[i].temperature * 100) / 100.0;
-    readingObj["humidity"] = round(readings[i].humidity * 100) / 100.0;
-    readingObj["co2"] = readings[i].co2;
-  }
-  
-  String jsonString;
-  serializeJson(doc, jsonString);
-  
-  Serial.print("Sending bundle to server (");
-  Serial.print(count);
-  Serial.print(" readings): ");
-  Serial.println(jsonString);
-  
-  // Send POST request
-  int httpResponseCode = http.POST(jsonString);
-  
-  Serial.print("HTTP Response code: ");
-  Serial.println(httpResponseCode);
-  
-  if (httpResponseCode > 0) {
-    String response = http.getString();
-    Serial.print("Response: ");
-    Serial.println(response);
+  if (isHttps) {
+    BearSSL::WiFiClientSecure client;
+    client.setInsecure();  // TODO: replace with certificate pinning for production security
+    if (!http.begin(client, url)) {
+      Serial.print("Failed to initialize HTTPS connection to: ");
+      Serial.println(url);
+      return false;
+    }
   } else {
-    Serial.print("Error: ");
-    if (httpResponseCode == -1) {
-      Serial.println("Connection failed - is server running?");
-    } else if (httpResponseCode == -11) {
-      Serial.println("Timeout - check server address");
-    } else {
-      Serial.println(http.errorToString(httpResponseCode));
+    WiFiClient client;
+    if (!http.begin(client, url)) {
+      Serial.print("Failed to initialize HTTP connection to: ");
+      Serial.println(url);
+      return false;
     }
   }
   
-  http.end();
-  
-  bool success = (httpResponseCode == 200);
-  
-  if (success) {
-    // Clear buffer on success
-    bufferCount = 0;
-    lastBundleTime = millis();
-    Serial.println("✓ Bundle sent successfully, buffer cleared");
-  } else {
-    Serial.println("✗ Bundle transmission failed, buffer retained");
-  }
-  
-  return success;
-}
-
-bool sendSingleReading(SensorData data) {
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-  
-  BearSSL::WiFiClientSecure client;
-  client.setInsecure();  // TODO: replace with certificate pinning for production security
-  HTTPClient http;
-  if (!http.begin(client, SERVER_URL)) {
-    Serial.println("Failed to initialize HTTPS connection");
-    return false;
-  }
   http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000);  // 10 second timeout
   
-  // Create JSON payload (single object, not array)
-  StaticJsonDocument<256> doc;
-  doc["timestamp"] = data.timestamp;
-  doc["device_id"] = DEVICE_ID;
-  doc["temperature"] = round(data.temperature * 100) / 100.0;
-  doc["humidity"] = round(data.humidity * 100) / 100.0;
-  doc["co2"] = data.co2;
-  
-  String jsonString;
-  serializeJson(doc, jsonString);
-  
-  Serial.print("Sending to server: ");
-  Serial.println(jsonString);
+  Serial.print("Sending to: ");
+  Serial.println(url);
   
   // Send POST request
-  int httpResponseCode = http.POST(jsonString);
+  int httpResponseCode = http.POST(jsonPayload);
   
   Serial.print("HTTP Response code: ");
   Serial.println(httpResponseCode);
@@ -810,6 +739,99 @@ bool sendSingleReading(SensorData data) {
   http.end();
   
   return (httpResponseCode == 200);
+}
+
+bool sendDataToServer(SensorData* readings, uint8_t count) {
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+  
+  if (count == 0) {
+    Serial.println("No readings to send");
+    return false;
+  }
+  
+  // Create JSON array payload
+  StaticJsonDocument<2560> doc;  // Increased from 256 to 2560 for array support
+  JsonArray readingsArray = doc.to<JsonArray>();
+  
+  for (uint8_t i = 0; i < count; i++) {
+    JsonObject readingObj = readingsArray.createNestedObject();
+    readingObj["timestamp"] = readings[i].timestamp;
+    readingObj["device_id"] = DEVICE_ID;
+    readingObj["temperature"] = round(readings[i].temperature * 100) / 100.0;
+    readingObj["humidity"] = round(readings[i].humidity * 100) / 100.0;
+    readingObj["co2"] = readings[i].co2;
+  }
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  Serial.print("Sending bundle (");
+  Serial.print(count);
+  Serial.print(" readings): ");
+  Serial.println(jsonString);
+  
+  // Send to production server
+  bool prodSuccess = sendJsonToUrl(SERVER_URL, jsonString, true);
+  
+  // Send to local debug server if enabled
+  #if ENABLE_LOCAL_DEBUG
+  bool localSuccess = sendJsonToUrl(LOCAL_SERVER_URL, jsonString, true);
+  bool success = prodSuccess || localSuccess;  // Success if at least one works
+  #else
+  bool success = prodSuccess;
+  #endif
+  
+  if (success) {
+    // Clear buffer on success
+    bufferCount = 0;
+    lastBundleTime = millis();
+    Serial.println("✓ Bundle sent successfully, buffer cleared");
+  } else {
+    Serial.println("✗ Bundle transmission failed, buffer retained");
+  }
+  
+  return success;
+}
+
+bool sendSingleReading(SensorData data) {
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+  
+  // Create JSON payload (single object, not array)
+  StaticJsonDocument<256> doc;
+  doc["timestamp"] = data.timestamp;
+  doc["device_id"] = DEVICE_ID;
+  doc["temperature"] = round(data.temperature * 100) / 100.0;
+  doc["humidity"] = round(data.humidity * 100) / 100.0;
+  doc["co2"] = data.co2;
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  Serial.print("Sending reading: ");
+  Serial.println(jsonString);
+  
+  // Send to production server
+  bool prodSuccess = sendJsonToUrl(SERVER_URL, jsonString, false);
+  
+  // Send to local debug server if enabled
+  #if ENABLE_LOCAL_DEBUG
+  bool localSuccess = sendJsonToUrl(LOCAL_SERVER_URL, jsonString, false);
+  bool success = prodSuccess || localSuccess;  // Success if at least one works
+  #else
+  bool success = prodSuccess;
+  #endif
+  
+  if (success) {
+    Serial.println("✓ Reading sent successfully");
+  } else {
+    Serial.println("✗ Failed to send reading");
+  }
+  
+  return success;
 }
 
 bool isShutdownTime() {
