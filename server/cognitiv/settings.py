@@ -29,6 +29,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'api.middleware.DisableCSRFForAPI',  # Disable CSRF for API endpoints (before CSRF middleware)
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection (views use csrf_exempt where needed)
     'django.contrib.sessions.middleware.SessionMiddleware',  # For admin session management
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -45,6 +46,13 @@ except ImportError:
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Configure appropriately for production
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies for session-based auth
+
+# CSRF settings for API endpoints (IoT devices don't send CSRF tokens or Referer headers)
+CSRF_TRUSTED_ORIGINS = ['https://cognitiv.onrender.com', 'http://localhost:8000']
+# Allow requests without Referer header for API endpoints (needed for IoT devices)
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_HTTPONLY = False
 
 ROOT_URLCONF = 'cognitiv.urls'
 
