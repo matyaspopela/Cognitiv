@@ -192,16 +192,32 @@ def parse_iso_datetime(value, default=None):
     if not value:
         return default
     try:
-        sanitized = value.strip()
-        if sanitized.endswith('Z'):
-            sanitized = sanitized[:-1] + '+00:00'
-        dt = datetime.fromisoformat(sanitized)
+        # Handle string input
+        if isinstance(value, str):
+            sanitized = value.strip()
+            if not sanitized:
+                return default
+            # Handle 'Z' suffix (UTC indicator)
+            if sanitized.endswith('Z'):
+                sanitized = sanitized[:-1] + '+00:00'
+            dt = datetime.fromisoformat(sanitized)
+        elif isinstance(value, datetime):
+            dt = value
+        else:
+            raise ValueError(f"Neočekávaný typ dat: {type(value)}")
+        
+        # Ensure timezone info is set
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=LOCAL_TZ)
         return dt.astimezone(UTC)
-    except ValueError:
+    except ValueError as e:
+        # Re-raise with more context
         raise ValueError(
-            f"Neplatný formát data: '{value}'. Použijte ISO 8601, např. 2024-01-31T12:00:00."
+            f"Neplatný formát data: '{value}'. Použijte ISO 8601, např. 2024-01-31T12:00:00. Chyba: {str(e)}"
+        )
+    except Exception as e:
+        raise ValueError(
+            f"Chyba při parsování data '{value}': {str(e)}"
         )
 
 
@@ -538,11 +554,40 @@ def history_series(request):
         now = datetime.now(UTC)
         default_start = now - timedelta(days=30)
 
-        start_dt = parse_iso_datetime(request.GET.get('start'), default_start)
-        end_dt = parse_iso_datetime(request.GET.get('end'), now)
+        # Parse dates with proper error handling
+        try:
+            start_dt = parse_iso_datetime(request.GET.get('start'), default_start)
+        except ValueError as e:
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Neplatný formát počátečního data: {str(e)}'
+            }, status=400)
+        except Exception as e:
+            print(f"✗ Chyba při parsování počátečního data: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Chyba při zpracování počátečního data: {str(e)}'
+            }, status=400)
+
+        try:
+            end_dt = parse_iso_datetime(request.GET.get('end'), now)
+        except ValueError as e:
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Neplatný formát koncového data: {str(e)}'
+            }, status=400)
+        except Exception as e:
+            print(f"✗ Chyba při parsování koncového data: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'error': f'Chyba při zpracování koncového data: {str(e)}'
+            }, status=400)
 
         if start_dt and end_dt and start_dt > end_dt:
-            return JsonResponse({'error': 'Počáteční datum nesmí být pozdější než koncové.'}, status=400)
+            return JsonResponse({
+                'status': 'error',
+                'error': 'Počáteční datum nesmí být pozdější než koncové.'
+            }, status=400)
 
         bucket = (request.GET.get('bucket') or 'day').lower()
         if bucket not in ('hour', 'day', 'raw', 'none', '10min'):
@@ -647,7 +692,7 @@ def history_series(request):
                     {
                         '$sort': {
                             '_id.bucket': 1,
-                            '_id.device_id': 1 if not device_id else 0
+                            **({'_id.device_id': 1} if not device_id else {})
                         }
                     }
                 ]
@@ -686,7 +731,7 @@ def history_series(request):
                     {
                         '$sort': {
                             '_id.bucket': 1,
-                            '_id.device_id': 1 if not device_id else 0
+                            **({'_id.device_id': 1} if not device_id else {})
                         }
                     }
                 ]
@@ -730,11 +775,25 @@ def history_series(request):
         }, status=200)
 
     except ValueError as exc:
-        return JsonResponse({'error': str(exc)}, status=400)
+        print(f"✗ ValueError v history_series: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'error': str(exc)
+        }, status=400)
     except PyMongoError as exc:
-        return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
+        print(f"✗ MongoDB chyba v history_series: {exc}")
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Databázová chyba: {exc}'
+        }, status=500)
     except Exception as exc:
-        return JsonResponse({'error': str(exc)}, status=500)
+        print(f"✗ Neočekávaná chyba v history_series: {exc}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'error': f'Neočekávaná chyba: {str(exc)}'
+        }, status=500)
 
 
 @require_http_methods(["GET"])
@@ -1175,15 +1234,6 @@ def connect_upload(request):
     board_name = (payload.get('boardName') or '').strip()
     ssid = (payload.get('ssid') or '').strip()
     password = payload.get('password', '')
-    enable_bundling = payload.get('enableBundling')
-    enable_wifi_on_demand = payload.get('enableWifiOnDemand')
-    enable_deep_sleep = payload.get('enableDeepSleep')
-    deep_sleep_duration_seconds = payload.get('deepSleepDurationSeconds')
-    enable_scheduled_shutdown = payload.get('enableScheduledShutdown')
-    shutdown_hour = payload.get('shutdownHour')
-    shutdown_minute = payload.get('shutdownMinute')
-    wake_hour = payload.get('wakeHour')
-    wake_minute = payload.get('wakeMinute')
 
     if not board_name:
         return JsonResponse({
@@ -1206,139 +1256,12 @@ def connect_upload(request):
             'message': 'Heslo musí být textový řetězec.'
         }, status=400)
 
-    # Convert boolean values (handle None, bool, string "true"/"false")
-    if enable_bundling is not None:
-        if isinstance(enable_bundling, str):
-            enable_bundling = enable_bundling.lower() in ('true', '1', 'yes')
-        enable_bundling = bool(enable_bundling)
-    else:
-        enable_bundling = None
-
-    # Parse WiFi-on-demand setting
-    if enable_wifi_on_demand is not None:
-        if isinstance(enable_wifi_on_demand, str):
-            enable_wifi_on_demand = enable_wifi_on_demand.lower() in ('true', '1', 'yes')
-        enable_wifi_on_demand = bool(enable_wifi_on_demand)
-        
-        # Auto-enable bundling and deep sleep if WiFi-on-demand is enabled
-        if enable_wifi_on_demand:
-            enable_bundling = True
-            enable_deep_sleep = True
-            if deep_sleep_duration_seconds is None:
-                deep_sleep_duration_seconds = 10  # Default 10 seconds for WiFi-on-demand
-    else:
-        enable_wifi_on_demand = None
-
-    if enable_deep_sleep is not None:
-        if isinstance(enable_deep_sleep, str):
-            enable_deep_sleep = enable_deep_sleep.lower() in ('true', '1', 'yes')
-        enable_deep_sleep = bool(enable_deep_sleep)
-    else:
-        enable_deep_sleep = None
-
-    # Parse deep sleep duration (only if deep sleep is enabled)
-    deep_sleep_duration = None
-    if enable_deep_sleep and deep_sleep_duration_seconds is not None:
-        try:
-            deep_sleep_duration = int(deep_sleep_duration_seconds)
-            if deep_sleep_duration < 10 or deep_sleep_duration > 4260:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Doba hlubokého spánku musí být mezi 10 sekundami a 4260 sekundami (71 minut).'
-                }, status=400)
-        except (ValueError, TypeError):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Neplatná doba hlubokého spánku. Musí být číslo mezi 10 a 4260 sekundami.'
-            }, status=400)
-
-    # Parse scheduled shutdown settings
-    scheduled_shutdown = None
-    shutdown_h = None
-    shutdown_m = None
-    wake_h = None
-    wake_m = None
-    
-    if enable_scheduled_shutdown is not None:
-        if isinstance(enable_scheduled_shutdown, str):
-            scheduled_shutdown = enable_scheduled_shutdown.lower() in ('true', '1', 'yes')
-        else:
-            scheduled_shutdown = bool(enable_scheduled_shutdown)
-        
-        if scheduled_shutdown:
-            # Validate and parse shutdown time
-            if shutdown_hour is not None:
-                try:
-                    shutdown_h = int(shutdown_hour)
-                    if shutdown_h < 0 or shutdown_h > 23:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Hodina vypnutí musí být mezi 0 a 23.'
-                        }, status=400)
-                except (ValueError, TypeError):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Neplatná hodina vypnutí. Musí být číslo mezi 0 a 23.'
-                    }, status=400)
-            
-            if shutdown_minute is not None:
-                try:
-                    shutdown_m = int(shutdown_minute)
-                    if shutdown_m < 0 or shutdown_m > 59:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Minuta vypnutí musí být mezi 0 a 59.'
-                        }, status=400)
-                except (ValueError, TypeError):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Neplatná minuta vypnutí. Musí být číslo mezi 0 a 59.'
-                    }, status=400)
-            
-            # Validate and parse wake time
-            if wake_hour is not None:
-                try:
-                    wake_h = int(wake_hour)
-                    if wake_h < 0 or wake_h > 23:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Hodina probuzení musí být mezi 0 a 23.'
-                        }, status=400)
-                except (ValueError, TypeError):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Neplatná hodina probuzení. Musí být číslo mezi 0 a 23.'
-                    }, status=400)
-            
-            if wake_minute is not None:
-                try:
-                    wake_m = int(wake_minute)
-                    if wake_m < 0 or wake_m > 59:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Minuta probuzení musí být mezi 0 a 59.'
-                        }, status=400)
-                except (ValueError, TypeError):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Neplatná minuta probuzení. Musí být číslo mezi 0 a 59.'
-                    }, status=400)
-
     try:
         # Use upload_firmware() which handles both config update and upload
         return_code, stdout, stderr = upload_firmware(
             ssid, 
             password, 
-            board_name, 
-            enable_bundling, 
-            enable_wifi_on_demand,
-            enable_deep_sleep, 
-            deep_sleep_duration,
-            scheduled_shutdown,
-            shutdown_h,
-            shutdown_m,
-            wake_h,
-            wake_m
+            board_name
         )
     except ConfigWriteError as exc:
         print(f"✗ Nepodařilo se upravit config.h: {exc}")
@@ -1459,6 +1382,38 @@ def debug_build_info(request):
                 info['assets_error'] = str(e)
     
     return JsonResponse(info)
+
+
+@require_http_methods(["GET"])
+def get_devices(request):
+    """Get list of all device IDs (public endpoint, no auth required)"""
+    try:
+        collection = get_mongo_collection()
+    except RuntimeError as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Nepodařilo se připojit k databázi: {str(e)}'
+        }, status=503)
+
+    try:
+        # Get all unique device IDs
+        device_ids = collection.distinct('device_id')
+        device_ids.sort()  # Sort alphabetically
+        
+        return JsonResponse({
+            'status': 'success',
+            'devices': device_ids
+        }, status=200)
+    except PyMongoError as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Databázová chyba: {exc}'
+        }, status=500)
+    except Exception as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(exc)}'
+        }, status=500)
 
 
 @require_http_methods(["GET"])

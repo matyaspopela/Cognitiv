@@ -8,6 +8,7 @@
 ## Feature Status Dashboard
 
 ### Active Features (In Development)
+- [admin-panel-restructure](active/admin-panel-restructure/feature-brief.md) - Consolidate data analysis into Admin Panel with card-based board layout and embedded history views (Briefed: 2024-12-19)
 - [code-cleanup](active/code-cleanup/feature-brief.md) - Remove unused code, files, and outdated documentation (Briefed: 2024-12-19)
 - [deep-sleep-config](active/deep-sleep-config/feature-brief.md) - Configurable deep sleep mode for battery-powered deployments (Briefed: 2024-12-19)
 - [http-request-bundling](active/http-request-bundling/feature-brief.md) - Bundle HTTP requests to reduce network traffic and power consumption (Briefed: 2024-12-19)
@@ -26,12 +27,13 @@ Currently no backlog features.
 - ⚙️ [Modify Configuration](../.sdd/config.json)
 
 ## Statistics
-- **Total Features**: 4
-- **Active**: 4
+- **Total Features**: 5
+- **Active**: 5
 - **Completed**: 0
 - **Backlog**: 0
 
 ## Recent Activity
+- **2024-12-19**: Created feature brief for admin-panel-restructure
 - **2024-12-19**: Created feature brief for code-cleanup
 - **2024-12-19**: Created feature brief for deep-sleep-config
 - **2024-12-19**: Created feature brief for http-request-bundling

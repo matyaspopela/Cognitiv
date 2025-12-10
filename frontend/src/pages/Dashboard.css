@@ -313,7 +313,7 @@
 }
 
 .dashboard-page__quality-bar--high {
-  border-left: 4px solid var(--md3-color-secondary-500);
+  border-left: 4px solid var(--md3-color-warning-500);
 }
 
 .dashboard-page__quality-bar--critical {

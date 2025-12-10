@@ -167,28 +167,6 @@
   color: var(--md3-color-text-secondary);
 }
 
-.settings-modal__device-select {
-  width: 100%;
-  padding: var(--md3-spacing-3) var(--md3-spacing-4);
-  border: 1px solid rgba(0, 0, 0, 0.42);
-  border-radius: var(--md3-border-radius-md);
-  background: var(--md3-color-surface-default);
-  color: var(--md3-color-text-primary);
-  font-size: var(--md3-font-size-body-medium);
-  font-family: inherit;
-  cursor: pointer;
-  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
-}
-
-.settings-modal__device-select:hover {
-  border-color: var(--md3-color-primary-500);
-}
-
-.settings-modal__device-select:focus {
-  outline: none;
-  border-color: var(--md3-color-primary-500);
-  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
-}
 
 .settings-modal__footer {
   display: flex;
@@ -218,5 +196,7 @@
     width: 100%;
   }
 }
+
+
 
 

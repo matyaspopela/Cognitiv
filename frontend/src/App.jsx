@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
-import History from './pages/History'
 import Connect from './pages/Connect'
 import Login from './pages/Login'
 import AdminPanel from './pages/AdminPanel'
@@ -25,7 +24,6 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/history" element={<History />} />
                       <Route path="/connect" element={<Connect />} />
                       <Route
                         path="/admin"

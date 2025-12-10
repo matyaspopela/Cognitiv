@@ -64,12 +64,20 @@ const Dashboard = () => {
 
   const fetchDevices = async () => {
     try {
-      const response = await adminAPI.getDevices()
+      // Use public endpoint instead of admin endpoint
+      const response = await dataAPI.getDevices()
       if (response.data && response.data.status === 'success') {
-        setDevices(response.data.devices || [])
+        // The public endpoint returns an array of device IDs (strings)
+        const devicesList = response.data.devices || []
+        setDevices(devicesList)
+        console.log('Loaded devices:', devicesList.length, devicesList)
+      } else {
+        console.warn('Failed to load devices:', response.data)
+        setDevices([])
       }
     } catch (error) {
       console.error('Chyba při načítání seznamu zařízení:', error)
+      setDevices([])
       // Don't show error to user, just log it - device filtering is optional
     }
   }
