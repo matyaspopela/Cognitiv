@@ -3,6 +3,7 @@ import Card from './Card'
 import Button from './Button'
 import Chip from './Chip'
 import TextField from './TextField'
+import Select from './Select'
 import './SettingsModal.css'
 
 const SettingsModal = ({ 
@@ -263,19 +264,19 @@ const SettingsModal = ({
           )}
 
           <div className="settings-modal__section">
-            <h3 className="settings-modal__section-title">Zařízení</h3>
-            <select
-              className="settings-modal__device-select"
+            <Select
+              label="Zařízení"
               value={settings.deviceId || ''}
               onChange={(e) => setSettings(prev => ({ ...prev, deviceId: e.target.value }))}
-            >
-              <option value="">Všechna zařízení</option>
-              {devices.map((device) => (
-                <option key={typeof device === 'string' ? device : device.device_id} value={typeof device === 'string' ? device : device.device_id}>
-                  {typeof device === 'string' ? device : device.device_id}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: 'Všechna zařízení' },
+                ...(devices || []).map((device) => {
+                  const deviceId = typeof device === 'string' ? device : (device?.device_id || device)
+                  return { value: deviceId, label: deviceId }
+                })
+              ]}
+              fullWidth
+            />
           </div>
         </div>
 

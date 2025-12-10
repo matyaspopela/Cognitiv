@@ -13,6 +13,7 @@ urlpatterns = [
     path('history/summary', views.history_summary, name='history_summary'),
     path('history/export', views.history_export, name='history_export'),
     path('connect/upload', views.connect_upload, name='connect_upload'),
+    path('devices', views.get_devices, name='get_devices'),  # Public device list
     # Admin API endpoints
     path('admin/login', views.admin_login, name='admin_login'),
     path('admin/devices', views.admin_devices, name='admin_devices'),

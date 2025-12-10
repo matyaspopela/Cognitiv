@@ -51,26 +51,6 @@ const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
 
-// WiFi-on-demand configuration validation
-#if ENABLE_WIFI_ON_DEMAND
-  #ifndef ENABLE_BUNDLING
-    #error "ENABLE_BUNDLING must be enabled when ENABLE_WIFI_ON_DEMAND is enabled"
-  #elif ENABLE_BUNDLING == 0
-    #error "ENABLE_BUNDLING must be enabled (set to 1) when ENABLE_WIFI_ON_DEMAND is enabled"
-  #endif
-  
-  #ifndef ENABLE_DEEP_SLEEP
-    #define ENABLE_DEEP_SLEEP 1  // Auto-enable deep sleep
-  #elif ENABLE_DEEP_SLEEP == 0
-    #define ENABLE_DEEP_SLEEP 1  // Force enable deep sleep
-  #endif
-  
-  #if DEEP_SLEEP_DURATION_US != 10000000
-    #warning "DEEP_SLEEP_DURATION_US should be 10000000 (10 seconds) for optimal WiFi-on-demand mode"
-  #endif
-#endif
-// ========================================
-
 // Hardware objects
 SCD4x scd41;
 
@@ -86,11 +66,6 @@ struct SensorData {
 SensorData lastReading;
 unsigned long lastReadingTime = 0;
 bool sensorsInitialized = false;
-
-// Bundle buffer
-SensorData readingBuffer[MAX_BUNDLE_SIZE];
-uint8_t bufferCount = 0;
-unsigned long lastBundleTime = 0;
 
 #ifdef HAS_DISPLAY
 bool displayInitialized = false;
@@ -118,14 +93,8 @@ void scanI2C();
 bool initSensors();
 SensorData readSensors();
 void connectWiFi();
-bool sendDataToServer(SensorData* readings, uint8_t count);
 bool sendSingleReading(SensorData data);
 bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray);
-void addToBuffer(SensorData data);
-bool shouldTransmitBundle();
-void enterDeepSleep();
-bool isShutdownTime();
-unsigned long calculateSleepUntilWake();
 
 void setup() {
   Serial.begin(115200);
@@ -166,71 +135,28 @@ void setup() {
     // Continue anyway
   }
   
-  // Connect to WiFi (skip in WiFi-on-demand mode)
-  #if ENABLE_WIFI_ON_DEMAND
-    Serial.println("WiFi-on-demand mode: Skipping WiFi connection in setup");
-    Serial.println("WiFi will be connected only when buffer is ready for transmission");
-  #else
-    connectWiFi();
-  #endif
+  // Connect to WiFi
+  connectWiFi();
   
-  // Initialize time (only if WiFi connected, or skip in WiFi-on-demand mode)
-  #if ENABLE_WIFI_ON_DEMAND
-    Serial.println("WiFi-on-demand mode: Skipping NTP sync in setup");
-    Serial.println("Time will be synced when WiFi connects for transmission");
-  #else
-    configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-    Serial.println("Waiting for NTP time sync...");
-    delay(2000);
-  #endif
+  // Initialize time
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+  Serial.println("Waiting for NTP time sync...");
+  delay(2000);
   
   Serial.println("\nSetup complete!\n");
 }
 
 void loop() {
-  // Check scheduled shutdown time (if enabled)
-  #if ENABLE_SCHEDULED_SHUTDOWN
-    if (isShutdownTime()) {
-      unsigned long sleepDuration = calculateSleepUntilWake();
-      Serial.print("\n--- Scheduled Shutdown ---");
-      Serial.print("\nCurrent time reached shutdown time (");
-      Serial.print(SHUTDOWN_HOUR);
-      Serial.print(":");
-      if (SHUTDOWN_MINUTE < 10) Serial.print("0");
-      Serial.print(SHUTDOWN_MINUTE);
-      Serial.print(")");
-      Serial.print("\nSleeping until wake time (");
-      Serial.print(WAKE_HOUR);
-      Serial.print(":");
-      if (WAKE_MINUTE < 10) Serial.print("0");
-      Serial.print(WAKE_MINUTE);
-      Serial.print(") next day...");
-      Serial.flush();
-      
-      // Enter deep sleep until wake time
-      ESP.deepSleep(sleepDuration, WAKE_RFCAL);
-      delay(1000);  // Safety delay (unreachable)
-      return;
-    }
-  #endif
-  
   // Check WiFi connection
-  #if ENABLE_WIFI_ON_DEMAND
-    // WiFi-on-demand mode: Don't check WiFi connection here
-    // WiFi will be connected only when buffer is ready for transmission
-    wifiState = DISCONNECTED;  // Assume disconnected until we connect
-  #else
-    // Normal mode: Check WiFi connection
-    if (WiFi.status() != WL_CONNECTED) {
-      wifiState = DISCONNECTED;
-      #ifdef HAS_DISPLAY
-      displayStatus("WiFi Lost!", TFT_RED);
-      #endif
-      connectWiFi();
-    } else {
-      wifiState = CONNECTED;
-    }
-  #endif
+  if (WiFi.status() != WL_CONNECTED) {
+    wifiState = DISCONNECTED;
+    #ifdef HAS_DISPLAY
+    displayStatus("WiFi Lost!", TFT_RED);
+    #endif
+    connectWiFi();
+  } else {
+    wifiState = CONNECTED;
+  }
   
   // Read sensors at specified interval
   if (sensorsInitialized && (millis() - lastReadingTime >= READING_INTERVAL)) {
@@ -245,108 +171,25 @@ void loop() {
       displayReadings(reading);
       #endif
       
-      // Send to server if WiFi connected
-      #if ENABLE_BUNDLING
-        // Bundling mode: Add to buffer and transmit in batches
-        addToBuffer(reading);
-        
-        // Check if bundle should be transmitted
-        if (shouldTransmitBundle()) {
-          #if ENABLE_WIFI_ON_DEMAND
-            // WiFi-on-demand: Connect WiFi only now
-            if (WiFi.status() != WL_CONNECTED) {
-              Serial.println("--- WiFi-On-Demand: Connecting WiFi ---");
-              connectWiFi();
-              if (WiFi.status() == WL_CONNECTED) {
-                wifiState = CONNECTED;
-                // Sync time now that WiFi is connected
-                configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-                Serial.println("Syncing time via NTP...");
-                delay(1000);  // Brief delay for NTP sync
-              }
-            }
-          #endif
-          
-          // Transmit bundle (only if WiFi connected)
-          if (wifiState == CONNECTED || WiFi.status() == WL_CONNECTED) {
-            if (sendDataToServer(readingBuffer, bufferCount)) {
-              serverState = CONNECTED;
-              Serial.println("✓ Bundle sent successfully");
-            } else {
-              serverState = ERROR;
-              Serial.println("✗ Failed to send bundle");
-            }
-            
-            #if ENABLE_WIFI_ON_DEMAND
-              // WiFi-on-demand: Disconnect WiFi immediately after transmission
-              Serial.println("--- WiFi-On-Demand: Disconnecting WiFi ---");
-              WiFi.disconnect();
-              WiFi.mode(WIFI_OFF);
-              wifiState = DISCONNECTED;
-              Serial.println("WiFi disconnected");
-            #endif
-          } else {
-            Serial.println("✗ WiFi not connected, cannot send bundle");
-            serverState = ERROR;
-          }
+      // Send each reading immediately
+      if (wifiState == CONNECTED) {
+        if (sendSingleReading(reading)) {
+          serverState = CONNECTED;
+          Serial.println("✓ Data sent successfully");
+        } else {
+          serverState = ERROR;
+          Serial.println("✗ Failed to send data");
         }
-      #else
-        // Immediate mode: Send each reading right away (normal HTTP request mode)
-        #if ENABLE_WIFI_ON_DEMAND
-          #error "ENABLE_BUNDLING must be enabled when ENABLE_WIFI_ON_DEMAND is enabled"
-        #endif
-        
-        if (wifiState == CONNECTED) {
-          if (sendSingleReading(reading)) {
-            serverState = CONNECTED;
-            Serial.println("✓ Data sent successfully");
-          } else {
-            serverState = ERROR;
-            Serial.println("✗ Failed to send data");
-          }
-        }
-      #endif
-      
-      // Enter deep sleep after completing cycle
-      #if ENABLE_WIFI_ON_DEMAND
-        // WiFi-on-demand: Always deep sleep (10 seconds)
-        Serial.println("\n--- WiFi-On-Demand: Entering Deep Sleep (10s) ---");
-        enterDeepSleep();
-      #elif ENABLE_DEEP_SLEEP
-        // Optional deep sleep (existing behavior)
-        enterDeepSleep();
-      #endif
+      }
     } else {
       Serial.println("✗ Invalid sensor reading");
       #ifdef HAS_DISPLAY
       displayStatus("Sensor Error!", TFT_RED);
       #endif
-      
-      // Enter deep sleep even if reading invalid
-      // Prevents infinite loop on sensor errors
-      #if ENABLE_WIFI_ON_DEMAND
-        // WiFi-on-demand: Always deep sleep (10 seconds)
-        Serial.println("\n--- WiFi-On-Demand: Entering Deep Sleep (10s) ---");
-        enterDeepSleep();
-      #elif ENABLE_DEEP_SLEEP
-        enterDeepSleep();
-      #endif
     }
   }
   
-  // WiFi-on-demand mode: Always enter deep sleep if no reading occurred
-  // This ensures we don't stay awake waiting for next reading interval
-  #if ENABLE_WIFI_ON_DEMAND
-    // If we haven't entered deep sleep yet (no reading cycle), enter it now
-    // This handles cases where sensors aren't initialized or reading interval hasn't passed
-    Serial.println("\n--- WiFi-On-Demand: Entering Deep Sleep (10s) ---");
-    enterDeepSleep();
-  #endif
-  
-  // If deep sleep is disabled, continue normal loop
-  #if !ENABLE_DEEP_SLEEP && !ENABLE_WIFI_ON_DEMAND
-    delay(100);
-  #endif
+  delay(100);
 }
 
 #ifdef HAS_DISPLAY
@@ -556,36 +399,6 @@ SensorData readSensors() {
   return data;
 }
 
-void addToBuffer(SensorData data) {
-  if (bufferCount >= MAX_BUNDLE_SIZE) {
-    Serial.println("⚠ Buffer full, forcing transmission");
-    // Don't add - transmission will be triggered
-    // The reading will be lost, but prevents buffer overflow
-    return;
-  }
-  
-  readingBuffer[bufferCount] = data;
-  bufferCount++;
-  Serial.print("Reading added to buffer (");
-  Serial.print(bufferCount);
-  Serial.print("/");
-  Serial.print(MAX_BUNDLE_SIZE);
-  Serial.println(")");
-}
-
-bool shouldTransmitBundle() {
-  // Check time-based condition
-  bool timeTrigger = (millis() - lastBundleTime) >= BUNDLE_INTERVAL_MS;
-  
-  // Check size-based condition
-  bool sizeTrigger = (bufferCount >= MAX_BUNDLE_SIZE);
-  
-  // Also check if we have any readings to send
-  bool hasReadings = (bufferCount > 0);
-  
-  // Transmit if (time OR size) AND has readings
-  return hasReadings && (timeTrigger || sizeTrigger);
-}
 
 void connectWiFi() {
   Serial.print("Connecting to WiFi: ");
@@ -651,37 +464,6 @@ void connectWiFi() {
   }
 }
 
-void enterDeepSleep() {
-  Serial.println("\n--- Entering Deep Sleep ---");
-  
-  // Disconnect WiFi to save power
-  if (WiFi.status() == WL_CONNECTED) {
-    WiFi.disconnect();
-    Serial.println("WiFi disconnected");
-  }
-  
-  // Turn off display if available
-  #ifdef HAS_DISPLAY
-  if (displayInitialized) {
-    display.clearDisplay();
-    display.display();
-    Serial.println("Display turned off");
-  }
-  #endif
-  
-  Serial.print("Sleeping for ");
-  Serial.print(DEEP_SLEEP_DURATION_US / 1000000);
-  Serial.println(" seconds...");
-  Serial.println("(Note: EN and IO16 pins must be connected for wake-up)");
-  Serial.flush();  // Ensure all messages are sent before sleep
-  
-  // Enter deep sleep mode
-  // WAKE_RFCAL: Wake with RF calibration (recommended for WiFi operation)
-  ESP.deepSleep(DEEP_SLEEP_DURATION_US, WAKE_RFCAL);
-  
-  // This line should never be reached (device restarts after deep sleep)
-  delay(1000);  // Safety delay (unreachable)
-}
 
 // Helper function to send JSON to any URL (HTTP or HTTPS)
 bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray) {
@@ -741,59 +523,6 @@ bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray) {
   return (httpResponseCode == 200);
 }
 
-bool sendDataToServer(SensorData* readings, uint8_t count) {
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-  
-  if (count == 0) {
-    Serial.println("No readings to send");
-    return false;
-  }
-  
-  // Create JSON array payload
-  StaticJsonDocument<2560> doc;  // Increased from 256 to 2560 for array support
-  JsonArray readingsArray = doc.to<JsonArray>();
-  
-  for (uint8_t i = 0; i < count; i++) {
-    JsonObject readingObj = readingsArray.createNestedObject();
-    readingObj["timestamp"] = readings[i].timestamp;
-    readingObj["device_id"] = DEVICE_ID;
-    readingObj["temperature"] = round(readings[i].temperature * 100) / 100.0;
-    readingObj["humidity"] = round(readings[i].humidity * 100) / 100.0;
-    readingObj["co2"] = readings[i].co2;
-  }
-  
-  String jsonString;
-  serializeJson(doc, jsonString);
-  
-  Serial.print("Sending bundle (");
-  Serial.print(count);
-  Serial.print(" readings): ");
-  Serial.println(jsonString);
-  
-  // Send to production server
-  bool prodSuccess = sendJsonToUrl(SERVER_URL, jsonString, true);
-  
-  // Send to local debug server if enabled
-  #if ENABLE_LOCAL_DEBUG
-  bool localSuccess = sendJsonToUrl(LOCAL_SERVER_URL, jsonString, true);
-  bool success = prodSuccess || localSuccess;  // Success if at least one works
-  #else
-  bool success = prodSuccess;
-  #endif
-  
-  if (success) {
-    // Clear buffer on success
-    bufferCount = 0;
-    lastBundleTime = millis();
-    Serial.println("✓ Bundle sent successfully, buffer cleared");
-  } else {
-    Serial.println("✗ Bundle transmission failed, buffer retained");
-  }
-  
-  return success;
-}
 
 bool sendSingleReading(SensorData data) {
   if (WiFi.status() != WL_CONNECTED) {
@@ -834,102 +563,3 @@ bool sendSingleReading(SensorData data) {
   return success;
 }
 
-bool isShutdownTime() {
-  time_t now = time(nullptr);
-  if (now < 0) {
-    // Time not synced yet, don't shutdown
-    return false;
-  }
-  
-  struct tm* timeinfo = localtime(&now);
-  if (!timeinfo) {
-    return false;
-  }
-  
-  int currentHour = timeinfo->tm_hour;
-  int currentMinute = timeinfo->tm_min;
-  
-  // Calculate current time and shutdown/wake times in minutes from midnight
-  int currentMinutes = currentHour * 60 + currentMinute;
-  int shutdownMinutes = SHUTDOWN_HOUR * 60 + SHUTDOWN_MINUTE;
-  int wakeMinutes = WAKE_HOUR * 60 + WAKE_MINUTE;
-  
-  // Check if we're in the shutdown period (between shutdown time and wake time next day)
-  // If shutdown time is before wake time (e.g., 16:00 to 08:00 next day)
-  if (shutdownMinutes > wakeMinutes) {
-    // Shutdown time is later in day than wake time (e.g., 4pm to 8am next day)
-    // We're in shutdown period if: current >= shutdown OR current < wake
-    return (currentMinutes >= shutdownMinutes || currentMinutes < wakeMinutes);
-  } else {
-    // Shutdown time is before wake time (e.g., 8am to 4pm same day)
-    // We're in shutdown period if: current >= shutdown AND current < wake
-    return (currentMinutes >= shutdownMinutes && currentMinutes < wakeMinutes);
-  }
-}
-
-unsigned long calculateSleepUntilWake() {
-  time_t now = time(nullptr);
-  if (now < 0) {
-    // If time not synced, sleep for max duration (71 minutes) as fallback
-    return 4294967295UL;  // Max deep sleep duration
-  }
-  
-  struct tm* timeinfo = localtime(&now);
-  if (!timeinfo) {
-    return 4294967295UL;
-  }
-  
-  // Calculate seconds until wake time
-  int currentHour = timeinfo->tm_hour;
-  int currentMinute = timeinfo->tm_min;
-  int currentSecond = timeinfo->tm_sec;
-  
-  // Calculate seconds from midnight to current time
-  unsigned long currentSeconds = currentHour * 3600UL + currentMinute * 60UL + currentSecond;
-  
-  // Calculate seconds from midnight to wake time
-  unsigned long wakeSeconds = WAKE_HOUR * 3600UL + WAKE_MINUTE * 60UL;
-  
-  // Calculate seconds from midnight to shutdown time
-  unsigned long shutdownSeconds = SHUTDOWN_HOUR * 3600UL + SHUTDOWN_MINUTE * 60UL;
-  
-  // Calculate sleep duration: seconds until wake time
-  unsigned long sleepSeconds;
-  
-  if (shutdownSeconds > wakeSeconds) {
-    // Shutdown time is later than wake time (e.g., 4pm to 8am next day)
-    if (currentSeconds >= shutdownSeconds) {
-      // We're past shutdown time, sleep until wake time next day
-      sleepSeconds = (24UL * 3600UL) - currentSeconds + wakeSeconds;
-    } else if (currentSeconds < wakeSeconds) {
-      // We're before wake time (early morning), sleep until wake time today
-      sleepSeconds = wakeSeconds - currentSeconds;
-    } else {
-      // We're between wake and shutdown (active period), shouldn't happen
-      // But if it does, sleep for max duration
-      sleepSeconds = 4260UL;  // 71 minutes
-    }
-  } else {
-    // Shutdown time is before wake time (e.g., 8am to 4pm same day)
-    // This means shutdown period is within same day
-    if (currentSeconds >= shutdownSeconds) {
-      // We're past shutdown, sleep until wake time next day
-      sleepSeconds = (24UL * 3600UL) - currentSeconds + wakeSeconds;
-    } else {
-      // Shouldn't happen if isShutdownTime() is correct
-      sleepSeconds = shutdownSeconds - currentSeconds;
-    }
-  }
-  
-  // Convert to microseconds
-  unsigned long sleepMicroseconds = sleepSeconds * 1000000UL;
-  
-  // ESP8266 max deep sleep is 4294967295 microseconds (~71 minutes)
-  // If sleep duration exceeds this, cap it at max
-  // Device will wake up, check time again, and sleep again if needed
-  if (sleepMicroseconds > 4294967295UL) {
-    sleepMicroseconds = 4294967295UL;  // Max deep sleep duration (~71 minutes)
-  }
-  
-  return sleepMicroseconds;
-}

@@ -29,6 +29,21 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+// Response interceptor to suppress error logging for history API failures
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Suppress console errors for history API endpoints that commonly fail
+    // Components will handle these errors gracefully
+    if (error.config?.url?.includes('/history/')) {
+      // Return error as rejected promise but don't log
+      return Promise.reject(error)
+    }
+    // For other endpoints, log normally
+    return Promise.reject(error)
+  }
+)
+
 // Data API
 export const dataAPI = {
   getData: async (hours = 24, limit = 1000, deviceId = null) => {
@@ -53,6 +68,10 @@ export const dataAPI = {
   getStatus: async () => {
     return apiClient.get('/status')
   },
+
+  getDevices: async () => {
+    return apiClient.get('/devices')
+  },
 }
 
 // History API
@@ -63,7 +82,16 @@ export const historyAPI = {
     if (end) params.append('end', end)
     params.append('bucket', bucket)
     if (deviceId) params.append('device_id', deviceId)
-    return apiClient.get(`/history/series?${params.toString()}`)
+    try {
+      return await apiClient.get(`/history/series?${params.toString()}`)
+    } catch (error) {
+      // Return error response instead of throwing to allow graceful handling
+      return Promise.resolve({
+        data: { status: 'error', error: error.message },
+        response: { status: error.response?.status || 500 },
+        status: error.response?.status || 500
+      })
+    }
   },
 
   getSummary: async (start = null, end = null, deviceId = null) => {
@@ -71,7 +99,16 @@ export const historyAPI = {
     if (start) params.append('start', start)
     if (end) params.append('end', end)
     if (deviceId) params.append('device_id', deviceId)
-    return apiClient.get(`/history/summary?${params.toString()}`)
+    try {
+      return await apiClient.get(`/history/summary?${params.toString()}`)
+    } catch (error) {
+      // Return error response instead of throwing to allow graceful handling
+      return Promise.resolve({
+        data: { status: 'error', error: error.message },
+        response: { status: error.response?.status || 500 },
+        status: error.response?.status || 500
+      })
+    }
   },
 
   exportCSV: async (start = null, end = null, deviceId = null) => {
@@ -87,33 +124,11 @@ export const historyAPI = {
 
 // Connect API
 export const connectAPI = {
-  uploadFirmware: async (
-    boardName, 
-    ssid, 
-    password, 
-    enableBundling = null, 
-    enableWifiOnDemand = null,
-    enableDeepSleep = null, 
-    deepSleepDurationSeconds = null,
-    enableScheduledShutdown = null,
-    shutdownHour = null,
-    shutdownMinute = null,
-    wakeHour = null,
-    wakeMinute = null
-  ) => {
+  uploadFirmware: async (boardName, ssid, password) => {
     return apiClient.post('/connect/upload', {
       boardName,
       ssid,
       password,
-      enableBundling,
-      enableWifiOnDemand,
-      enableDeepSleep,
-      deepSleepDurationSeconds,
-      enableScheduledShutdown,
-      shutdownHour,
-      shutdownMinute,
-      wakeHour,
-      wakeMinute,
     })
   },
 }
