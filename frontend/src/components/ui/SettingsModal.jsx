@@ -10,19 +10,15 @@ const SettingsModal = ({
   isOpen, 
   onClose, 
   onApply,
-  mode = 'dashboard', // 'dashboard' or 'history'
   initialSettings = {},
   devices = []
 }) => {
   const [settings, setSettings] = useState({
-    // Dashboard settings
-    timeRange: '24',
-    bucket: 'raw',
-    
     // History settings
     start: null,
     end: null,
     selectedPreset: '30d',
+    bucket: 'day',
     deviceId: '',
     
     ...initialSettings
@@ -31,18 +27,16 @@ const SettingsModal = ({
   useEffect(() => {
     if (isOpen) {
       // Reset to initial settings when modal opens
-      const defaultBucket = mode === 'dashboard' ? 'raw' : 'day'
       setSettings({
-        timeRange: '24',
         start: null,
         end: null,
-        bucket: defaultBucket,
+        bucket: 'day',
         selectedPreset: '30d',
         deviceId: '',
         ...initialSettings
       })
     }
-  }, [isOpen, initialSettings, mode])
+  }, [isOpen, initialSettings])
 
   const formatDateForInput = (date) => {
     if (!date) return ''
@@ -66,7 +60,6 @@ const SettingsModal = ({
   const handleCancel = () => {
     // Reset to initial settings
     setSettings({
-      timeRange: '24',
       start: null,
       end: null,
       bucket: 'day',
@@ -107,14 +100,6 @@ const SettingsModal = ({
 
   if (!isOpen) return null
 
-  const timeRangeOptions = [
-    { value: '1', label: '1h' },
-    { value: '6', label: '6h' },
-    { value: '24', label: '24h' },
-    { value: '168', label: '7d' },
-    { value: '720', label: '30d' },
-  ]
-
   const presetOptions = [
     { id: '24h', label: '24h' },
     { id: '7d', label: '7d' },
@@ -151,117 +136,76 @@ const SettingsModal = ({
         </div>
 
         <div className="settings-modal__content">
-          {mode === 'dashboard' && (
-            <>
-              <div className="settings-modal__section">
-                <h3 className="settings-modal__section-title">Časové období</h3>
-                <div className="settings-modal__chips">
-                  {timeRangeOptions.map((option) => (
-                    <Chip
-                      key={option.value}
-                      variant="filter"
-                      selected={settings.timeRange === option.value}
-                      onClick={() => setSettings(prev => ({ ...prev, timeRange: option.value }))}
-                    >
-                      {option.label}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
+          <div className="settings-modal__section">
+            <h3 className="settings-modal__section-title">Rychlý výběr období</h3>
+            <div className="settings-modal__chips">
+              {presetOptions.map((preset) => (
+                <Chip
+                  key={preset.id}
+                  variant="filter"
+                  selected={settings.selectedPreset === preset.id}
+                  onClick={() => {
+                    if (preset.id === 'custom') {
+                      setSettings(prev => ({ ...prev, selectedPreset: 'custom' }))
+                    } else {
+                      applyPreset(preset.id)
+                    }
+                  }}
+                >
+                  {preset.label}
+                </Chip>
+              ))}
+            </div>
+          </div>
 
-              <div className="settings-modal__section">
-                <h3 className="settings-modal__section-title">Granularita dat</h3>
-                <div className="settings-modal__buckets">
-                  {bucketOptions.map((bucket) => (
-                    <Card
-                      key={bucket.value}
-                      className={`settings-modal__bucket-card ${settings.bucket === bucket.value ? 'settings-modal__bucket-card--active' : ''}`}
-                      elevation={settings.bucket === bucket.value ? 2 : 1}
-                      onClick={() => setSettings(prev => ({ ...prev, bucket: bucket.value }))}
-                    >
-                      <div className="settings-modal__bucket-title">{bucket.label}</div>
-                      <div className="settings-modal__bucket-desc">{bucket.desc}</div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          <div className={`settings-modal__section ${settings.selectedPreset === 'custom' ? 'settings-modal__section--active' : ''}`}>
+            <h3 className="settings-modal__section-title">Vlastní časové období</h3>
+            <div className="settings-modal__date-range">
+              <TextField
+                type="datetime-local"
+                label="Od"
+                value={settings.start || ''}
+                onChange={(e) => {
+                  setSettings(prev => ({ 
+                    ...prev, 
+                    start: e.target.value,
+                    selectedPreset: 'custom'
+                  }))
+                }}
+                fullWidth
+              />
+              <TextField
+                type="datetime-local"
+                label="Do"
+                value={settings.end || ''}
+                onChange={(e) => {
+                  setSettings(prev => ({ 
+                    ...prev, 
+                    end: e.target.value,
+                    selectedPreset: 'custom'
+                  }))
+                }}
+                fullWidth
+              />
+            </div>
+          </div>
 
-          {mode === 'history' && (
-            <>
-              <div className="settings-modal__section">
-                <h3 className="settings-modal__section-title">Rychlý výběr období</h3>
-                <div className="settings-modal__chips">
-                  {presetOptions.map((preset) => (
-                    <Chip
-                      key={preset.id}
-                      variant="filter"
-                      selected={settings.selectedPreset === preset.id}
-                      onClick={() => {
-                        if (preset.id === 'custom') {
-                          setSettings(prev => ({ ...prev, selectedPreset: 'custom' }))
-                        } else {
-                          applyPreset(preset.id)
-                        }
-                      }}
-                    >
-                      {preset.label}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-
-              <div className={`settings-modal__section ${settings.selectedPreset === 'custom' ? 'settings-modal__section--active' : ''}`}>
-                <h3 className="settings-modal__section-title">Vlastní časové období</h3>
-                <div className="settings-modal__date-range">
-                  <TextField
-                    type="datetime-local"
-                    label="Od"
-                    value={settings.start || ''}
-                    onChange={(e) => {
-                      setSettings(prev => ({ 
-                        ...prev, 
-                        start: e.target.value,
-                        selectedPreset: 'custom'
-                      }))
-                    }}
-                    fullWidth
-                  />
-                  <TextField
-                    type="datetime-local"
-                    label="Do"
-                    value={settings.end || ''}
-                    onChange={(e) => {
-                      setSettings(prev => ({ 
-                        ...prev, 
-                        end: e.target.value,
-                        selectedPreset: 'custom'
-                      }))
-                    }}
-                    fullWidth
-                  />
-                </div>
-              </div>
-
-              <div className="settings-modal__section">
-                <h3 className="settings-modal__section-title">Granularita dat</h3>
-                <div className="settings-modal__buckets">
-                  {bucketOptions.map((bucket) => (
-                    <Card
-                      key={bucket.value}
-                      className={`settings-modal__bucket-card ${settings.bucket === bucket.value ? 'settings-modal__bucket-card--active' : ''}`}
-                      elevation={settings.bucket === bucket.value ? 2 : 1}
-                      onClick={() => setSettings(prev => ({ ...prev, bucket: bucket.value }))}
-                    >
-                      <div className="settings-modal__bucket-title">{bucket.label}</div>
-                      <div className="settings-modal__bucket-desc">{bucket.desc}</div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          <div className="settings-modal__section">
+            <h3 className="settings-modal__section-title">Granularita dat</h3>
+            <div className="settings-modal__buckets">
+              {bucketOptions.map((bucket) => (
+                <Card
+                  key={bucket.value}
+                  className={`settings-modal__bucket-card ${settings.bucket === bucket.value ? 'settings-modal__bucket-card--active' : ''}`}
+                  elevation={settings.bucket === bucket.value ? 2 : 1}
+                  onClick={() => setSettings(prev => ({ ...prev, bucket: bucket.value }))}
+                >
+                  <div className="settings-modal__bucket-title">{bucket.label}</div>
+                  <div className="settings-modal__bucket-desc">{bucket.desc}</div>
+                </Card>
+              ))}
+            </div>
+          </div>
 
           <div className="settings-modal__section">
             <Select

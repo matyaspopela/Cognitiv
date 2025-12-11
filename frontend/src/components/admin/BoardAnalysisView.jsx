@@ -61,6 +61,35 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     start: null,
     end: null
   })
+  const [deviceName, setDeviceName] = useState(deviceId)
+
+  // Fetch device display name
+  useEffect(() => {
+    const fetchDeviceName = async () => {
+      try {
+        const response = await dataAPI.getDevices()
+        if (response.data && response.data.devices) {
+          const device = response.data.devices.find(
+            (d) => d.device_id === deviceId || 
+                   d.mac_address === deviceId || 
+                   d.display_name === deviceId
+          )
+          if (device && device.display_name) {
+            setDeviceName(device.display_name)
+          } else if (device && device.device_id) {
+            setDeviceName(device.device_id)
+          }
+        }
+      } catch (error) {
+        // Keep original deviceId if fetch fails
+        console.error('Error fetching device name:', error)
+      }
+    }
+
+    if (deviceId) {
+      fetchDeviceName()
+    }
+  }, [deviceId])
 
   const formatDateForInput = (date) => {
     if (!date) return ''
@@ -339,7 +368,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       
       <div className="board-analysis-view__header">
         <div>
-          <h2 className="board-analysis-view__title">{deviceId}</h2>
+          <h2 className="board-analysis-view__title">{deviceName || deviceId}</h2>
         </div>
         <Button variant="outlined" size="medium" onClick={onClose}>
           Zavřít

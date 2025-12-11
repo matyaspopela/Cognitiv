@@ -100,13 +100,8 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
               if (chartData.datasets?.[0]?.data?.length > 0) {
                 setMiniChartData(chartData)
                 chartLoaded = true
-
-                // Get most recent CO2 value from series
-                const lastDataPoint = seriesToUse[seriesToUse.length - 1]
-                const co2Value = lastDataPoint?.co2?.avg ?? lastDataPoint?.co2
-                if (co2Value !== null && co2Value !== undefined) {
-                  setCurrentCo2(Math.round(co2Value))
-                }
+                // Don't update currentCo2 from chart data - use device.current_readings.co2 instead
+                // The chart shows historical/averaged data, not the current reading
                 break // Success, stop trying other buckets
               }
             }
@@ -138,7 +133,40 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
     loadMiniChartData()
   }, [device])
 
-  const isOffline = device?.status !== 'online'
+  // Determine if device is offline based on status and last_seen timestamp
+  // Device is offline if:
+  // 1. Status is explicitly 'offline', OR
+  // 2. last_seen timestamp is more than 5 minutes ago
+  const getIsOffline = () => {
+    if (!device) return true
+    
+    // If status is explicitly 'offline', treat as offline
+    if (device.status === 'offline') return true
+    
+    // If status is 'online', also check last_seen timestamp as safety measure
+    if (device.last_seen) {
+      try {
+        // Parse last_seen timestamp (format: "2024-01-31 12:00:00")
+        const lastSeenDate = new Date(device.last_seen)
+        if (!isNaN(lastSeenDate.getTime())) {
+          const now = new Date()
+          const minutesAgo = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60)
+          // If last_seen is more than 5 minutes ago, consider offline
+          if (minutesAgo > 5) {
+            return true
+          }
+        }
+      } catch (error) {
+        // If parsing fails, fall back to status
+        console.warn('Failed to parse last_seen timestamp:', device.last_seen, error)
+      }
+    }
+    
+    // Default to checking status
+    return device.status !== 'online'
+  }
+  
+  const isOffline = getIsOffline()
 
   // Format voltage for display - safely handle different data types
   // Returns formatted voltage string or "N/A" if missing/invalid

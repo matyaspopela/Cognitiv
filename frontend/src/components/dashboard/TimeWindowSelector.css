@@ -1,0 +1,45 @@
+@import '../../design/tokens.css';
+
+.time-window-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-spacing-3);
+  margin-bottom: var(--md3-spacing-4);
+  flex-wrap: wrap;
+}
+
+.time-window-selector__label {
+  font-size: var(--md3-font-size-body-medium);
+  font-weight: var(--md3-font-weight-medium);
+  color: var(--md3-color-text-primary);
+}
+
+.time-window-selector__buttons {
+  display: flex;
+  gap: var(--md3-spacing-2);
+  flex-wrap: wrap;
+}
+
+.time-window-selector__button {
+  min-width: 100px;
+}
+
+.time-window-selector__button--active {
+  /* Active state is handled by Button variant="filled" */
+}
+
+@media (max-width: 640px) {
+  .time-window-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .time-window-selector__buttons {
+    width: 100%;
+  }
+
+  .time-window-selector__button {
+    flex: 1;
+  }
+}
+

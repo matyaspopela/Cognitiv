@@ -26,8 +26,40 @@ const AdminPanel = () => {
       const response = await adminAPI.getDevices()
       if (response.data.status === 'success') {
         // Sort devices: online first, then offline
+        // Also recalculate status based on last_seen (5-minute threshold)
         const devicesList = response.data.devices || []
-        const sortedDevices = [...devicesList].sort((a, b) => {
+        
+        // Helper function to determine if device is actually online (client-side check)
+        const isDeviceOnline = (device) => {
+          if (!device) return false
+          if (device.status === 'offline') return false
+          
+          // Check last_seen timestamp (5-minute threshold)
+          if (device.last_seen) {
+            try {
+              const lastSeenDate = new Date(device.last_seen)
+              if (!isNaN(lastSeenDate.getTime())) {
+                const now = new Date()
+                const minutesAgo = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60)
+                if (minutesAgo > 5) {
+                  return false // Offline if more than 5 minutes
+                }
+              }
+            } catch (error) {
+              // If parsing fails, fall back to status
+            }
+          }
+          
+          return device.status === 'online'
+        }
+        
+        // Update status based on client-side check
+        const devicesWithStatus = devicesList.map(device => ({
+          ...device,
+          status: isDeviceOnline(device) ? 'online' : 'offline'
+        }))
+        
+        const sortedDevices = [...devicesWithStatus].sort((a, b) => {
           const aOnline = a.status === 'online' ? 1 : 0
           const bOnline = b.status === 'online' ? 1 : 0
           return bOnline - aOnline // Online devices first (1 - 0 = 1, so b comes before a)
