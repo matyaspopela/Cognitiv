@@ -28,6 +28,18 @@
   gap: var(--md3-spacing-2);
 }
 
+.board-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-spacing-2);
+  flex-shrink: 0;
+}
+
+.board-card__rename-btn {
+  min-width: 32px;
+  padding: var(--md3-spacing-1) var(--md3-spacing-2);
+}
+
 .board-card__name {
   font-size: var(--md3-font-size-title-medium);
   font-weight: var(--md3-font-weight-bold);

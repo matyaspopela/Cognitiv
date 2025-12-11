@@ -59,13 +59,16 @@ struct SensorData {
   float temperature;
   float humidity;
   uint16_t co2;
+  float voltage;  // Battery/board voltage in Volts (from ADC via voltage divider)
   unsigned long timestamp;
   bool valid;
 };
 
-SensorData lastReading;
 unsigned long lastReadingTime = 0;
 bool sensorsInitialized = false;
+
+// Global MAC address cache (extracted after WiFi initialization)
+String deviceMacAddress = "";
 
 #ifdef HAS_DISPLAY
 bool displayInitialized = false;
@@ -92,9 +95,10 @@ void displayWarningScreen(SensorData data);
 void scanI2C();
 bool initSensors();
 SensorData readSensors();
+float readVoltage();
 void connectWiFi();
 bool sendSingleReading(SensorData data);
-bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray);
+bool sendJsonToUrl(const char* url, const String& jsonPayload);
 
 void setup() {
   Serial.begin(115200);
@@ -138,6 +142,15 @@ void setup() {
   // Connect to WiFi
   connectWiFi();
   
+  // Extract and cache MAC address after WiFi connection
+  if (WiFi.status() == WL_CONNECTED) {
+    deviceMacAddress = WiFi.macAddress();
+    Serial.print("Device MAC Address: ");
+    Serial.println(deviceMacAddress);
+  } else {
+    Serial.println("⚠️  WiFi not connected, MAC address not available");
+  }
+  
   // Initialize time
   configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
   Serial.println("Waiting for NTP time sync...");
@@ -166,7 +179,6 @@ void loop() {
     SensorData reading = readSensors();
     
     if (reading.valid) {
-      lastReading = reading;
       #ifdef HAS_DISPLAY
       displayReadings(reading);
       #endif
@@ -370,6 +382,19 @@ SensorData readSensors() {
   data.valid = false;
   data.timestamp = time(nullptr);
   
+  // Read voltage (always read, independent of sensor validity)
+  data.voltage = readVoltage();
+  Serial.print("Voltage: ");
+  Serial.print(data.voltage, 2);
+  Serial.println(" V");
+  
+  // Validate voltage range (warn if out of expected range, but don't block)
+  if (data.voltage < 2.5 || data.voltage > 5.5) {
+    Serial.print("WARNING: Voltage out of expected range: ");
+    Serial.print(data.voltage, 2);
+    Serial.println(" V");
+  }
+  
   // Read SCD41
   if (scd41.readMeasurement()) {
     data.co2 = scd41.getCO2();
@@ -399,6 +424,18 @@ SensorData readSensors() {
   return data;
 }
 
+float readVoltage() {
+  // Read ADC value (0-1023)
+  int adcValue = analogRead(A0);
+  
+  // Convert to voltage at ADC pin (0-1V range)
+  float adcVoltage = (adcValue / 1023.0) * 1.0;
+  
+  // Convert to actual battery voltage using divider ratio
+  float batteryVoltage = adcVoltage * VOLTAGE_DIVIDER_RATIO;
+  
+  return batteryVoltage;
+}
 
 void connectWiFi() {
   Serial.print("Connecting to WiFi: ");
@@ -466,7 +503,7 @@ void connectWiFi() {
 
 
 // Helper function to send JSON to any URL (HTTP or HTTPS)
-bool sendJsonToUrl(const char* url, const String& jsonPayload, bool isArray) {
+bool sendJsonToUrl(const char* url, const String& jsonPayload) {
   if (WiFi.status() != WL_CONNECTED) {
     return false;
   }
@@ -530,12 +567,19 @@ bool sendSingleReading(SensorData data) {
   }
   
   // Create JSON payload (single object, not array)
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<300> doc;  // Increased from 256 to accommodate voltage field
   doc["timestamp"] = data.timestamp;
-  doc["device_id"] = DEVICE_ID;
+  doc["device_id"] = DEVICE_ID;  // Keep for backward compatibility
+  
+  // Add MAC address if available
+  if (deviceMacAddress.length() > 0) {
+    doc["mac_address"] = deviceMacAddress;
+  }
+  
   doc["temperature"] = round(data.temperature * 100) / 100.0;
   doc["humidity"] = round(data.humidity * 100) / 100.0;
   doc["co2"] = data.co2;
+  doc["voltage"] = round(data.voltage * 100) / 100.0;  // Voltage in Volts, 2 decimal places
   
   String jsonString;
   serializeJson(doc, jsonString);
@@ -544,11 +588,11 @@ bool sendSingleReading(SensorData data) {
   Serial.println(jsonString);
   
   // Send to production server
-  bool prodSuccess = sendJsonToUrl(SERVER_URL, jsonString, false);
+  bool prodSuccess = sendJsonToUrl(SERVER_URL, jsonString);
   
   // Send to local debug server if enabled
   #if ENABLE_LOCAL_DEBUG
-  bool localSuccess = sendJsonToUrl(LOCAL_SERVER_URL, jsonString, false);
+  bool localSuccess = sendJsonToUrl(LOCAL_SERVER_URL, jsonString);
   bool success = prodSuccess || localSuccess;  // Success if at least one works
   #else
   bool success = prodSuccess;

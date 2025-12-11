@@ -5,12 +5,14 @@ import Button from '../components/ui/Button'
 import ProgressBar from '../components/ui/ProgressBar'
 import BoardCard from '../components/admin/BoardCard'
 import BoardAnalysisView from '../components/admin/BoardAnalysisView'
+import DeviceRenameModal from '../components/admin/DeviceRenameModal'
 import './AdminPanel.css'
 
 const AdminPanel = () => {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedBoard, setSelectedBoard] = useState(null)
+  const [renameDevice, setRenameDevice] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -50,6 +52,19 @@ const AdminPanel = () => {
     setSelectedBoard(null)
   }
 
+  const handleRenameClick = (device) => {
+    setRenameDevice(device)
+  }
+
+  const handleRenameSuccess = () => {
+    loadDevices()  // Refresh device list
+    setRenameDevice(null)
+  }
+
+  const handleCloseRenameModal = () => {
+    setRenameDevice(null)
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page__container">
@@ -86,14 +101,21 @@ const AdminPanel = () => {
                 <div className="admin-page__empty">Žádná zařízení nebyla nalezena.</div>
               ) : (
                 <div className="admin-page__devices-grid">
-                  {devices.map((device) => (
-                    <BoardCard
-                      key={device.device_id}
-                      device={device}
-                      onDetailsClick={handleDetailsClick}
-                      selected={selectedBoard === device.device_id}
-                    />
-                  ))}
+                  {devices.map((device) => {
+                    // Use mac_address as key if available, otherwise device_id
+                    const deviceKey = device.mac_address || device.device_id
+                    // For selection, prefer device_id (still used in API calls)
+                    const deviceIdForSelection = device.device_id
+                    return (
+                      <BoardCard
+                        key={deviceKey}
+                        device={device}
+                        onDetailsClick={handleDetailsClick}
+                        onRenameClick={handleRenameClick}
+                        selected={selectedBoard === deviceIdForSelection}
+                      />
+                    )
+                  })}
                 </div>
               )}
             </Card>
@@ -103,6 +125,14 @@ const AdminPanel = () => {
             <BoardAnalysisView deviceId={selectedBoard} onClose={handleCloseAnalysis} />
           )}
         </div>
+
+        {renameDevice && (
+          <DeviceRenameModal
+            device={renameDevice}
+            onClose={handleCloseRenameModal}
+            onRenameSuccess={handleRenameSuccess}
+          />
+        )}
       </div>
     </div>
   )

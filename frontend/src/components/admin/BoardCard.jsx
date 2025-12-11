@@ -27,6 +27,7 @@ ChartJS.register(
 )
 import Card from '../ui/Card'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
 import ProgressBar from '../ui/ProgressBar'
 import OfflineInfoTooltip from './OfflineInfoTooltip'
 import './BoardCard.css'
@@ -36,7 +37,7 @@ import './BoardCard.css'
  * Compact board/device card with mini CO2 graph and status.
  * Entire card is clickable to show details.
  */
-const BoardCard = ({ device, onDetailsClick, selected = false }) => {
+const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) => {
   const [miniChartData, setMiniChartData] = useState(null)
   const [loadingMiniChart, setLoadingMiniChart] = useState(false)
   const [currentCo2, setCurrentCo2] = useState(null)
@@ -146,19 +147,35 @@ const BoardCard = ({ device, onDetailsClick, selected = false }) => {
       onClick={() => onDetailsClick?.(device?.device_id)}
     >
       <div className="board-card__header">
-        <h3 className="board-card__name">{device?.device_id || 'Unknown'}</h3>
-        <OfflineInfoTooltip
-          lastSeen={device?.last_seen}
-          totalDataPoints={device?.total_data_points}
-          isOffline={isOffline}
-        >
-          <Badge
-            variant="standard"
-            color={device?.status === 'online' ? 'success' : 'error'}
+        <h3 className="board-card__name">{device?.display_name || device?.device_id || 'Unknown'}</h3>
+        <div className="board-card__header-actions">
+          {device?.mac_address && onRenameClick && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRenameClick(device)
+              }}
+              className="board-card__rename-btn"
+              title="Přejmenovat zařízení"
+            >
+              ✏️
+            </Button>
+          )}
+          <OfflineInfoTooltip
+            lastSeen={device?.last_seen}
+            totalDataPoints={device?.total_data_points}
+            isOffline={isOffline}
           >
-            {device?.status === 'online' ? 'Online' : 'Offline'}
-          </Badge>
-        </OfflineInfoTooltip>
+            <Badge
+              variant="standard"
+              color={device?.status === 'online' ? 'success' : 'error'}
+            >
+              {device?.status === 'online' ? 'Online' : 'Offline'}
+            </Badge>
+          </OfflineInfoTooltip>
+        </div>
       </div>
 
       <div className="board-card__body">
