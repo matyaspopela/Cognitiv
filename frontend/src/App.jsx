@@ -4,16 +4,16 @@ import { ThemeProvider } from './theme/ThemeProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import Home from './pages/Home'
-import Dashboard from './pages/Dashboard'
 import Connect from './pages/Connect'
 import Login from './pages/Login'
 import AdminPanel from './pages/AdminPanel'
+import Dashboard from './pages/Dashboard'
 
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className="app">
             <Routes>
               <Route path="/login" element={<Login />} />

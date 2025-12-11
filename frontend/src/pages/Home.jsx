@@ -148,17 +148,8 @@ const Home = () => {
               <h1 className="home-page__hero-title">Sledujte kvalitu vzduchu v reálném čase</h1>
               <p className="home-page__hero-description">
                 Cognitiv monitoruje teplotu, vlhkost a koncentraci CO₂ pomocí senzorů ESP32.
-                Všechna data jsou zobrazena v přehledném dashboardu s grafy a statistikami.
               </p>
               <div className="home-page__hero-actions">
-                <Button
-                  variant="filled"
-                  size="large"
-                  component={Link}
-                  to="/dashboard"
-                >
-                  Otevřít živý přehled
-                </Button>
                 <Button
                   variant="outlined"
                   size="large"
@@ -171,15 +162,24 @@ const Home = () => {
             </div>
           </Card>
 
-          <Card className="home-page__hero-features" elevation={2}>
-            <h2 className="home-page__features-title">Přehledný dashboard</h2>
-            <p className="home-page__features-description">
-              Dashboard zobrazuje aktuální hodnoty a trendy v přehledných grafech. Barevné indikátory okamžitě ukazují kvalitu vzduchu.
-            </p>
-            <ul className="home-page__features-list">
-              <li>Živá data z vašich senzorů v reálném čase</li>
-              <li>Historická data pro analýzu dlouhodobých trendů</li>
-            </ul>
+          <Card className="home-page__dashboard-card" elevation={3}>
+            <div className="home-page__dashboard-content">
+              <h2 className="home-page__dashboard-title">Interaktivní Dashboard</h2>
+              <p className="home-page__dashboard-description">
+                Prohlédněte si všechny monitorovací senzory, prohlížejte interaktivní grafy a analyzujte data za různá časová období.
+              </p>
+              <div className="home-page__dashboard-actions">
+                <Button
+                  variant="filled"
+                  size="large"
+                  component={Link}
+                  to="/dashboard"
+                  color="primary"
+                >
+                  Otevřít Dashboard
+                </Button>
+              </div>
+            </div>
           </Card>
         </section>
 
@@ -235,7 +235,6 @@ const Home = () => {
         <div className="home-page__footer-text">Vytvořeno pro zodpovědnou péči o kvalitu vzduchu.</div>
         <div className="home-page__footer-links">
           <Link to="/connect">Připojit</Link>
-          <Link to="/dashboard">Přehled</Link>
           <a href="#features">Funkce</a>
           <a href="mailto:hello@cognitiv.dev">Kontakt</a>
         </div>

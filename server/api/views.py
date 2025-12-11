@@ -353,6 +353,74 @@ def parse_iso_datetime(value, default=None):
         )
 
 
+def resolve_device_identifier(device_identifier):
+    """
+    Resolve device identifier to device_id and/or mac_address.
+    
+    The identifier can be:
+    - A device_id (legacy)
+    - A MAC address (new system)
+    - A display_name (looked up in registry)
+    
+    Returns:
+        dict with 'device_id' and/or 'mac_address' keys for filtering
+    """
+    if not device_identifier:
+        return {}
+    
+    device_identifier = str(device_identifier).strip()
+    
+    # Try to normalize as MAC address first
+    try:
+        mac_normalized = normalize_mac_address(device_identifier)
+        # If successful, it's a MAC address - also try to get associated device_id
+        result = {'mac_address': mac_normalized}
+        try:
+            registry = get_registry_collection()
+            entry = registry.find_one({'mac_address': mac_normalized})
+            if entry and entry.get('legacy_device_id'):
+                result['device_id'] = entry.get('legacy_device_id')
+        except Exception:
+            # Registry lookup failed, continue with just MAC
+            pass
+        return result
+    except ValueError:
+        # Not a MAC address, continue checking
+        pass
+    
+    # Check if it's a display_name in the registry
+    try:
+        registry = get_registry_collection()
+        entry = registry.find_one({'display_name': device_identifier})
+        if entry:
+            mac = entry.get('mac_address')
+            device_id = entry.get('legacy_device_id')
+            result = {}
+            if mac:
+                result['mac_address'] = mac
+            if device_id:
+                result['device_id'] = device_id
+            # If we found a match, return it
+            if result:
+                return result
+    except Exception:
+        # Registry lookup failed, continue with device_id
+        pass
+    
+    # Default: treat as device_id (legacy support)
+    # Also try to find MAC address for this device_id in registry
+    result = {'device_id': device_identifier}
+    try:
+        registry = get_registry_collection()
+        entry = registry.find_one({'legacy_device_id': device_identifier})
+        if entry and entry.get('mac_address'):
+            result['mac_address'] = entry.get('mac_address')
+    except Exception:
+        # Registry lookup failed, continue with just device_id
+        pass
+    return result
+
+
 def build_history_filter(start_dt, end_dt, device_id=None):
     """Sestaví dotaz pro historická data podle zadaného rozsahu."""
     query = {}
@@ -363,8 +431,22 @@ def build_history_filter(start_dt, end_dt, device_id=None):
         if end_dt:
             time_filter['$lte'] = end_dt
         query['timestamp'] = time_filter
+    
     if device_id:
-        query['device_id'] = device_id
+        # Resolve device identifier (supports device_id, MAC address, or display_name)
+        device_filter = resolve_device_identifier(device_id)
+        if device_filter:
+            # If we have both mac_address and device_id, use $or to match either
+            if 'mac_address' in device_filter and 'device_id' in device_filter:
+                query['$or'] = [
+                    {'mac_address': device_filter['mac_address']},
+                    {'device_id': device_filter['device_id']}
+                ]
+            elif 'mac_address' in device_filter:
+                query['mac_address'] = device_filter['mac_address']
+            elif 'device_id' in device_filter:
+                query['device_id'] = device_filter['device_id']
+    
     return query
 
 
@@ -597,6 +679,13 @@ def receive_data(request):
             'raw_payload': data
         }
         
+        # Add voltage if available (at top level for easy querying)
+        if 'voltage' in data and data['voltage'] is not None:
+            try:
+                document['voltage'] = float(data['voltage'])
+            except (ValueError, TypeError):
+                pass  # Skip if voltage can't be converted to float
+        
         # Add MAC address if available
         if mac_address:
             document['mac_address'] = mac_address
@@ -632,7 +721,19 @@ def get_data(request):
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
         if device_id:
-            mongo_filter['device_id'] = device_id
+            # Resolve device identifier (supports device_id, MAC address, or display_name)
+            device_filter = resolve_device_identifier(device_id)
+            if device_filter:
+                # If we have both mac_address and device_id, use $or to match either
+                if 'mac_address' in device_filter and 'device_id' in device_filter:
+                    mongo_filter['$or'] = [
+                        {'mac_address': device_filter['mac_address']},
+                        {'device_id': device_filter['device_id']}
+                    ]
+                elif 'mac_address' in device_filter:
+                    mongo_filter['mac_address'] = device_filter['mac_address']
+                elif 'device_id' in device_filter:
+                    mongo_filter['device_id'] = device_filter['device_id']
 
         try:
             collection = get_mongo_collection()
@@ -650,18 +751,52 @@ def get_data(request):
         documents.reverse()  # Restore chronological order
 
         data_points = []
+        now_utc = datetime.now(UTC)
+        max_future = now_utc + timedelta(hours=1)  # Allow 1 hour for clock skew
+        
         for doc in documents:
             temperature = float(doc.get('temperature', 0))
             humidity = float(doc.get('humidity', 0))
             co2 = int(doc.get('co2', 0))
-            timestamp_local = None
-            if 'timestamp' in doc:
-                timestamp_local = to_local_datetime(doc['timestamp'])
-
-            timestamp_str = doc.get('timestamp_str')
-            if not timestamp_str and timestamp_local:
+            
+            # Use raw MongoDB timestamp (UTC) - this is the source of truth
+            timestamp_utc = doc.get('timestamp')
+            timestamp_iso = None
+            timestamp_str = None
+            
+            if timestamp_utc:
+                # Ensure it's timezone-aware (UTC)
+                if timestamp_utc.tzinfo is None:
+                    timestamp_utc = timestamp_utc.replace(tzinfo=UTC)
+                
+                # CRITICAL: Skip documents with future timestamps (data corruption)
+                if timestamp_utc > max_future:
+                    print(f"⚠️  Skipping document with future timestamp: {timestamp_utc.isoformat()} (device: {doc.get('device_id')})")
+                    continue
+                
+                # Convert to ISO format in UTC - this is what frontend will parse
+                timestamp_iso = timestamp_utc.isoformat()
+                # Also create local time string for display
+                timestamp_local = to_local_datetime(timestamp_utc)
                 timestamp_str = timestamp_local.strftime('%Y-%m-%d %H:%M:%S')
-            timestamp_iso = timestamp_local.isoformat() if timestamp_local else None
+            else:
+                # Fallback to timestamp_str if timestamp is missing
+                timestamp_str = doc.get('timestamp_str')
+                if timestamp_str:
+                    # Try to parse it and create ISO
+                    try:
+                        # Parse the string as local time and convert to UTC
+                        dt_local = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                        dt_local = dt_local.replace(tzinfo=LOCAL_TZ)
+                        timestamp_utc = dt_local.astimezone(UTC)
+                        # Validate it's not in the future
+                        if timestamp_utc > max_future:
+                            print(f"⚠️  Skipping document with future timestamp_str: {timestamp_str} (device: {doc.get('device_id')})")
+                            continue
+                        timestamp_iso = timestamp_utc.isoformat()
+                    except Exception as e:
+                        print(f"⚠️  Failed to parse timestamp_str '{timestamp_str}': {e}")
+                        continue
 
             data_points.append({
                 'timestamp': timestamp_str,
@@ -1178,7 +1313,19 @@ def get_stats(request):
 
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
         if device_id:
-            mongo_filter['device_id'] = device_id
+            # Resolve device identifier (supports device_id, MAC address, or display_name)
+            device_filter = resolve_device_identifier(device_id)
+            if device_filter:
+                # If we have both mac_address and device_id, use $or to match either
+                if 'mac_address' in device_filter and 'device_id' in device_filter:
+                    mongo_filter['$or'] = [
+                        {'mac_address': device_filter['mac_address']},
+                        {'device_id': device_filter['device_id']}
+                    ]
+                elif 'mac_address' in device_filter:
+                    mongo_filter['mac_address'] = device_filter['mac_address']
+                elif 'device_id' in device_filter:
+                    mongo_filter['device_id'] = device_filter['device_id']
 
         try:
             collection = get_mongo_collection()
@@ -1533,7 +1680,7 @@ def debug_build_info(request):
 
 @require_http_methods(["GET"])
 def get_devices(request):
-    """Get list of all device IDs (public endpoint, no auth required)"""
+    """Get list of all devices with status info (public endpoint, no auth required)"""
     try:
         collection = get_mongo_collection()
     except RuntimeError as e:
@@ -1543,22 +1690,72 @@ def get_devices(request):
         }, status=503)
 
     try:
+        now = datetime.now(UTC)
+        cutoff_time = now - timedelta(minutes=5)  # Consider device online if seen in last 5 minutes
+        
+        devices = []
+        processed_macs = set()
+        
         # Get devices with MAC addresses from registry
         try:
             registry = get_registry_collection()
-            registry_entries = list(registry.find({}, {'mac_address': 1, 'display_name': 1}))
-            device_list = []
+            registry_entries = list(registry.find({}))
+            
             for entry in registry_entries:
-                device_list.append({
-                    'device_id': entry.get('legacy_device_id'),  # May be None
-                    'mac_address': entry['mac_address'],
-                    'display_name': entry.get('display_name', entry['mac_address'])
+                mac = entry['mac_address']
+                processed_macs.add(mac)
+                
+                # Get sensor data for this MAC
+                mac_filter = {'mac_address': mac}
+                total_count = collection.count_documents(mac_filter)
+                
+                status = 'offline'
+                last_seen = None
+                current_readings = None
+                device_id = entry.get('legacy_device_id')
+                
+                if total_count > 0:
+                    latest_doc = collection.find_one(mac_filter, sort=[('timestamp', -1)])
+                    
+                    if latest_doc:
+                        # Get device_id from latest doc if not in registry
+                        if not device_id:
+                            device_id = latest_doc.get('device_id')
+                        
+                        last_seen_dt = latest_doc.get('timestamp')
+                        if last_seen_dt:
+                            if isinstance(last_seen_dt, datetime):
+                                last_seen = to_readable_timestamp(last_seen_dt)
+                                if last_seen_dt >= cutoff_time:
+                                    status = 'online'
+                            
+                            # Get voltage from top-level or fall back to raw_payload
+                            voltage = latest_doc.get('voltage')
+                            if voltage is None:
+                                raw_payload = latest_doc.get('raw_payload', {})
+                                if isinstance(raw_payload, dict):
+                                    voltage = raw_payload.get('voltage')
+                            
+                            current_readings = {
+                                'temperature': latest_doc.get('temperature'),
+                                'humidity': latest_doc.get('humidity'),
+                                'co2': latest_doc.get('co2'),
+                                'voltage': voltage
+                            }
+                
+                devices.append({
+                    'mac_address': mac,
+                    'display_name': entry.get('display_name', mac),
+                    'device_id': device_id,
+                    'status': status,
+                    'total_data_points': total_count,
+                    'last_seen': last_seen,
+                    'current_readings': current_readings
                 })
         except Exception as e:
             print(f"⚠️  Warning: Could not access registry: {e}")
-            device_list = []
         
-        # Get legacy devices (by device_id)
+        # Get legacy devices (by device_id, excluding those with MAC)
         all_device_ids = collection.distinct('device_id')
         devices_with_mac = set()
         for doc in collection.find({'mac_address': {'$exists': True, '$ne': None}}, {'device_id': 1}):
@@ -1568,20 +1765,56 @@ def get_devices(request):
         
         legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac]
         
-        # Add legacy devices to list
         for device_id in legacy_device_ids:
-            device_list.append({
+            total_count = collection.count_documents({'device_id': device_id})
+            
+            latest_doc = collection.find_one(
+                {'device_id': device_id},
+                sort=[('timestamp', -1)]
+            )
+            
+            status = 'offline'
+            last_seen = None
+            current_readings = None
+            
+            if latest_doc:
+                last_seen_dt = latest_doc.get('timestamp')
+                if last_seen_dt:
+                    if isinstance(last_seen_dt, datetime):
+                        last_seen = to_readable_timestamp(last_seen_dt)
+                        if last_seen_dt >= cutoff_time:
+                            status = 'online'
+                
+                # Get voltage from top-level or fall back to raw_payload
+                voltage = latest_doc.get('voltage')
+                if voltage is None:
+                    raw_payload = latest_doc.get('raw_payload', {})
+                    if isinstance(raw_payload, dict):
+                        voltage = raw_payload.get('voltage')
+                
+                current_readings = {
+                    'temperature': latest_doc.get('temperature'),
+                    'humidity': latest_doc.get('humidity'),
+                    'co2': latest_doc.get('co2'),
+                    'voltage': voltage
+                }
+
+            devices.append({
+                'mac_address': None,  # No MAC for legacy devices
+                'display_name': device_id,  # Use device_id as display name
                 'device_id': device_id,
-                'mac_address': None,
-                'display_name': device_id
+                'status': status,
+                'total_data_points': total_count,
+                'last_seen': last_seen,
+                'current_readings': current_readings
             })
         
         # Sort by display_name or device_id
-        device_list.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
+        devices.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
         
         return JsonResponse({
             'status': 'success',
-            'devices': device_list
+            'devices': devices
         }, status=200)
     except PyMongoError as exc:
         return JsonResponse({
@@ -1614,7 +1847,7 @@ def admin_devices(request):
 
     try:
         now = datetime.now(UTC)
-        cutoff_time = now - timedelta(hours=24)  # Consider device online if seen in last 24h
+        cutoff_time = now - timedelta(minutes=5)  # Consider device online if seen in last 5 minutes
         
         # Get devices with MAC addresses (from registry)
         try:
@@ -1654,11 +1887,18 @@ def admin_devices(request):
                             if last_seen_dt >= cutoff_time:
                                 status = 'online'
                         
+                        # Get voltage from top-level or fall back to raw_payload
+                        voltage = latest_doc.get('voltage')
+                        if voltage is None:
+                            raw_payload = latest_doc.get('raw_payload', {})
+                            if isinstance(raw_payload, dict):
+                                voltage = raw_payload.get('voltage')
+                        
                         current_readings = {
                             'temperature': latest_doc.get('temperature'),
                             'humidity': latest_doc.get('humidity'),
                             'co2': latest_doc.get('co2'),
-                            'voltage': latest_doc.get('voltage')
+                            'voltage': voltage
                         }
                 
                 devices.append({
@@ -1701,11 +1941,18 @@ def admin_devices(request):
                         if last_seen_dt >= cutoff_time:
                             status = 'online'
                 
+                # Get voltage from top-level or fall back to raw_payload
+                voltage = latest_doc.get('voltage')
+                if voltage is None:
+                    raw_payload = latest_doc.get('raw_payload', {})
+                    if isinstance(raw_payload, dict):
+                        voltage = raw_payload.get('voltage')
+                
                 current_readings = {
                     'temperature': latest_doc.get('temperature'),
                     'humidity': latest_doc.get('humidity'),
                     'co2': latest_doc.get('co2'),
-                    'voltage': latest_doc.get('voltage')
+                    'voltage': voltage
                 }
 
             devices.append({
@@ -1905,7 +2152,7 @@ def admin_device_stats(request, device_id):
         if latest_doc:
             latest_ts = latest_doc.get('timestamp')
             if latest_ts and isinstance(latest_ts, datetime):
-                cutoff_time = datetime.now(UTC) - timedelta(hours=24)
+                cutoff_time = datetime.now(UTC) - timedelta(minutes=5)
                 if latest_ts >= cutoff_time:
                     status = 'online'
 

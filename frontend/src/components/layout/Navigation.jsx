@@ -16,7 +16,7 @@ const Navigation = ({ isAdmin, username, onLogout }) => {
 
   const navItems = [
     { path: '/', label: 'Domů' },
-    { path: '/dashboard', label: 'Přehled' },
+    { path: '/dashboard', label: 'Dashboard' },
     { path: '/connect', label: 'Připojit' },
   ]
 

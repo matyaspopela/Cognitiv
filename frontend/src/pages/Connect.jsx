@@ -168,7 +168,7 @@ const Connect = () => {
         </main>
 
         <footer className="connect-page__footer">
-          Hotovo? Otevřete <a href="/dashboard">přehled</a> a ověřte, že deska odesílá data.
+          Hotovo? Ověřte, že deska odesílá data.
         </footer>
       </div>
 

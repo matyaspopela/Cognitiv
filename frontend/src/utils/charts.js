@@ -110,40 +110,54 @@ export const buildClimateChart = (data) => {
  * @returns {Object|null} Chart.js data object for Doughnut chart, or null if no data
  */
 export const buildQualityPieChart = (co2Quality) => {
+  if (!co2Quality) {
+    return null
+  }
+
+  // Ensure we use count values, not percentages
+  const good = typeof co2Quality.good === 'number' ? co2Quality.good : 0
+  const moderate = typeof co2Quality.moderate === 'number' ? co2Quality.moderate : 0
+  const high = typeof co2Quality.high === 'number' ? co2Quality.high : 0
+  const critical = typeof co2Quality.critical === 'number' ? co2Quality.critical : 0
+
   const data = [
     {
       label: '< 1000 ppm',
-      value: co2Quality.good || 0,
+      value: good,
       color: 'rgba(76, 175, 80, 0.85)'
     },
     {
       label: '1000-1500 ppm',
-      value: co2Quality.moderate || 0,
+      value: moderate,
       color: 'rgba(255, 193, 7, 0.75)'
     },
     {
       label: '1500-2000 ppm',
-      value: co2Quality.high || 0,
+      value: high,
       color: 'rgba(255, 152, 0, 0.75)'
     },
     {
-      label: '> 2000 ppm',
-      value: co2Quality.critical || 0,
+      label: '2000+ ppm',
+      value: critical,
       color: 'rgba(244, 67, 54, 0.85)'
     }
-  ].filter(item => item.value > 0)
+  ]
 
-  if (data.length === 0) {
+  // Filter out categories with 0 values for pie chart display
+  // (pie charts can't show slices with 0 value)
+  const nonZeroData = data.filter(item => item.value > 0)
+
+  if (nonZeroData.length === 0) {
     return null
   }
 
-  const total = data.reduce((sum, item) => sum + item.value, 0)
-  const chartData = data.map(item => item.value)
-  const labels = data.map(item => {
+  const total = nonZeroData.reduce((sum, item) => sum + item.value, 0)
+  const chartData = nonZeroData.map(item => item.value)
+  const labels = nonZeroData.map(item => {
     const percent = ((item.value / total) * 100).toFixed(1)
     return `${item.label} (${percent}%)`
   })
-  const colors = data.map(item => item.color)
+  const colors = nonZeroData.map(item => item.color)
 
   return {
     labels,

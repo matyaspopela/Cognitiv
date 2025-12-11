@@ -215,6 +215,48 @@
   color: var(--md3-color-text-primary);
 }
 
+/* Dashboard Card in Hero Section */
+.home-page__dashboard-card.md3-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: var(--md3-border-radius-2xl);
+  padding: var(--md3-spacing-10);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-page__dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-spacing-6);
+  flex: 1;
+}
+
+.home-page__dashboard-title {
+  font-size: var(--md3-font-size-headline-large);
+  font-weight: var(--md3-font-weight-bold);
+  line-height: var(--md3-line-height-tight);
+  color: var(--md3-color-text-primary);
+  margin: 0;
+  font-family: var(--md3-font-family-display);
+}
+
+.home-page__dashboard-description {
+  font-size: var(--md3-font-size-body-large);
+  line-height: var(--md3-line-height-relaxed);
+  color: var(--md3-color-text-secondary);
+  margin: 0;
+}
+
+.home-page__dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--md3-spacing-4);
+  margin-top: var(--md3-spacing-2);
+}
+
 /* Mission Section - Minimal design */
 .home-page__mission {
   margin-top: var(--md3-spacing-4);
@@ -346,7 +388,8 @@
     gap: var(--md3-spacing-6);
   }
 
-  .home-page__hero-card {
+  .home-page__hero-card,
+  .home-page__dashboard-card {
     padding: var(--md3-spacing-8);
   }
 
@@ -358,6 +401,10 @@
     padding: var(--md3-spacing-8);
     grid-template-columns: 1fr;
     gap: var(--md3-spacing-6);
+  }
+
+  .home-page__dashboard-title {
+    font-size: var(--md3-font-size-headline-medium);
   }
 
   .home-page__mission-card {
