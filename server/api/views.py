@@ -1657,7 +1657,8 @@ def admin_devices(request):
                         current_readings = {
                             'temperature': latest_doc.get('temperature'),
                             'humidity': latest_doc.get('humidity'),
-                            'co2': latest_doc.get('co2')
+                            'co2': latest_doc.get('co2'),
+                            'voltage': latest_doc.get('voltage')
                         }
                 
                 devices.append({
@@ -1703,7 +1704,8 @@ def admin_devices(request):
                 current_readings = {
                     'temperature': latest_doc.get('temperature'),
                     'humidity': latest_doc.get('humidity'),
-                    'co2': latest_doc.get('co2')
+                    'co2': latest_doc.get('co2'),
+                    'voltage': latest_doc.get('voltage')
                 }
 
             devices.append({

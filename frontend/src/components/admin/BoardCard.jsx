@@ -140,6 +140,27 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
 
   const isOffline = device?.status !== 'online'
 
+  // Format voltage for display - safely handle different data types
+  // Returns formatted voltage string or "N/A" if missing/invalid
+  const formatVoltage = (voltage) => {
+    if (voltage == null) return 'N/A'
+    
+    // Handle string, number, or float
+    const voltageNum = typeof voltage === 'string' 
+      ? parseFloat(voltage) 
+      : typeof voltage === 'number' 
+        ? voltage 
+        : null
+    
+    // Validate and format to 2 decimal places
+    if (voltageNum != null && !isNaN(voltageNum) && isFinite(voltageNum)) {
+      return `${voltageNum.toFixed(2)}V`
+    }
+    return 'N/A'
+  }
+
+  const voltageDisplay = formatVoltage(device?.current_readings?.voltage)
+
   return (
     <Card
       className={`board-card ${selected ? 'board-card--selected' : ''}`}
@@ -175,6 +196,16 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
               {device?.status === 'online' ? 'Online' : 'Offline'}
             </Badge>
           </OfflineInfoTooltip>
+          {/* Voltage badge - show for all online devices (N/A if voltage data missing) */}
+          {!isOffline && (
+            <Badge
+              variant="standard"
+              color={voltageDisplay === 'N/A' ? 'secondary' : 'info'}
+              title="Battery/Board Voltage"
+            >
+              {voltageDisplay}
+            </Badge>
+          )}
         </div>
       </div>
 
