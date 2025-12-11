@@ -17,7 +17,7 @@ The LaskaKit AirBoard-8266 has built-in hardware support for voltage measurement
 - Users deploying LaskaKit AirBoard-8266 with battery/solar power
 - System administrators monitoring device health remotely
 
-**Success**: The system reads board/battery voltage using the built-in ADC and voltage divider, includes voltage in every sensor reading payload, and provides accurate voltage measurements (within ±0.1V) for monitoring and diagnostics. Voltage data enables proactive battery management and power optimization.
+**Success**: The system reads board/battery voltage using the built-in ADC and voltage divider, includes voltage in every sensor reading payload, displays voltage in the admin panel for easy monitoring, and provides accurate voltage measurements (within ±0.1V) for monitoring and diagnostics. Voltage data enables proactive battery management and power optimization.
 
 ## 🔍 Quick Research (15min)
 ### Existing Patterns
@@ -106,6 +106,15 @@ The LaskaKit AirBoard-8266 has built-in hardware support for voltage measurement
 - Helps with calibration and troubleshooting
 - **Acceptance**: Serial monitor shows voltage reading with each cycle
 
+**R7: Voltage Display in Admin Panel**
+- Voltage displayed in board card in admin panel
+- Displayed as a badge component in the board box header
+- Shows voltage value in Volts (e.g., "3.75V")
+- Badge positioned alongside status badge (Online/Offline)
+- Only displays for online devices with voltage data
+- Format: "X.XX V" (2 decimal places)
+- **Acceptance**: Voltage badge appears in board card header, shows current voltage reading
+
 ## 🏗️ Implementation (5min)
 
 ### Components
@@ -150,6 +159,15 @@ The LaskaKit AirBoard-8266 has built-in hardware support for voltage measurement
   - Optionally display voltage on OLED screen (if space available)
   - Format: `"V: X.XX V"` (compact format)
 
+**Frontend Display Integration**:
+- Modify `frontend/src/components/admin/BoardCard.jsx`:
+  - Add voltage badge in `board-card__header-actions` section
+  - Display voltage from `device.current_readings.voltage`
+  - Format: Badge with voltage value (e.g., "3.75V")
+  - Position: After status badge, before rename button
+  - Conditional: Only show if voltage data exists and device is online
+  - Use existing Badge component with appropriate color (e.g., "info" or "primary")
+
 ### APIs
 
 **New Function**:
@@ -179,6 +197,8 @@ The LaskaKit AirBoard-8266 has built-in hardware support for voltage measurement
 - [ ] Test voltage readings with multimeter for calibration (20min)
 - [ ] Adjust `VOLTAGE_DIVIDER_RATIO` if needed based on testing (5min)
 - [ ] Optional: Add voltage to display output (10min)
+- [ ] Add voltage badge to BoardCard component (15min)
+- [ ] Test voltage display in admin panel (5min)
 
 **Start Coding In**: ~1 hour total implementation time
 
@@ -332,4 +352,13 @@ The LaskaKit AirBoard-8266 has built-in hardware support for voltage measurement
 - Average multiple readings for accuracy
 - Discard outliers
 - Can improve accuracy if needed
+
+## Changelog
+
+### 2024-12-19 - Feature Extension
+**Change:** Added frontend requirement to display voltage in admin panel board cards  
+**Reason:** User requested voltage visibility in admin interface for easier monitoring  
+**Impact:** Extends scope to include frontend implementation in BoardCard component  
+**Files Affected:** `frontend/src/components/admin/BoardCard.jsx`  
+**New Requirement:** R7 - Voltage Display in Admin Panel
 

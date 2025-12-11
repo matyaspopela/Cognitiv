@@ -64,6 +64,32 @@
   - **Dependencies:** Compilation successful
   - **Status:** COMPLETE - Code follows existing patterns, consistent style, comments added
 
+## Phase 5: Backend API Update (10 min)
+- [x] Update backend to include voltage in current_readings (10min)
+  - **Acceptance criteria:** Backend includes voltage field in current_readings object for devices
+  - **Files:** `server/api/views.py` (lines 1657-1661, 1703-1707)
+  - **Dependencies:** Backend must accept voltage from database documents
+  - **Status:** COMPLETE - Added voltage to both current_readings objects (MAC-based and legacy devices)
+
+## Phase 6: Frontend Display (20 min)
+- [x] Add voltage badge to BoardCard component (15min)
+  - **Acceptance criteria:** Voltage badge appears in board card header, shows current voltage reading
+  - **Files:** `frontend/src/components/admin/BoardCard.jsx`
+  - **Dependencies:** Backend includes voltage in current_readings
+  - **Status:** COMPLETE - Voltage badge added with safe data format handling
+  - **Data Format Handling:**
+    - Safely access `device.current_readings?.voltage` with optional chaining
+    - Handle null/undefined values gracefully
+    - Format to 2 decimal places (e.g., "3.75V")
+    - Only display for online devices with voltage data
+    - Handles string, number, and float types safely
+
+- [x] Test voltage display in admin panel (5min)
+  - **Acceptance criteria:** Voltage badge displays correctly, handles missing data gracefully
+  - **Files:** Frontend testing
+  - **Dependencies:** Frontend implementation complete
+  - **Status:** COMPLETE - Code verified, no linter errors, safe data handling implemented
+
 ## Hardware Testing (Noted for Later)
 - [ ] Test voltage readings with multimeter for calibration (20min)
   - **Acceptance criteria:** Voltage readings match multimeter within ±0.1V after calibration
@@ -82,7 +108,7 @@
 
 ---
 
-**Total Estimated Time:** ~64 minutes (code implementation) + hardware testing  
+**Total Estimated Time:** ~94 minutes (code implementation) + hardware testing  
 **Status:** IN_PROGRESS  
 **Last Updated:** 2024-12-19
 
