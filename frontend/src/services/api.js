@@ -149,6 +149,12 @@ export const adminAPI = {
   getDeviceStats: async (deviceId) => {
     return apiClient.get(`/admin/devices/${deviceId}/stats`)
   },
+
+  renameDevice: async (macAddress, displayName) => {
+    return apiClient.post(`/admin/devices/${macAddress}/rename`, {
+      display_name: displayName
+    })
+  },
 }
 
 // AI Assistant API

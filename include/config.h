@@ -33,4 +33,14 @@
 // 5000 = 5 seconds (testing), 30000 = 30 seconds, 60000 = 1 minute, 300000 = 5 minutes
 #define READING_INTERVAL_MS 10000
 
+// Voltage measurement configuration
+// Divider ratio for voltage calculation
+// Default: 2.0 (common for 3.3V systems with 2:1 voltage divider)
+// To calibrate: 
+//   1. Measure actual battery voltage with multimeter
+//   2. Compare with device reading
+//   3. Adjust ratio: new_ratio = actual_voltage / device_reading
+// Common values: 2.0 (3.3V systems), 3.0 (5V systems)
+#define VOLTAGE_DIVIDER_RATIO 2.0
+
 #endif

@@ -81,6 +81,8 @@ def init_mongo_client():
         db = client[MONGO_DB_NAME]
         collection = db[MONGO_COLLECTION_NAME]
         collection.create_index([('device_id', ASCENDING), ('timestamp', ASCENDING)])
+        # Create sparse index for MAC address (only indexes documents with mac_address field)
+        collection.create_index([('mac_address', ASCENDING), ('timestamp', ASCENDING)], sparse=True)
         print(f"Připojeno k MongoDB. Databáze: {MONGO_DB_NAME}, kolekce: {MONGO_COLLECTION_NAME}")
         return collection
     except Exception as err:
@@ -103,12 +105,142 @@ def get_mongo_collection():
     return _mongo_collection
 
 
+# Lazy device registry collection initialization
+_registry_collection = None
+
+def get_registry_collection():
+    """Get device registry collection, initializing if necessary"""
+    global _registry_collection
+    if _registry_collection is None:
+        try:
+            client = MongoClient(
+                MONGO_URI,
+                serverSelectionTimeoutMS=5000,
+                tlsCAFile=certifi.where(),
+                tz_aware=True,
+                tzinfo=UTC,
+            )
+            client.admin.command('ping')
+            db = client[MONGO_DB_NAME]
+            _registry_collection = db['device_registry']
+            
+            # Create indexes
+            _registry_collection.create_index(
+                [('mac_address', ASCENDING)], 
+                unique=True
+            )
+            _registry_collection.create_index([('display_name', ASCENDING)])
+            _registry_collection.create_index([('last_data_received', ASCENDING)])
+            
+            print(f"Device registry collection initialized")
+        except Exception as err:
+            print(f"✗ Failed to initialize device registry: {err}")
+            raise
+    return _registry_collection
+
+
+def ensure_registry_entry(mac_address, device_id=None):
+    """
+    Ensure device registry entry exists, creating if missing.
+    
+    Args:
+        mac_address: MAC address (will be normalized)
+        device_id: Optional device_id for default display name
+    
+    Returns:
+        Registry entry document, or None if MAC address is invalid
+    """
+    try:
+        mac_normalized = normalize_mac_address(mac_address)
+    except ValueError:
+        # Invalid MAC - don't create registry entry
+        return None
+    
+    registry = get_registry_collection()
+    now = datetime.now(UTC)
+    
+    # Try to find existing entry
+    entry = registry.find_one({'mac_address': mac_normalized})
+    
+    if entry:
+        # Update last_data_received timestamp
+        update_data = {
+            '$set': {
+                'last_data_received': now,
+                'updated_at': now
+            }
+        }
+        # Only set legacy_device_id if it's missing
+        if device_id and 'legacy_device_id' not in entry:
+            update_data['$set'] = update_data['$set'].copy()
+            update_data['$set']['legacy_device_id'] = device_id
+        
+        registry.update_one(
+            {'mac_address': mac_normalized},
+            update_data
+        )
+        # Refresh entry after update
+        entry = registry.find_one({'mac_address': mac_normalized})
+    else:
+        # Create new entry
+        default_name = device_id or mac_normalized
+        entry = {
+            'mac_address': mac_normalized,
+            'display_name': default_name,
+            'created_at': now,
+            'updated_at': now,
+            'last_data_received': now,
+        }
+        if device_id:
+            entry['legacy_device_id'] = device_id
+        
+        registry.insert_one(entry)
+    
+    return entry
+
+
 def to_local_datetime(value):
     if not value:
         return None
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
     return value.astimezone(LOCAL_TZ)
+
+
+def normalize_mac_address(mac):
+    """
+    Normalize MAC address to uppercase colon-separated format.
+    
+    Args:
+        mac: MAC address in any format (string, lowercase, hyphens, etc.)
+    
+    Returns:
+        Normalized MAC address: "AA:BB:CC:DD:EE:FF"
+    
+    Raises:
+        ValueError: If MAC address is invalid
+    """
+    if not mac:
+        raise ValueError("MAC address is required")
+    
+    # Convert to string and uppercase
+    mac_str = str(mac).strip().upper()
+    
+    # Remove all separators (colons, hyphens, spaces)
+    mac_clean = ''.join(c for c in mac_str if c.isalnum())
+    
+    # Validate length (must be 12 hex characters)
+    if len(mac_clean) != 12:
+        raise ValueError(f"Invalid MAC address length: expected 12 hex characters, got {len(mac_clean)}")
+    
+    # Validate hex characters
+    try:
+        int(mac_clean, 16)
+    except ValueError:
+        raise ValueError(f"Invalid hexadecimal MAC address: {mac_clean}")
+    
+    # Reformat with colons: AA:BB:CC:DD:EE:FF
+    return ':'.join(mac_clean[i:i+2] for i in range(0, 12, 2))
 
 
 def normalize_sensor_data(data):
@@ -435,6 +567,17 @@ def receive_data(request):
             print(f"⚠️  Chyba validace: {message}")
             return JsonResponse({'error': message}, status=400)
         
+        # Extract and normalize MAC address (if present)
+        mac_address = None
+        if 'mac_address' in data:
+            try:
+                mac_address = normalize_mac_address(data['mac_address'])
+                # Ensure registry entry exists
+                ensure_registry_entry(mac_address, normalized.get('device_id'))
+            except ValueError as e:
+                print(f"⚠️  Neplatná MAC adresa: {e}, pokračuji bez ní")
+                # Continue without MAC address (backward compatibility)
+
         # Format timestamp
         timestamp_utc = datetime.fromtimestamp(float(normalized['timestamp']), tz=UTC)
         timestamp_local = to_local_datetime(timestamp_utc)
@@ -453,6 +596,10 @@ def receive_data(request):
             'co2': co2,
             'raw_payload': data
         }
+        
+        # Add MAC address if available
+        if mac_address:
+            document['mac_address'] = mac_address
 
         try:
             get_mongo_collection().insert_one(document)
@@ -1396,13 +1543,45 @@ def get_devices(request):
         }, status=503)
 
     try:
-        # Get all unique device IDs
-        device_ids = collection.distinct('device_id')
-        device_ids.sort()  # Sort alphabetically
+        # Get devices with MAC addresses from registry
+        try:
+            registry = get_registry_collection()
+            registry_entries = list(registry.find({}, {'mac_address': 1, 'display_name': 1}))
+            device_list = []
+            for entry in registry_entries:
+                device_list.append({
+                    'device_id': entry.get('legacy_device_id'),  # May be None
+                    'mac_address': entry['mac_address'],
+                    'display_name': entry.get('display_name', entry['mac_address'])
+                })
+        except Exception as e:
+            print(f"⚠️  Warning: Could not access registry: {e}")
+            device_list = []
+        
+        # Get legacy devices (by device_id)
+        all_device_ids = collection.distinct('device_id')
+        devices_with_mac = set()
+        for doc in collection.find({'mac_address': {'$exists': True, '$ne': None}}, {'device_id': 1}):
+            did = doc.get('device_id')
+            if did:
+                devices_with_mac.add(did)
+        
+        legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac]
+        
+        # Add legacy devices to list
+        for device_id in legacy_device_ids:
+            device_list.append({
+                'device_id': device_id,
+                'mac_address': None,
+                'display_name': device_id
+            })
+        
+        # Sort by display_name or device_id
+        device_list.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
         
         return JsonResponse({
             'status': 'success',
-            'devices': device_ids
+            'devices': device_list
         }, status=200)
     except PyMongoError as exc:
         return JsonResponse({
@@ -1434,24 +1613,81 @@ def admin_devices(request):
         }, status=503)
 
     try:
-        # Get all unique device IDs
-        device_ids = collection.distinct('device_id')
-        
-        devices = []
         now = datetime.now(UTC)
         cutoff_time = now - timedelta(hours=24)  # Consider device online if seen in last 24h
-
-        for device_id in device_ids:
-            # Get total count for this device
+        
+        # Get devices with MAC addresses (from registry)
+        try:
+            registry = get_registry_collection()
+            registry_entries = list(registry.find({}))
+            mac_to_display = {entry['mac_address']: entry.get('display_name', entry['mac_address']) 
+                              for entry in registry_entries}
+        except Exception as e:
+            print(f"⚠️  Warning: Could not access registry: {e}")
+            registry_entries = []
+            mac_to_display = {}
+        
+        devices = []
+        processed_macs = set()
+        
+        # Process devices with MAC addresses
+        for entry in registry_entries:
+            mac = entry['mac_address']
+            processed_macs.add(mac)
+            
+            # Get sensor data for this MAC
+            mac_filter = {'mac_address': mac}
+            total_count = collection.count_documents(mac_filter)
+            
+            if total_count > 0:
+                latest_doc = collection.find_one(mac_filter, sort=[('timestamp', -1)])
+                
+                status = 'offline'
+                last_seen = None
+                current_readings = None
+                
+                if latest_doc:
+                    last_seen_dt = latest_doc.get('timestamp')
+                    if last_seen_dt:
+                        if isinstance(last_seen_dt, datetime):
+                            last_seen = to_readable_timestamp(last_seen_dt)
+                            if last_seen_dt >= cutoff_time:
+                                status = 'online'
+                        
+                        current_readings = {
+                            'temperature': latest_doc.get('temperature'),
+                            'humidity': latest_doc.get('humidity'),
+                            'co2': latest_doc.get('co2')
+                        }
+                
+                devices.append({
+                    'mac_address': mac,
+                    'display_name': entry.get('display_name', mac),
+                    'device_id': latest_doc.get('device_id') if latest_doc else entry.get('legacy_device_id'),
+                    'status': status,
+                    'total_data_points': total_count,
+                    'last_seen': last_seen,
+                    'current_readings': current_readings
+                })
+        
+        # Get legacy devices (by device_id, excluding those with MAC)
+        all_device_ids = collection.distinct('device_id')
+        devices_with_mac = set()
+        for doc in collection.find({'mac_address': {'$exists': True, '$ne': None}}, {'device_id': 1}):
+            did = doc.get('device_id')
+            if did:
+                devices_with_mac.add(did)
+        
+        legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac]
+        
+        for device_id in legacy_device_ids:
             total_count = collection.count_documents({'device_id': device_id})
             
-            # Get latest reading
             latest_doc = collection.find_one(
                 {'device_id': device_id},
                 sort=[('timestamp', -1)]
             )
             
-            # Determine status
             status = 'offline'
             last_seen = None
             current_readings = None
@@ -1463,8 +1699,6 @@ def admin_devices(request):
                         last_seen = to_readable_timestamp(last_seen_dt)
                         if last_seen_dt >= cutoff_time:
                             status = 'online'
-                    else:
-                        last_seen = str(last_seen_dt)
                 
                 current_readings = {
                     'temperature': latest_doc.get('temperature'),
@@ -1473,6 +1707,8 @@ def admin_devices(request):
                 }
 
             devices.append({
+                'mac_address': None,  # No MAC for legacy devices
+                'display_name': device_id,  # Use device_id as display name
                 'device_id': device_id,
                 'status': status,
                 'total_data_points': total_count,
@@ -1480,8 +1716,8 @@ def admin_devices(request):
                 'current_readings': current_readings
             })
 
-        # Sort by device_id
-        devices.sort(key=lambda x: x['device_id'])
+        # Sort by display_name or device_id
+        devices.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
 
         return JsonResponse({
             'status': 'success',
@@ -1497,6 +1733,69 @@ def admin_devices(request):
         return JsonResponse({
             'status': 'error',
             'message': f'Chyba: {str(exc)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_rename_device(request, mac_address):
+    """Rename device by MAC address"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        new_name = (data.get('display_name') or '').strip()
+        
+        if not new_name:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Název je povinný'
+            }, status=400)
+        
+        if len(new_name) > 100:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Název nesmí být delší než 100 znaků'
+            }, status=400)
+        
+        mac_normalized = normalize_mac_address(mac_address)
+        registry = get_registry_collection()
+        
+        result = registry.update_one(
+            {'mac_address': mac_normalized},
+            {
+                '$set': {
+                    'display_name': new_name,
+                    'updated_at': datetime.now(UTC)
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Zařízení nenalezeno'
+            }, status=404)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Název byl aktualizován',
+            'mac_address': mac_normalized,
+            'display_name': new_name
+        }, status=200)
+    except ValueError as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Neplatná MAC adresa: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
         }, status=500)
 
 

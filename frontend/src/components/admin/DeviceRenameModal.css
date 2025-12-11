@@ -1,0 +1,54 @@
+.device-rename-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.device-rename-modal {
+  min-width: 400px;
+  max-width: 500px;
+  padding: 24px;
+}
+
+.device-rename-modal h2 {
+  margin: 0 0 24px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.device-rename-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.device-rename-modal-error {
+  padding: 12px;
+  background-color: #fee;
+  color: #c33;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.device-rename-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .device-rename-modal {
+    min-width: auto;
+    width: calc(100% - 32px);
+    margin: 16px;
+  }
+}
+
