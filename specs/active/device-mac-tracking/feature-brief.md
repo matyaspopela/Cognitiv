@@ -158,3 +158,6 @@ ESP8266 `WiFi.macAddress()` returns MAC address as String in format "AA:BB:CC:DD
 - MAC address format normalization → Store in consistent format (uppercase, colon-separated)
 - Duplicate MAC addresses (theoretical) → Unique index will prevent this, but should handle gracefully
 
+
+
+

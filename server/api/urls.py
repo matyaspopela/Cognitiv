@@ -19,6 +19,8 @@ urlpatterns = [
     path('admin/devices', views.admin_devices, name='admin_devices'),
     path('admin/devices/<str:device_id>/stats', views.admin_device_stats, name='admin_device_stats'),
     path('admin/devices/<str:mac_address>/rename', views.admin_rename_device, name='admin_rename_device'),
+    path('admin/devices/<str:device_id>/delete', views.admin_delete_device, name='admin_delete_device'),
+    path('admin/devices/merge', views.admin_merge_device, name='admin_merge_device'),
     # AI Assistant endpoint
     path('ai/chat', views.ai_chat, name='ai_chat'),
     # Debug endpoint (remove in production if needed)

@@ -69,3 +69,6 @@ const DeviceRenameModal = ({ device, onClose, onRenameSuccess }) => {
 
 export default DeviceRenameModal
 
+
+
+

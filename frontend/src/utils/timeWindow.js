@@ -97,3 +97,6 @@ export const getHoursForStats = (window) => {
   return 24 // default
 }
 
+
+
+
