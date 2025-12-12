@@ -811,3 +811,6 @@ const deviceIdentifier = device?.mac_address || device?.device_id
 
 **Research Complete** | Ready for Specification Phase
 
+
+
+

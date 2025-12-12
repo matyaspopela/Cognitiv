@@ -2201,6 +2201,144 @@ def admin_device_stats(request, device_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def admin_merge_device(request):
+    """Merge a legacy device into a MAC-tracked device"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+
+    try:
+        data = json.loads(request.body) if request.body else {}
+        source_device_id = data.get('source_device_id', '').strip()
+        target_mac = data.get('target_mac', '').strip()
+        
+        if not source_device_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'source_device_id je povinný'
+            }, status=400)
+        
+        if not target_mac:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'target_mac je povinný'
+            }, status=400)
+        
+        # Normalize MAC address
+        try:
+            target_mac_normalized = normalize_mac_address(target_mac)
+        except ValueError as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Neplatná MAC adresa: {str(e)}'
+            }, status=400)
+        
+        collection = get_mongo_collection()
+        
+        # Find documents to migrate (legacy data without MAC)
+        migrate_filter = {
+            'device_id': source_device_id,
+            '$or': [
+                {'mac_address': {'$exists': False}},
+                {'mac_address': None}
+            ]
+        }
+        
+        count_to_migrate = collection.count_documents(migrate_filter)
+        
+        if count_to_migrate == 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Zařízení "{source_device_id}" nebylo nalezeno nebo nemá data k migraci'
+            }, status=404)
+        
+        # Update all matching documents to add the target MAC address
+        result = collection.update_many(
+            migrate_filter,
+            {'$set': {'mac_address': target_mac_normalized}}
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Data ze zařízení "{source_device_id}" byla přesunuta pod MAC {target_mac_normalized}',
+            'migrated_data_points': result.modified_count
+        }, status=200)
+
+    except PyMongoError as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Databázová chyba: {exc}'
+        }, status=500)
+    except Exception as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(exc)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def admin_delete_device(request, device_id):
+    """Delete a legacy device (by device_id) and all its data"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+
+    try:
+        collection = get_mongo_collection()
+    except RuntimeError as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Nepodařilo se připojit k databázi: {str(e)}'
+        }, status=503)
+
+    try:
+        # Only delete data WITHOUT mac_address (legacy devices)
+        # This prevents accidentally deleting data from MAC-tracked devices
+        delete_filter = {
+            'device_id': device_id,
+            '$or': [
+                {'mac_address': {'$exists': False}},
+                {'mac_address': None}
+            ]
+        }
+        
+        # Count how many documents will be deleted
+        count_to_delete = collection.count_documents(delete_filter)
+        
+        if count_to_delete == 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Zařízení "{device_id}" nebylo nalezeno nebo má přiřazenou MAC adresu (nelze smazat)'
+            }, status=404)
+        
+        # Delete the sensor data
+        result = collection.delete_many(delete_filter)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Zařízení "{device_id}" bylo úspěšně odstraněno',
+            'deleted_data_points': result.deleted_count
+        }, status=200)
+
+    except PyMongoError as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Databázová chyba: {exc}'
+        }, status=500)
+    except Exception as exc:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(exc)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def ai_chat(request):
     """AI assistant chat endpoint using Gemini API"""
     try:
