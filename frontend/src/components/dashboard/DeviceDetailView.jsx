@@ -19,7 +19,8 @@ import {
   buildClimateChart, 
   buildQualityPieChart,
   co2ChartOptions,
-  climateChartOptions
+  climateChartOptions,
+  co2FillGradientPlugin
 } from '../../utils/charts'
 import { getTimeWindowRange, getBucketSize, getHoursForStats, formatTimeLabel } from '../../utils/timeWindow'
 import Card from '../ui/Card'
@@ -37,7 +38,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  co2FillGradientPlugin
 )
 
 /**

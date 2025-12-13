@@ -4,6 +4,66 @@
  */
 
 /**
+ * Creates a CO2 threshold gradient for chart fill
+ * Green below 2000 ppm, red above 2000 ppm
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Object} chartArea - Chart area bounds
+ * @param {Object} yScale - Y-axis scale
+ * @returns {CanvasGradient} Gradient object
+ */
+export const createCo2ThresholdGradient = (ctx, chartArea, yScale) => {
+  if (!ctx || !chartArea || !yScale) return 'rgba(128, 128, 128, 0.2)'
+  
+  const threshold = 2000
+  const thresholdPixel = yScale.getPixelForValue(threshold)
+  const topPixel = chartArea.top
+  const bottomPixel = chartArea.bottom
+  const chartHeight = bottomPixel - topPixel
+  
+  if (chartHeight <= 0) return 'rgba(128, 128, 128, 0.2)'
+  
+  const gradient = ctx.createLinearGradient(0, topPixel, 0, bottomPixel)
+  
+  // Calculate threshold position (0 = top, 1 = bottom)
+  const thresholdPosition = (thresholdPixel - topPixel) / chartHeight
+  const clampedPosition = Math.max(0.01, Math.min(0.99, thresholdPosition))
+  
+  // Red zone: top (high CO2) to threshold
+  gradient.addColorStop(0, 'rgba(244, 67, 54, 0.25)')
+  gradient.addColorStop(clampedPosition, 'rgba(244, 67, 54, 0.25)')
+  
+  // Green zone: threshold to bottom (low CO2)
+  gradient.addColorStop(clampedPosition, 'rgba(76, 175, 80, 0.25)')
+  gradient.addColorStop(1, 'rgba(76, 175, 80, 0.25)')
+  
+  return gradient
+}
+
+/**
+ * Chart.js plugin for CO2 threshold-based gradient fill
+ * Creates a gradient that is green below 2000 ppm and red above
+ */
+export const co2FillGradientPlugin = {
+  id: 'co2FillGradient',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea, scales } = chart
+    if (!chartArea || !scales.y) return
+    
+    const gradient = createCo2ThresholdGradient(ctx, chartArea, scales.y)
+    
+    // Apply gradient to datasets marked for CO2 threshold coloring
+    chart.data.datasets.forEach((dataset, index) => {
+      if (dataset._co2ThresholdFill) {
+        const meta = chart.getDatasetMeta(index)
+        if (meta && meta.dataset) {
+          meta.dataset.options.backgroundColor = gradient
+        }
+      }
+    })
+  }
+}
+
+/**
  * Build CO2 trend chart data
  * @param {Array} data - Series data from historyAPI.getSeries()
  * @returns {Object} Chart.js data object for Line chart
@@ -25,18 +85,10 @@ export const buildCo2Chart = (data) => {
         pointHoverRadius: 6,
         // Constant line color
         borderColor: key === 'Všechna' ? 'rgba(103, 126, 221, 0.85)' : 'rgba(76, 175, 80, 0.85)',
-        // Dynamic background color based on 2000 ppm threshold using segment
-        segment: {
-          backgroundColor: (ctx) => {
-            const value = ctx.p1.parsed.y
-            if (value === null || value === undefined) {
-              return 'rgba(128, 128, 128, 0.1)' // Light gray for null values
-            }
-            return value < 2000 
-              ? 'rgba(76, 175, 80, 0.2)'   // Light green for < 2000 ppm
-              : 'rgba(244, 67, 54, 0.2)'   // Light red for >= 2000 ppm
-          }
-        }
+        // Fallback background color (will be replaced by gradient from plugin)
+        backgroundColor: 'rgba(76, 175, 80, 0.2)',
+        // Marker for plugin to apply CO2 threshold gradient
+        _co2ThresholdFill: true
       }
     }
     const co2Value = item.co2?.avg
