@@ -104,7 +104,7 @@ const DeviceSelection = ({ devices, selectedDevice, onDeviceSelect }) => {
                   {!isOffline && co2Value != null ? (
                     <span className="device-selection__card-value">{Math.round(co2Value)} ppm</span>
                   ) : (
-                    <span className="device-selection__card-offline">nejsou dostupna zadna data</span>
+                    <span className="device-selection__card-offline">Toto zařízení je offline</span>
                   )}
                 </div>
               </div>

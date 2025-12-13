@@ -311,6 +311,126 @@ const ClimateGraph = ({ deviceId, timeWindow }) => {
 }
 
 /**
+ * Quality Distribution Boxes Component
+ * Shows color-differentiated boxes with percentages
+ */
+const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
+  const [qualityData, setQualityData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const loadQualityData = async () => {
+      if (!deviceId) return
+
+      try {
+        setLoading(true)
+        setError(null)
+        const { start, end } = getTimeWindowRange(timeWindow)
+
+        const response = await historyAPI.getSummary(start, end, deviceId)
+        
+        if (response?.response?.status >= 400 || response?.status >= 400) {
+          setError('Nepodařilo se načíst data')
+          setQualityData(null)
+          return
+        }
+
+        const summaryData = response?.data || response
+
+        if (summaryData?.status === 'success' && summaryData?.summary?.co2_quality) {
+          const co2Quality = summaryData.summary.co2_quality
+          const good = typeof co2Quality.good === 'number' ? co2Quality.good : 0
+          const moderate = typeof co2Quality.moderate === 'number' ? co2Quality.moderate : 0
+          const high = typeof co2Quality.high === 'number' ? co2Quality.high : 0
+          const critical = typeof co2Quality.critical === 'number' ? co2Quality.critical : 0
+          
+          const total = good + moderate + high + critical
+          
+          if (total > 0) {
+            setQualityData({
+              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Dobrá', color: 'rgba(76, 175, 80, 0.85)' },
+              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Střední', color: 'rgba(255, 193, 7, 0.75)' },
+              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Špatná', color: 'rgba(255, 152, 0, 0.75)' },
+              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Velmi špatná', color: 'rgba(244, 67, 54, 0.85)' }
+            })
+          } else {
+            setQualityData(null)
+          }
+        } else {
+          setError('Žádná data k zobrazení')
+          setQualityData(null)
+        }
+      } catch (err) {
+        console.error('Error loading quality distribution:', err)
+        setError('Chyba při načítání dat')
+        setQualityData(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadQualityData()
+  }, [deviceId, timeWindow])
+
+  if (loading) {
+    return (
+      <Card className="quality-distribution-boxes">
+        <div className="quality-distribution-boxes__loading">
+          <ProgressBar indeterminate />
+        </div>
+      </Card>
+    )
+  }
+
+  if (error || !qualityData) {
+    return (
+      <Card className="quality-distribution-boxes">
+        <div className="quality-distribution-boxes__error">
+          <p>{error || 'Žádná data k zobrazení'}</p>
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="quality-distribution-boxes" elevation={2}>
+      <h3 className="quality-distribution-boxes__title">Rozložení kvality vzduchu</h3>
+      <div className="quality-distribution-boxes__content">
+        <div 
+          className="quality-distribution-boxes__box"
+          style={{ backgroundColor: qualityData.good.color }}
+        >
+          <span className="quality-distribution-boxes__label">{qualityData.good.label}:</span>
+          <span className="quality-distribution-boxes__value">{qualityData.good.percent}%</span>
+        </div>
+        <div 
+          className="quality-distribution-boxes__box"
+          style={{ backgroundColor: qualityData.moderate.color }}
+        >
+          <span className="quality-distribution-boxes__label">{qualityData.moderate.label}:</span>
+          <span className="quality-distribution-boxes__value">{qualityData.moderate.percent}%</span>
+        </div>
+        <div 
+          className="quality-distribution-boxes__box"
+          style={{ backgroundColor: qualityData.high.color }}
+        >
+          <span className="quality-distribution-boxes__label">{qualityData.high.label}:</span>
+          <span className="quality-distribution-boxes__value">{qualityData.high.percent}%</span>
+        </div>
+        <div 
+          className="quality-distribution-boxes__box"
+          style={{ backgroundColor: qualityData.critical.color }}
+        >
+          <span className="quality-distribution-boxes__label">{qualityData.critical.label}:</span>
+          <span className="quality-distribution-boxes__value">{qualityData.critical.percent}%</span>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/**
  * Quality Pie Chart Component
  */
 const QualityPieChart = ({ deviceId, timeWindow }) => {
@@ -453,6 +573,9 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         </Link>
       </div>
 
+      {/* Quality distribution boxes at top */}
+      <QualityDistributionBoxes deviceId={deviceId} timeWindow={timeWindow} />
+
       <TimeWindowSelector value={timeWindow} onChange={onTimeWindowChange} />
 
       <NumericalValues deviceId={deviceId} timeWindow={timeWindow} />
@@ -461,6 +584,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
 
       <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} />
 
+      {/* Quality pie chart at bottom (where it was before) */}
       <QualityPieChart deviceId={deviceId} timeWindow={timeWindow} />
     </div>
   )

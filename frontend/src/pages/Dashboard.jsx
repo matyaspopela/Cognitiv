@@ -51,7 +51,9 @@ const Dashboard = () => {
   // Read query parameters
   const searchParams = new URLSearchParams(location.search)
   const deviceId = searchParams.get('device')
-  const timeWindow = searchParams.get('window') || '24h'
+  // Default to '1h' if no window param exists (first load)
+  // Otherwise use the provided window or fallback to '24h' for backward compatibility
+  const timeWindow = searchParams.get('window') || '1h'
 
   // State
   const [devices, setDevices] = useState([])

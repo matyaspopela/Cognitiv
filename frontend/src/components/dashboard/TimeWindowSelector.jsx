@@ -7,6 +7,7 @@ import './TimeWindowSelector.css'
  */
 const TimeWindowSelector = ({ value, onChange }) => {
   const options = [
+    { value: '1h', label: '1 hodina' },
     { value: '24h', label: '24 hodin' },
     { value: '7d', label: '7 dní' },
     { value: '30d', label: '30 dní' }
@@ -36,6 +37,11 @@ const TimeWindowSelector = ({ value, onChange }) => {
 }
 
 export default TimeWindowSelector
+
+
+
+
+
 
 
 

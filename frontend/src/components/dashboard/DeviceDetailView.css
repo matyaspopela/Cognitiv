@@ -3,13 +3,77 @@
 .device-detail-view {
   max-width: 1400px;
   margin: 0 auto;
+  padding: var(--md3-spacing-4);
+}
+
+/* Quality Distribution Boxes */
+.quality-distribution-boxes {
+  margin-bottom: var(--md3-spacing-6);
+}
+
+.quality-distribution-boxes__title {
+  font-size: var(--md3-font-size-title-large);
+  font-weight: var(--md3-font-weight-bold);
+  color: var(--md3-color-text-primary);
+  margin: 0 0 var(--md3-spacing-3) 0;
+  padding: var(--md3-spacing-4) var(--md3-spacing-4) 0 var(--md3-spacing-4);
+}
+
+.quality-distribution-boxes__content {
+  display: flex;
+  gap: var(--md3-spacing-3);
+  padding: 0 var(--md3-spacing-4) var(--md3-spacing-4);
+  flex-wrap: wrap;
+}
+
+.quality-distribution-boxes__box {
+  flex: 1;
+  min-width: 150px;
+  padding: var(--md3-spacing-3) var(--md3-spacing-4);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--md3-spacing-1);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: var(--md3-font-weight-medium);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.quality-distribution-boxes__label {
+  font-size: var(--md3-font-size-body-small);
+  opacity: 0.9;
+}
+
+.quality-distribution-boxes__value {
+  font-size: var(--md3-font-size-title-large);
+  font-weight: var(--md3-font-weight-bold);
+}
+
+.quality-distribution-boxes__loading,
+.quality-distribution-boxes__error {
+  padding: var(--md3-spacing-6);
+  text-align: center;
+  color: var(--md3-color-text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .quality-distribution-boxes__content {
+    flex-direction: column;
+  }
+
+  .quality-distribution-boxes__box {
+    min-width: auto;
+    width: 100%;
+  }
 }
 
 .device-detail-view__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--md3-spacing-4);
+  margin-bottom: var(--md3-spacing-6);
   flex-wrap: wrap;
   gap: var(--md3-spacing-2);
 }
@@ -37,7 +101,7 @@
 
 /* Numerical Values Section */
 .numerical-values {
-  margin-bottom: var(--md3-spacing-4);
+  margin-bottom: var(--md3-spacing-6);
 }
 
 .numerical-values__content {
@@ -79,7 +143,7 @@
 
 /* Chart Containers */
 .chart-container {
-  margin-bottom: var(--md3-spacing-4);
+  margin-bottom: var(--md3-spacing-6);
 }
 
 .chart-container__title {
@@ -163,6 +227,11 @@
     height: 200px;
   }
 }
+
+
+
+
+
 
 
 

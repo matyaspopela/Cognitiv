@@ -6,8 +6,8 @@
 
 // WiFi Configuration
 // Standard WPA/WPA2 Personal networks (password only)
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
+#define WIFI_SSID os.getenv("WIFI_SSID")
+#define WIFI_PASSWORD os.getenv("WIFI_PASSWORD")
 
 // Server Configuration
 // Replace with your Render service URL (e.g. https://your-app.onrender.com/api/data)
@@ -33,14 +33,10 @@
 // 5000 = 5 seconds (testing), 30000 = 30 seconds, 60000 = 1 minute, 300000 = 5 minutes
 #define READING_INTERVAL_MS 10000
 
+// LED Configuration
+#define RED_LED_PIN 4  // GPIO4 - LED connected between this pin and GND
+
 // Voltage measurement configuration
-// Divider ratio for voltage calculation
-// Default: 2.0 (common for 3.3V systems with 2:1 voltage divider)
-// To calibrate: 
-//   1. Measure actual battery voltage with multimeter
-//   2. Compare with device reading
-//   3. Adjust ratio: new_ratio = actual_voltage / device_reading
-// Common values: 2.0 (3.3V systems), 3.0 (5V systems)
 #define VOLTAGE_DIVIDER_RATIO 2.0
 
 #endif

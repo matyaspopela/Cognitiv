@@ -18,12 +18,25 @@ export const buildCo2Chart = (data) => {
       datasetsMap[key] = {
         label: `CO₂ • ${key}`,
         data: [],
-        fill: false,
+        fill: true, // Enable fill for background color
         tension: 0.25,
         borderWidth: 2,
         pointRadius: 0, // Clean line, no dots
         pointHoverRadius: 6,
-        borderColor: key === 'Všechna' ? 'rgba(103, 126, 221, 0.85)' : undefined
+        // Constant line color
+        borderColor: key === 'Všechna' ? 'rgba(103, 126, 221, 0.85)' : 'rgba(76, 175, 80, 0.85)',
+        // Dynamic background color based on 2000 ppm threshold using segment
+        segment: {
+          backgroundColor: (ctx) => {
+            const value = ctx.p1.parsed.y
+            if (value === null || value === undefined) {
+              return 'rgba(128, 128, 128, 0.1)' // Light gray for null values
+            }
+            return value < 2000 
+              ? 'rgba(76, 175, 80, 0.2)'   // Light green for < 2000 ppm
+              : 'rgba(244, 67, 54, 0.2)'   // Light red for >= 2000 ppm
+          }
+        }
       }
     }
     const co2Value = item.co2?.avg
