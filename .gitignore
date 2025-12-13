@@ -27,10 +27,26 @@ wheels/
 instance/
 .webassets-cache
 
-# Arduino
+# Arduino / PlatformIO
 *.hex
 *.elf
 *.map
+.pio/
+compile_commands.json
+
+# IDE / Cache
+.vscode/
+.idea/
+.cache/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Cursor / SDD Kit
+.cursor/
+.sdd/
+specs/
 
 # Data files (keep template, ignore actual data)
 server/data/*.csv
@@ -43,14 +59,12 @@ analysis/*.png
 
 # Configuration files with sensitive info
 firmware/config.h
+include/config.h
+CONNECTION_INFO.md
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+# Frontend build
+frontend/node_modules/
+frontend/dist/
 
 # OS
 Thumbs.db
@@ -67,3 +81,6 @@ logs/
 # Backup files
 *.bak
 *.backup
+
+# Documentation (not needed in repo)
+PROJECT_SPECIFICATIONS.txt
