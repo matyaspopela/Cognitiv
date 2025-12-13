@@ -189,6 +189,44 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
 
   const voltageDisplay = formatVoltage(device?.current_readings?.voltage)
 
+  const handleExportCSV = async (e) => {
+    e.stopPropagation() // Prevent card click
+    
+    if (!device?.device_id) {
+      console.error('Cannot export: missing device_id')
+      return
+    }
+
+    try {
+      // Export last 30 days of data
+      const now = new Date()
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const startIso = thirtyDaysAgo.toISOString()
+      const endIso = now.toISOString()
+
+      const response = await historyAPI.exportCSV(startIso, endIso, device.device_id)
+      
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      
+      // Generate filename with device name
+      const deviceNameSafe = (device.display_name || device.device_id || 'device').replace(/[^a-z0-9]/gi, '_').toLowerCase()
+      const dateStr = now.toISOString().split('T')[0]
+      link.download = `cognitiv_${deviceNameSafe}_${dateStr}.csv`
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      alert('Nepodařilo se exportovat CSV. Zkuste to prosím později.')
+    }
+  }
+
   return (
     <Card
       className={`board-card ${selected ? 'board-card--selected' : ''}`}
@@ -212,6 +250,15 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
               ✏️
             </Button>
           )}
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleExportCSV}
+            className="board-card__export-btn"
+            title="Exportovat data do CSV (posledních 30 dní)"
+          >
+            📥
+          </Button>
           <OfflineInfoTooltip
             lastSeen={device?.last_seen}
             totalDataPoints={device?.total_data_points}
@@ -280,7 +327,7 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
         {/* Offline message */}
         {isOffline && (
           <div className="board-card__offline-message">
-            <span>Nejsou dostupná žádná data</span>
+            <span>Toto zařízení je offline</span>
           </div>
         )}
       </div>

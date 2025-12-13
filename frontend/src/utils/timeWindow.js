@@ -5,14 +5,16 @@
 
 /**
  * Calculate time range for given window
- * @param {string} window - '24h', '7d', or '30d'
+ * @param {string} window - '1h', '24h', '7d', or '30d'
  * @returns {Object} {start: ISOString, end: ISOString}
  */
 export const getTimeWindowRange = (window) => {
   const now = new Date()
   let hoursBack = 24 // default 24h
   
-  if (window === '7d') {
+  if (window === '1h') {
+    hoursBack = 1
+  } else if (window === '7d') {
     hoursBack = 7 * 24
   } else if (window === '30d') {
     hoursBack = 30 * 24
@@ -28,11 +30,13 @@ export const getTimeWindowRange = (window) => {
 
 /**
  * Get bucket size for API calls based on time window
- * @param {string} window - '24h', '7d', or '30d'
- * @returns {string} bucket size ('10min', 'hour', or 'day')
+ * @param {string} window - '1h', '24h', '7d', or '30d'
+ * @returns {string} bucket size ('raw', '10min', 'hour', or 'day')
  */
 export const getBucketSize = (window) => {
-  if (window === '24h') {
+  if (window === '1h') {
+    return 'raw' // Use raw data for 1 hour (most granular)
+  } else if (window === '24h') {
     return '10min'
   } else if (window === '7d') {
     return 'hour'
@@ -45,7 +49,7 @@ export const getBucketSize = (window) => {
 /**
  * Format timestamp for chart labels based on time window
  * @param {string|Date} timestamp - ISO string or Date object
- * @param {string} window - '24h', '7d', or '30d'
+ * @param {string} window - '1h', '24h', '7d', or '30d'
  * @returns {string} Formatted time string
  */
 export const formatTimeLabel = (timestamp, window) => {
@@ -57,8 +61,8 @@ export const formatTimeLabel = (timestamp, window) => {
   }
   
   // Use Czech locale to match backend timezone (Europe/Prague)
-  if (window === '24h') {
-    // Show hours/minutes for 24h window
+  if (window === '1h' || window === '24h') {
+    // Show hours/minutes for 1h and 24h windows
     return date.toLocaleTimeString('cs-CZ', { 
       hour: '2-digit', 
       minute: '2-digit',
@@ -83,11 +87,13 @@ export const formatTimeLabel = (timestamp, window) => {
 
 /**
  * Get hours value for stats API calls
- * @param {string} window - '24h', '7d', or '30d'
+ * @param {string} window - '1h', '24h', '7d', or '30d'
  * @returns {number} Hours value
  */
 export const getHoursForStats = (window) => {
-  if (window === '24h') {
+  if (window === '1h') {
+    return 1
+  } else if (window === '24h') {
     return 24
   } else if (window === '7d') {
     return 168 // 7 * 24
@@ -96,6 +102,11 @@ export const getHoursForStats = (window) => {
   }
   return 24 // default
 }
+
+
+
+
+
 
 
 

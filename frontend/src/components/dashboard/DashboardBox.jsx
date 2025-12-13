@@ -237,7 +237,7 @@ const DashboardBox = ({ device, onClick }) => {
         {/* Offline message */}
         {isOffline && (
           <div className="dashboard-box__offline-message">
-            <span>Nejsou dostupná žádná data</span>
+            <span>Toto zařízení je offline</span>
           </div>
         )}
       </div>

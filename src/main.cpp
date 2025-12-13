@@ -51,6 +51,9 @@ const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
 
+// LED Configuration
+const unsigned long LED_BLINK_INTERVAL = 5000;  // Blink every 5 seconds
+
 // Hardware objects
 SCD4x scd41;
 
@@ -66,6 +69,11 @@ struct SensorData {
 
 unsigned long lastReadingTime = 0;
 bool sensorsInitialized = false;
+
+// LED blinking state
+unsigned long lastLedToggleTime = 0;
+bool ledState = false;
+uint16_t lastCo2Reading = 0;
 
 // Global MAC address cache (extracted after WiFi initialization)
 String deviceMacAddress = "";
@@ -107,6 +115,23 @@ void setup() {
   Serial.println("\n\n=================================");
   Serial.println("Environmental Monitoring System");
   Serial.println("=================================\n");
+  
+  // Initialize LED pin (GPIO4 needs inverted logic due to pull-up)
+  pinMode(RED_LED_PIN, OUTPUT);
+  digitalWrite(RED_LED_PIN, HIGH);  // HIGH = LED off (inverted)
+  Serial.print("LED on GPIO");
+  Serial.print(RED_LED_PIN);
+  Serial.println(" - Testing with 3 blinks...");
+  
+  // Test blink 3 times to verify LED works
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(RED_LED_PIN, LOW);   // LOW = LED on (inverted)
+    delay(200);
+    digitalWrite(RED_LED_PIN, HIGH);  // HIGH = LED off (inverted)
+    delay(200);
+  }
+  Serial.println("LED test complete");
+  digitalWrite(RED_LED_PIN, HIGH);  // Ensure LED is off after test
   
   // Initialize I2C with correct pins for ESP12S
   Wire.begin(I2C_SDA, I2C_SCL);
@@ -179,6 +204,9 @@ void loop() {
     SensorData reading = readSensors();
     
     if (reading.valid) {
+      // Update CO2 for LED control
+      lastCo2Reading = reading.co2;
+      
       #ifdef HAS_DISPLAY
       displayReadings(reading);
       #endif
@@ -199,6 +227,21 @@ void loop() {
       displayStatus("Sensor Error!", TFT_RED);
       #endif
     }
+  }
+  
+  // LED control: blink if CO2 >= 2000, otherwise OFF
+  // Note: GPIO4 uses inverted logic (LOW=on, HIGH=off) due to pull-up
+  if (lastCo2Reading >= WARNING_CO2_THRESHOLD) {
+    // CO2 HIGH - blink every 5 seconds
+    if (millis() - lastLedToggleTime >= LED_BLINK_INTERVAL) {
+      lastLedToggleTime = millis();
+      ledState = !ledState;
+      digitalWrite(RED_LED_PIN, ledState ? LOW : HIGH);  // LOW=on, HIGH=off
+    }
+  } else {
+    // CO2 SAFE - LED OFF
+    ledState = false;
+    digitalWrite(RED_LED_PIN, HIGH);  // HIGH = LED off
   }
   
   delay(100);

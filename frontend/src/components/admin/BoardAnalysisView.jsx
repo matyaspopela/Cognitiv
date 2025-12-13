@@ -360,6 +360,53 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     return value === undefined || value === null || Number.isNaN(value) ? '–' : value
   }
 
+  const handleExportCSV = async () => {
+    if (!deviceId) {
+      setError('Nelze exportovat: chybí ID zařízení')
+      return
+    }
+
+    try {
+      const startIso = toISOStringOrNull(timeRange.start)
+      const endIso = toISOStringOrNull(timeRange.end)
+
+      if (!startIso || !endIso) {
+        setError('Nelze exportovat: neplatné datum. Zkontrolujte, zda jsou obě data správně vyplněna.')
+        return
+      }
+
+      // Validate date range
+      const startDate = new Date(startIso)
+      const endDate = new Date(endIso)
+      if (startDate >= endDate) {
+        setError('Nelze exportovat: počáteční datum musí být dříve než koncové datum.')
+        return
+      }
+
+      const response = await historyAPI.exportCSV(startIso, endIso, deviceId)
+      
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      
+      // Generate filename with device name and date range
+      const deviceNameSafe = (deviceName || deviceId).replace(/[^a-z0-9]/gi, '_').toLowerCase()
+      const startStr = startDate.toISOString().split('T')[0]
+      const endStr = endDate.toISOString().split('T')[0]
+      link.download = `cognitiv_${deviceNameSafe}_${startStr}_to_${endStr}.csv`
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      setError('Nepodařilo se exportovat CSV. Zkuste to prosím později.')
+    }
+  }
+
   const qualityTableData = summary?.co2_quality || {}
 
   return (
@@ -370,9 +417,20 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         <div>
           <h2 className="board-analysis-view__title">{deviceName || deviceId}</h2>
         </div>
-        <Button variant="outlined" size="medium" onClick={onClose}>
-          Zavřít
-        </Button>
+        <div className="board-analysis-view__header-actions">
+          <Button 
+            variant="filled" 
+            size="medium" 
+            onClick={handleExportCSV}
+            disabled={!timeRange.start || !timeRange.end}
+            title="Exportovat data do CSV"
+          >
+            📥 Exportovat CSV
+          </Button>
+          <Button variant="outlined" size="medium" onClick={onClose}>
+            Zavřít
+          </Button>
+        </div>
       </div>
 
       {/* Time Range Selection */}
