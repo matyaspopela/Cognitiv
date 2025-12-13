@@ -4,6 +4,7 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  TimeScale,
   PointElement,
   LineElement,
   Title,
@@ -11,6 +12,7 @@ import {
   Legend,
   Filler
 } from 'chart.js'
+import 'chartjs-adapter-date-fns'
 import { historyAPI } from '../../services/api'
 import { buildMiniCo2Chart, miniChartOptions } from '../../utils/charts'
 
@@ -18,6 +20,7 @@ import { buildMiniCo2Chart, miniChartOptions } from '../../utils/charts'
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  TimeScale,
   PointElement,
   LineElement,
   Title,
@@ -96,7 +99,7 @@ const BoardCard = ({ device, onDetailsClick, onRenameClick, selected = false }) 
                 seriesToUse = seriesToUse.filter((_, index) => index % step === 0)
               }
 
-              const chartData = buildMiniCo2Chart(seriesToUse)
+              const chartData = buildMiniCo2Chart(seriesToUse, bucket)
               if (chartData.datasets?.[0]?.data?.length > 0) {
                 setMiniChartData(chartData)
                 chartLoaded = true

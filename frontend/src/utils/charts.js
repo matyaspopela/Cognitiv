@@ -4,6 +4,88 @@
  */
 
 /**
+ * Gap detection threshold multiplier
+ * If time between points exceeds (expectedBucket * GAP_THRESHOLD_MULTIPLIER), 
+ * the line segment will be rendered as dotted
+ */
+const GAP_THRESHOLD_MULTIPLIER = 2.5
+
+/**
+ * Get expected bucket size in milliseconds based on bucket type
+ * @param {string} bucket - Bucket type: 'raw', '10min', 'hour', 'day'
+ * @returns {number} Expected bucket size in milliseconds
+ */
+export const getBucketSizeMs = (bucket) => {
+  switch (bucket) {
+    case 'raw':
+      return 5 * 60 * 1000 // 5 minutes - assume raw data comes every ~5 min
+    case '10min':
+      return 10 * 60 * 1000 // 10 minutes
+    case 'hour':
+      return 60 * 60 * 1000 // 1 hour
+    case 'day':
+      return 24 * 60 * 60 * 1000 // 1 day
+    default:
+      return 10 * 60 * 1000 // default 10 minutes
+  }
+}
+
+/**
+ * Create segment styling callback for gap detection
+ * Returns dotted line style when there's a large time gap between points
+ * @param {Array<number>} timestamps - Array of timestamps in milliseconds
+ * @param {number} gapThresholdMs - Threshold in ms to consider as gap
+ * @returns {Function|undefined} Segment callback function for Chart.js, or undefined if invalid
+ */
+export const createGapSegmentStyle = (timestamps, gapThresholdMs) => {
+  // Pre-validate timestamps array - need at least 2 points to have segments
+  if (!Array.isArray(timestamps) || timestamps.length < 2) {
+    return undefined
+  }
+  
+  // Pre-validate threshold
+  if (typeof gapThresholdMs !== 'number' || isNaN(gapThresholdMs) || gapThresholdMs <= 0) {
+    return undefined
+  }
+  
+  // Filter out invalid timestamps (NaN values)
+  const validTimestamps = timestamps.filter(t => typeof t === 'number' && !isNaN(t))
+  if (validTimestamps.length < 2) {
+    return undefined
+  }
+
+  return (ctx) => {
+    try {
+      // Chart.js 4.x uses p0DataIndex/p1DataIndex on segment context
+      let p0Index = ctx.p0DataIndex
+      let p1Index = ctx.p1DataIndex
+      
+      // Validate indices
+      if (typeof p0Index !== 'number' || typeof p1Index !== 'number') return undefined
+      if (p0Index < 0 || p0Index >= timestamps.length) return undefined
+      if (p1Index < 0 || p1Index >= timestamps.length) return undefined
+      
+      const t0 = timestamps[p0Index]
+      const t1 = timestamps[p1Index]
+      
+      // Check for valid timestamp values (must be numbers and not NaN)
+      if (typeof t0 !== 'number' || typeof t1 !== 'number') return undefined
+      if (isNaN(t0) || isNaN(t1)) return undefined
+      
+      const timeDiff = Math.abs(t1 - t0)
+      
+      if (timeDiff > gapThresholdMs) {
+        return [6, 6] // Dotted line for gaps
+      }
+      return undefined // Solid line for normal segments
+    } catch (e) {
+      // If anything goes wrong, just use solid line
+      return undefined
+    }
+  }
+}
+
+/**
  * Creates a CO2 threshold gradient for chart fill
  * Green below 2000 ppm, red above 2000 ppm
  * @param {CanvasRenderingContext2D} ctx - Canvas context
@@ -14,7 +96,7 @@
 export const createCo2ThresholdGradient = (ctx, chartArea, yScale) => {
   if (!ctx || !chartArea || !yScale) return 'rgba(128, 128, 128, 0.2)'
   
-  const threshold = 2000
+  const threshold = 1500
   const thresholdPixel = yScale.getPixelForValue(threshold)
   const topPixel = chartArea.top
   const bottomPixel = chartArea.bottom
@@ -66,13 +148,20 @@ export const co2FillGradientPlugin = {
 /**
  * Build CO2 trend chart data
  * @param {Array} data - Series data from historyAPI.getSeries()
- * @returns {Object} Chart.js data object for Line chart
+ * @param {string} bucket - Bucket size for gap detection ('raw', '10min', 'hour', 'day')
+ * @param {boolean} useTimeScale - If true, use time scale with real spacing; if false, use category scale
+ * @returns {Object} Chart.js data object for Line chart with optional time scale and gap detection
  */
-export const buildCo2Chart = (data) => {
+export const buildCo2Chart = (data, bucket = '10min', useTimeScale = true) => {
+  // Store timestamps in milliseconds for time scale and gap detection
+  const timestamps = data.map(item => new Date(item.bucket_start).getTime())
   const labels = data.map(item => item.bucket_start)
+  const gapThresholdMs = getBucketSizeMs(bucket) * GAP_THRESHOLD_MULTIPLIER
+  
   const datasetsMap = {}
+  const timestampsMap = {}
 
-  data.forEach(item => {
+  data.forEach((item, index) => {
     const key = item.device_id || 'Všechna'
     if (!datasetsMap[key]) {
       datasetsMap[key] = {
@@ -90,9 +179,23 @@ export const buildCo2Chart = (data) => {
         // Marker for plugin to apply CO2 threshold gradient
         _co2ThresholdFill: true
       }
+      timestampsMap[key] = []
     }
     const co2Value = item.co2?.avg
-    datasetsMap[key].data.push(co2Value !== null && co2Value !== undefined ? Number(co2Value) : null)
+    const timestamp = timestamps[index]
+    
+    if (useTimeScale) {
+      // Use {x, y} format for time scale - x is timestamp, y is value
+      if (co2Value !== null && co2Value !== undefined && !isNaN(timestamp)) {
+        datasetsMap[key].data.push({ x: timestamp, y: Number(co2Value) })
+      } else if (!isNaN(timestamp)) {
+        datasetsMap[key].data.push({ x: timestamp, y: null })
+      }
+    } else {
+      // Use simple values for category scale
+      datasetsMap[key].data.push(co2Value !== null && co2Value !== undefined ? Number(co2Value) : null)
+    }
+    timestampsMap[key].push(timestamp)
   })
 
   const colors = [
@@ -107,35 +210,88 @@ export const buildCo2Chart = (data) => {
   ]
 
   let index = 0
-  Object.values(datasetsMap).forEach(dataset => {
+  Object.entries(datasetsMap).forEach(([key, dataset]) => {
     if (!dataset.borderColor) {
       dataset.borderColor = colors[index % colors.length]
       index += 1
     }
+    // Add segment styling for gap detection (dotted lines for large gaps)
+    try {
+      const datasetTimestamps = timestampsMap[key]
+      const segmentCallback = createGapSegmentStyle(datasetTimestamps, gapThresholdMs)
+      if (segmentCallback) {
+        dataset.segment = { borderDash: segmentCallback }
+      }
+    } catch (e) {
+      // If segment styling fails, just skip it - chart will work without gap detection
+      console.warn('Gap segment styling failed:', e)
+    }
   })
 
   return {
-    labels,
-    datasets: Object.values(datasetsMap)
+    // Include labels only for category scale
+    ...(useTimeScale ? {} : { labels }),
+    datasets: Object.values(datasetsMap),
+    // Store timestamps for reference if needed
+    _timestamps: timestamps,
+    _gapThresholdMs: gapThresholdMs
   }
 }
 
 /**
  * Build climate (Temperature & Humidity) trend chart data
  * @param {Array} data - Series data from historyAPI.getSeries()
- * @returns {Object} Chart.js data object for dual-axis Line chart
+ * @param {string} bucket - Bucket size for gap detection ('raw', '10min', 'hour', 'day')
+ * @param {boolean} useTimeScale - If true, use time scale with real spacing; if false, use category scale
+ * @returns {Object} Chart.js data object for dual-axis Line chart with optional time scale and gap detection
  */
-export const buildClimateChart = (data) => {
+export const buildClimateChart = (data, bucket = '10min', useTimeScale = true) => {
+  // Store timestamps in milliseconds for time scale and gap detection
+  const timestamps = data.map(item => new Date(item.bucket_start).getTime())
   const labels = data.map(item => item.bucket_start)
+  const gapThresholdMs = getBucketSizeMs(bucket) * GAP_THRESHOLD_MULTIPLIER
+  
+  // Create segment styling callback - returns undefined if invalid
+  const segmentCallback = createGapSegmentStyle(timestamps, gapThresholdMs)
+  const segmentConfig = segmentCallback ? { segment: { borderDash: segmentCallback } } : {}
+
+  let temperatureData, humidityData
+
+  if (useTimeScale) {
+    // Build data arrays with {x, y} format for time scale
+    temperatureData = data.map((item, index) => {
+      const val = item.temperature?.avg
+      const timestamp = timestamps[index]
+      if (isNaN(timestamp)) return null
+      return { x: timestamp, y: val !== null && val !== undefined ? Number(val) : null }
+    }).filter(p => p !== null)
+
+    humidityData = data.map((item, index) => {
+      const val = item.humidity?.avg
+      const timestamp = timestamps[index]
+      if (isNaN(timestamp)) return null
+      return { x: timestamp, y: val !== null && val !== undefined ? Number(val) : null }
+    }).filter(p => p !== null)
+  } else {
+    // Build simple value arrays for category scale
+    temperatureData = data.map(item => {
+      const val = item.temperature?.avg
+      return val !== null && val !== undefined ? Number(val) : null
+    })
+
+    humidityData = data.map(item => {
+      const val = item.humidity?.avg
+      return val !== null && val !== undefined ? Number(val) : null
+    })
+  }
+
   return {
-    labels,
+    // Include labels only for category scale
+    ...(useTimeScale ? {} : { labels }),
     datasets: [
       {
         label: 'Teplota (°C)',
-        data: data.map(item => {
-          const val = item.temperature?.avg
-          return val !== null && val !== undefined ? Number(val) : null
-        }),
+        data: temperatureData,
         yAxisID: 'y',
         borderColor: 'rgba(255, 112, 67, 0.85)',
         backgroundColor: 'rgba(255, 112, 67, 0.15)',
@@ -143,14 +299,12 @@ export const buildClimateChart = (data) => {
         borderWidth: 2,
         pointRadius: 0, // Clean line, no dots
         pointHoverRadius: 6,
-        fill: false
+        fill: false,
+        ...segmentConfig
       },
       {
         label: 'Vlhkost (%)',
-        data: data.map(item => {
-          const val = item.humidity?.avg
-          return val !== null && val !== undefined ? Number(val) : null
-        }),
+        data: humidityData,
         yAxisID: 'y1',
         borderColor: 'rgba(38, 198, 218, 0.85)',
         backgroundColor: 'rgba(38, 198, 218, 0.15)',
@@ -158,9 +312,13 @@ export const buildClimateChart = (data) => {
         borderWidth: 2,
         pointRadius: 0, // Clean line, no dots
         pointHoverRadius: 6,
-        fill: false
+        fill: false,
+        ...segmentConfig
       }
-    ]
+    ],
+    // Store timestamps for reference if needed
+    _timestamps: timestamps,
+    _gapThresholdMs: gapThresholdMs
   }
 }
 
@@ -236,10 +394,9 @@ export const buildQualityPieChart = (co2Quality) => {
 }
 
 /**
- * Common chart options for Line charts
- * Clean, minimalistic design - no point dots
+ * Base chart options shared between time and category scale modes
  */
-export const commonChartOptions = {
+const baseChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -272,21 +429,84 @@ export const commonChartOptions = {
       boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
       cornerRadius: 8
     }
-  },
-  scales: {
-    x: {
-      ticks: {
-        maxRotation: 0,
-        color: 'rgba(117, 117, 117, 0.9)',
-        font: {
-          family: 'Inter, sans-serif',
-          size: 12
-        }
-      },
-      grid: { color: 'rgba(0, 0, 0, 0.08)' }
-    }
   }
 }
+
+/**
+ * X-axis config for time scale (real time spacing)
+ */
+const timeScaleXAxis = {
+  type: 'time',
+  time: {
+    displayFormats: {
+      minute: 'HH:mm',
+      hour: 'HH:mm',
+      day: 'd. MMM',
+      week: 'd. MMM',
+      month: 'MMM yyyy'
+    },
+    tooltipFormat: 'd. MMM yyyy HH:mm'
+  },
+  ticks: {
+    maxRotation: 0,
+    color: 'rgba(117, 117, 117, 0.9)',
+    font: {
+      family: 'Inter, sans-serif',
+      size: 12
+    },
+    maxTicksLimit: 8
+  },
+  grid: { color: 'rgba(0, 0, 0, 0.08)' }
+}
+
+/**
+ * X-axis config for category scale (even spacing)
+ */
+const categoryScaleXAxis = {
+  type: 'category',
+  ticks: {
+    maxRotation: 45,
+    color: 'rgba(117, 117, 117, 0.9)',
+    font: {
+      family: 'Inter, sans-serif',
+      size: 11
+    },
+    maxTicksLimit: 10,
+    callback: function(value, index, values) {
+      // Format the label for display
+      const label = this.getLabelForValue(value)
+      if (!label) return ''
+      const date = new Date(label)
+      if (isNaN(date.getTime())) return label
+      return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+    }
+  },
+  grid: { color: 'rgba(0, 0, 0, 0.08)' }
+}
+
+/**
+ * Common chart options for Line charts
+ * Clean, minimalistic design - no point dots
+ * Uses time scale for x-axis to show real time spacing between data points
+ */
+export const commonChartOptions = {
+  ...baseChartOptions,
+  scales: {
+    x: timeScaleXAxis
+  }
+}
+
+/**
+ * Get chart options based on scale type
+ * @param {boolean} useTimeScale - If true, use time scale; if false, use category scale
+ * @returns {Object} Chart options object
+ */
+export const getCommonChartOptions = (useTimeScale = true) => ({
+  ...baseChartOptions,
+  scales: {
+    x: useTimeScale ? timeScaleXAxis : categoryScaleXAxis
+  }
+})
 
 /**
  * CO2 chart specific options
@@ -418,8 +638,146 @@ export const climateChartOptions = {
 }
 
 /**
+ * Get CO2 chart options based on scale type
+ * @param {boolean} useTimeScale - If true, use time scale; if false, use category scale
+ * @returns {Object} CO2 chart options object
+ */
+export const getCo2ChartOptions = (useTimeScale = true) => {
+  const baseOptions = getCommonChartOptions(useTimeScale)
+  return {
+    ...baseOptions,
+    scales: {
+      ...baseOptions.scales,
+      y: {
+        title: {
+          display: true,
+          text: 'CO₂ (ppm)',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 13,
+            weight: '500'
+          },
+          color: 'rgba(117, 117, 117, 0.9)'
+        },
+        grid: { color: 'rgba(0, 0, 0, 0.08)' },
+        ticks: {
+          color: 'rgba(117, 117, 117, 0.9)',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12
+          }
+        }
+      }
+    },
+    plugins: {
+      ...baseOptions.plugins,
+      annotation: {
+        annotations: {
+          moderate: {
+            type: 'line',
+            yMin: 1000,
+            yMax: 1000,
+            borderColor: 'rgba(255, 193, 7, 0.6)',
+            borderWidth: 2,
+            borderDash: [6, 6],
+            label: {
+              content: '1000 ppm',
+              enabled: true,
+              position: 'start',
+              backgroundColor: 'rgba(33, 33, 33, 0.9)',
+              color: '#fff',
+              font: {
+                family: 'Inter, sans-serif',
+                size: 12
+              }
+            }
+          },
+          high: {
+            type: 'line',
+            yMin: 1500,
+            yMax: 1500,
+            borderColor: 'rgba(255, 152, 0, 0.6)',
+            borderWidth: 2,
+            borderDash: [6, 6],
+            label: {
+              content: '1500 ppm',
+              enabled: true,
+              position: 'start',
+              backgroundColor: 'rgba(33, 33, 33, 0.9)',
+              color: '#fff',
+              font: {
+                family: 'Inter, sans-serif',
+                size: 12
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Get climate chart options based on scale type
+ * @param {boolean} useTimeScale - If true, use time scale; if false, use category scale
+ * @returns {Object} Climate chart options object
+ */
+export const getClimateChartOptions = (useTimeScale = true) => {
+  const baseOptions = getCommonChartOptions(useTimeScale)
+  return {
+    ...baseOptions,
+    scales: {
+      ...baseOptions.scales,
+      y: {
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Teplota (°C)',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 13,
+            weight: '500'
+          },
+          color: 'rgba(117, 117, 117, 0.9)'
+        },
+        grid: { color: 'rgba(0, 0, 0, 0.08)' },
+        ticks: {
+          color: 'rgba(117, 117, 117, 0.9)',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12
+          }
+        }
+      },
+      y1: {
+        position: 'right',
+        title: {
+          display: true,
+          text: 'Vlhkost (%)',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 13,
+            weight: '500'
+          },
+          color: 'rgba(117, 117, 117, 0.9)'
+        },
+        grid: { drawOnChartArea: false },
+        ticks: {
+          color: 'rgba(117, 117, 117, 0.9)',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
  * Mini chart options for compact card display
  * Optimized for small spaces (80-100px height)
+ * Uses time scale for proper spacing between data points
  */
 export const miniChartOptions = {
   responsive: true,
@@ -440,7 +798,8 @@ export const miniChartOptions = {
   },
   scales: {
     x: {
-      display: false // Hide x-axis in mini charts
+      type: 'time',
+      display: false // Hide x-axis in mini charts but use time for spacing
     },
     y: {
       display: true,
@@ -463,29 +822,44 @@ export const miniChartOptions = {
 /**
  * Build mini CO2 chart data with green color
  * Used specifically for board cards
+ * @param {Array} data - Series data from historyAPI.getSeries()
+ * @param {string} bucket - Bucket size for gap detection ('raw', '10min', 'hour', 'day')
  */
-export const buildMiniCo2Chart = (data) => {
-  const labels = data.map(item => item.bucket_start)
+export const buildMiniCo2Chart = (data, bucket = '10min') => {
+  // Store timestamps in milliseconds for time scale and gap detection
+  const timestamps = data.map(item => new Date(item.bucket_start).getTime())
+  const gapThresholdMs = getBucketSizeMs(bucket) * GAP_THRESHOLD_MULTIPLIER
   
-  // Extract CO2 values
-  const co2Values = data.map(item => {
+  // Build data with {x, y} format for time scale
+  const co2Data = data.map((item, index) => {
     const co2Value = item.co2?.avg ?? item.co2
-    return co2Value !== null && co2Value !== undefined ? Number(co2Value) : null
-  })
+    const timestamp = timestamps[index]
+    if (isNaN(timestamp)) return null
+    return { 
+      x: timestamp, 
+      y: co2Value !== null && co2Value !== undefined ? Number(co2Value) : null 
+    }
+  }).filter(p => p !== null)
+
+  // Create segment styling callback - returns undefined if invalid
+  const segmentCallback = createGapSegmentStyle(timestamps, gapThresholdMs)
+  const segmentConfig = segmentCallback ? { segment: { borderDash: segmentCallback } } : {}
 
   return {
-    labels,
     datasets: [{
       label: 'CO₂',
-      data: co2Values,
+      data: co2Data,
       fill: false,
       tension: 0.25,
       borderWidth: 2,
       pointRadius: 0, // Clean line, no dots
       pointHoverRadius: 6,
       borderColor: 'rgba(76, 175, 80, 0.85)', // Green color
-      backgroundColor: 'rgba(76, 175, 80, 0.1)'
-    }]
+      backgroundColor: 'rgba(76, 175, 80, 0.1)',
+      ...segmentConfig
+    }],
+    _timestamps: timestamps,
+    _gapThresholdMs: gapThresholdMs
   }
 }
 

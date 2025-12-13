@@ -4,6 +4,7 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  TimeScale,
   PointElement,
   LineElement,
   ArcElement,
@@ -12,14 +13,15 @@ import {
   Legend,
   Filler
 } from 'chart.js'
+import 'chartjs-adapter-date-fns'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { historyAPI, dataAPI } from '../../services/api'
 import {
   buildCo2Chart,
   buildClimateChart,
   buildQualityPieChart,
-  co2ChartOptions,
-  climateChartOptions,
+  getCo2ChartOptions,
+  getClimateChartOptions,
   co2FillGradientPlugin
 } from '../../utils/charts'
 
@@ -27,6 +29,7 @@ import {
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  TimeScale,
   PointElement,
   LineElement,
   ArcElement,
@@ -44,6 +47,51 @@ import Chip from '../ui/Chip'
 import TextField from '../ui/TextField'
 import ProgressBar from '../ui/ProgressBar'
 import './BoardAnalysisView.css'
+
+/**
+ * Check if chart data has actual displayable data points
+ * @param {Object} chartData - Chart.js data object
+ * @returns {boolean} True if there are valid data points to display
+ */
+const hasValidChartData = (chartData) => {
+  if (!chartData || !chartData.datasets || !Array.isArray(chartData.datasets)) {
+    return false
+  }
+  
+  return chartData.datasets.some(dataset => {
+    if (!dataset.data || !Array.isArray(dataset.data)) {
+      return false
+    }
+    
+    return dataset.data.some(point => {
+      if (point === null || point === undefined) return false
+      if (typeof point === 'object') {
+        return point.y !== null && point.y !== undefined && !isNaN(point.y)
+      }
+      return !isNaN(point)
+    })
+  })
+}
+
+/**
+ * Filter series data to only include points within the requested time range
+ * @param {Array} series - Array of series data points
+ * @param {string} startISO - Start time ISO string
+ * @param {string} endISO - End time ISO string
+ * @returns {Array} Filtered series data
+ */
+const filterSeriesInRange = (series, startISO, endISO) => {
+  if (!series || !Array.isArray(series)) return []
+  
+  const startTime = new Date(startISO).getTime()
+  const endTime = new Date(endISO).getTime()
+  
+  return series.filter(item => {
+    if (!item.bucket_start) return false
+    const pointTime = new Date(item.bucket_start).getTime()
+    return pointTime >= startTime && pointTime <= endTime
+  })
+}
 
 /**
  * BoardAnalysisView Component
@@ -64,6 +112,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     end: null
   })
   const [deviceName, setDeviceName] = useState(deviceId)
+  const [useRealTimeScale, setUseRealTimeScale] = useState(true)
 
   // Fetch device display name
   useEffect(() => {
@@ -186,6 +235,12 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
       setLoading(true)
       setError('')
+      // Clear previous chart data immediately to prevent stale display
+      setCo2Chart(null)
+      setClimateChart(null)
+      setQualityPieChart(null)
+      setSummary(null)
+      setSeries([])
 
       try {
         const startIso = toISOStringOrNull(timeRange.start)
@@ -328,15 +383,31 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             // Build quality distribution chart if available
             if (summaryData.summary?.co2_quality) {
               const pieChartData = buildQualityPieChart(summaryData.summary.co2_quality)
-              setQualityPieChart(pieChartData)
+              // Only set if there's valid data to display
+              if (pieChartData && hasValidChartData(pieChartData)) {
+                setQualityPieChart(pieChartData)
+              }
             }
           }
 
           if (seriesData && (seriesData.status === 'success' || seriesData.series) && seriesData.series?.length > 0) {
-            setSeries(seriesData.series)
-            // Build charts
-            setCo2Chart(buildCo2Chart(seriesData.series))
-            setClimateChart(buildClimateChart(seriesData.series))
+            // Filter series to only include data within the requested time range
+            const filteredSeries = filterSeriesInRange(seriesData.series, startIso, endIso)
+            
+            if (filteredSeries.length > 0) {
+              setSeries(filteredSeries)
+              // Build charts with bucket info for gap detection and time scale option
+              const co2ChartData = buildCo2Chart(filteredSeries, bucket, useRealTimeScale)
+              const climateChartData = buildClimateChart(filteredSeries, bucket, useRealTimeScale)
+              
+              // Only set charts if they have valid displayable data
+              if (hasValidChartData(co2ChartData)) {
+                setCo2Chart(co2ChartData)
+              }
+              if (hasValidChartData(climateChartData)) {
+                setClimateChart(climateChartData)
+              }
+            }
           }
         }
       } catch (error) {
@@ -356,7 +427,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     }
 
     loadAnalysisData()
-  }, [deviceId, timeRange.start, timeRange.end])
+  }, [deviceId, timeRange.start, timeRange.end, useRealTimeScale])
 
   const safeValue = (value) => {
     return value === undefined || value === null || Number.isNaN(value) ? '–' : value
@@ -539,6 +610,25 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             </div>
           </Card>
 
+          {/* Real time scale toggle */}
+          <div className="board-analysis-view__chart-options">
+            <label className="board-analysis-view__toggle">
+              <input
+                type="checkbox"
+                checked={useRealTimeScale}
+                onChange={(e) => setUseRealTimeScale(e.target.checked)}
+              />
+              <span className="board-analysis-view__toggle-label">
+                Reálné časové vzdálenosti
+              </span>
+              <span className="board-analysis-view__toggle-hint">
+                {useRealTimeScale 
+                  ? '(body jsou rozmístěny podle skutečného času)' 
+                  : '(body jsou rozmístěny rovnoměrně)'}
+              </span>
+            </label>
+          </div>
+
           {/* Trend Graphs */}
           <div className="board-analysis-view__charts">
             <Card className="board-analysis-view__chart-card" elevation={2}>
@@ -547,7 +637,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               </div>
               <div className="board-analysis-view__chart-container">
                 {co2Chart ? (
-                  <Line data={co2Chart} options={co2ChartOptions} />
+                  <Line data={co2Chart} options={getCo2ChartOptions(useRealTimeScale)} />
                 ) : (
                   <div className="board-analysis-view__empty">Žádná data k zobrazení</div>
                 )}
@@ -560,7 +650,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               </div>
               <div className="board-analysis-view__chart-container">
                 {climateChart ? (
-                  <Line data={climateChart} options={climateChartOptions} />
+                  <Line data={climateChart} options={getClimateChartOptions(useRealTimeScale)} />
                 ) : (
                   <div className="board-analysis-view__empty">Žádná data k zobrazení</div>
                 )}
