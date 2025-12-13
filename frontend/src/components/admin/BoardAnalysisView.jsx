@@ -19,7 +19,8 @@ import {
   buildClimateChart,
   buildQualityPieChart,
   co2ChartOptions,
-  climateChartOptions
+  climateChartOptions,
+  co2FillGradientPlugin
 } from '../../utils/charts'
 
 // Register Chart.js components and plugins
@@ -33,7 +34,8 @@ ChartJS.register(
   Tooltip,
   Legend,
   Filler,
-  annotationPlugin
+  annotationPlugin,
+  co2FillGradientPlugin
 )
 import Card from '../ui/Card'
 import Button from '../ui/Button'
