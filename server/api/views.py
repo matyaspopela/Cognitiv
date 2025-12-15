@@ -324,8 +324,10 @@ def normalize_sensor_data(data):
     except KeyError as exc:
         raise KeyError(f"Chybí povinné pole: {exc.args[0]}")
 
-    temperature = 'temp_scd41'
-    humidity = 'humidity_scd41'
+    # Extract temperature (support both 'temperature' and legacy 'temp_scd41' keys)
+    temperature = data.get('temperature') or data.get('temp_scd41')
+    # Extract humidity (support both 'humidity' and legacy 'humidity_scd41' keys)
+    humidity = data.get('humidity') or data.get('humidity_scd41')
 
     if temperature is None:
         raise KeyError("temperature")
