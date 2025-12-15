@@ -324,14 +324,8 @@ def normalize_sensor_data(data):
     except KeyError as exc:
         raise KeyError(f"Chybí povinné pole: {exc.args[0]}")
 
-    def first_present(keys):
-        for key in keys:
-            if key in data and data[key] is not None:
-                return data[key]
-        return None
-
-    temperature = first_present(['temperature', 'temp_scd41', 'temp_sht40'])
-    humidity = first_present(['humidity', 'humidity_scd41', 'humidity_sht40'])
+    temperature = 'temp_scd41'
+    humidity = 'humidity_scd41'
 
     if temperature is None:
         raise KeyError("temperature")

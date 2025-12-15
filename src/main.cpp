@@ -45,14 +45,18 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #include <ArduinoJson.h>
 #include <SparkFun_SCD4x_Arduino_Library.h>
 #include <time.h>
+#include <Ticker.h>  // Hardware timer for non-blocking LED control
 
 // Apply configuration
 const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
 
-// LED Configuration
-const unsigned long LED_BLINK_INTERVAL = 3000;  // Blink every  3 seconds
+// LED Configurations
+const float LED_WARNING_INTERVAL_SEC = 1.0;  // Blink every 1 second when CO2 >= 2000 ppm
+
+// Ticker for hardware-timed LED blinking (runs in interrupt, independent of main loop)
+Ticker ledTicker;
 
 // Hardware objects
 SCD4x scd41;
@@ -70,10 +74,10 @@ struct SensorData {
 unsigned long lastReadingTime = 0;
 bool sensorsInitialized = false;
 
-// LED blinking state
-unsigned long lastLedToggleTime = 0;
-bool ledState = false;
+// LED blinking state (hardware timer control)
+volatile bool ledOn = false;  // volatile because modified in ISR
 uint16_t lastCo2Reading = 0;
+bool ledBlinkingActive = false;  // Track if ticker is running
 
 // Global MAC address cache (extracted after WiFi initialization)
 String deviceMacAddress = "";
@@ -107,6 +111,8 @@ float readVoltage();
 void connectWiFi();
 bool sendSingleReading(SensorData data);
 bool sendJsonToUrl(const char* url, const String& jsonPayload);
+void toggleLedISR();  // Interrupt Service Routine for LED
+void updateLedMode();  // Check CO2 and start/stop blinking
 
 void setup() {
   Serial.begin(115200);
@@ -229,22 +235,10 @@ void loop() {
     }
   }
   
-  // LED control: blink if CO2 >= 2000, otherwise OFF
-  // Note: GPIO4 uses inverted logic (LOW=on, HIGH=off) due to pull-up
-  if (lastCo2Reading >= WARNING_CO2_THRESHOLD) {
-    // CO2 HIGH - blink every 5 seconds
-    if (millis() - lastLedToggleTime >= LED_BLINK_INTERVAL) {
-      lastLedToggleTime = millis();
-      ledState = !ledState;
-      digitalWrite(RED_LED_PIN, ledState ? LOW : HIGH);  // LOW=on, HIGH=off
-    }
-  } else {
-    // CO2 SAFE - LED OFF
-    ledState = false;
-    digitalWrite(RED_LED_PIN, HIGH);  // HIGH = LED off
-  }
+  // Update LED mode based on CO2 (hardware timer handles actual blinking)
+  updateLedMode();
   
-  delay(100);
+  delay(100);  // Main loop delay - LED blinking is handled by hardware timer
 }
 
 #ifdef HAS_DISPLAY
@@ -544,6 +538,34 @@ void connectWiFi() {
   }
 }
 
+
+// ISR (Interrupt Service Routine) - called by hardware timer
+// Runs independently of main loop, even during HTTP requests
+void IRAM_ATTR toggleLedISR() {
+  ledOn = !ledOn;
+  digitalWrite(RED_LED_PIN, ledOn ? LOW : HIGH);  // LOW=on, HIGH=off (inverted logic)
+}
+
+// Check CO2 level and start/stop the hardware timer for LED blinking
+void updateLedMode() {
+  if (lastCo2Reading >= WARNING_CO2_THRESHOLD) {
+    // CO2 HIGH - start blinking if not already
+    if (!ledBlinkingActive) {
+      ledBlinkingActive = true;
+      ledTicker.attach(LED_WARNING_INTERVAL_SEC, toggleLedISR);
+      Serial.println("LED: Warning mode - blinking started");
+    }
+  } else {
+    // CO2 SAFE - stop blinking and turn off LED
+    if (ledBlinkingActive) {
+      ledBlinkingActive = false;
+      ledTicker.detach();
+      ledOn = false;
+      digitalWrite(RED_LED_PIN, HIGH);  // HIGH = LED off
+      Serial.println("LED: Safe mode - LED off");
+    }
+  }
+}
 
 // Helper function to send JSON to any URL (HTTP or HTTPS)
 bool sendJsonToUrl(const char* url, const String& jsonPayload) {
