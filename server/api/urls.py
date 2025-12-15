@@ -21,6 +21,13 @@ urlpatterns = [
     path('admin/devices/<str:mac_address>/rename', views.admin_rename_device, name='admin_rename_device'),
     path('admin/devices/<str:device_id>/delete', views.admin_delete_device, name='admin_delete_device'),
     path('admin/devices/merge', views.admin_merge_device, name='admin_merge_device'),
+    # MAC Address Whitelist Management endpoints
+    path('admin/whitelist/status', views.admin_whitelist_status, name='admin_whitelist_status'),
+    path('admin/whitelist/toggle', views.admin_whitelist_toggle, name='admin_whitelist_toggle'),
+    path('admin/whitelist/devices', views.admin_whitelist_devices, name='admin_whitelist_devices'),
+    path('admin/whitelist/devices/<str:mac_address>', views.admin_whitelist_set, name='admin_whitelist_set'),
+    path('admin/whitelist/all', views.admin_whitelist_all, name='admin_whitelist_all'),
+    path('admin/whitelist/add', views.admin_whitelist_add_mac, name='admin_whitelist_add_mac'),
     # AI Assistant endpoint
     path('ai/chat', views.ai_chat, name='ai_chat'),
     # Debug endpoint (remove in production if needed)

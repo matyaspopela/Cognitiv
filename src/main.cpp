@@ -52,7 +52,7 @@ const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
 
 // LED Configuration
-const unsigned long LED_BLINK_INTERVAL = 5000;  // Blink every 5 seconds
+const unsigned long LED_BLINK_INTERVAL = 3000;  // Blink every  3 seconds
 
 // Hardware objects
 SCD4x scd41;

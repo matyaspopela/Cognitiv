@@ -131,12 +131,79 @@ def get_registry_collection():
             )
             _registry_collection.create_index([('display_name', ASCENDING)])
             _registry_collection.create_index([('last_data_received', ASCENDING)])
+            _registry_collection.create_index([('whitelisted', ASCENDING)])
             
             print(f"Device registry collection initialized")
         except Exception as err:
             print(f"✗ Failed to initialize device registry: {err}")
             raise
     return _registry_collection
+
+
+# Lazy settings collection initialization
+_settings_collection = None
+
+def get_settings_collection():
+    """Get settings collection for global configuration, initializing if necessary"""
+    global _settings_collection
+    if _settings_collection is None:
+        try:
+            client = MongoClient(
+                MONGO_URI,
+                serverSelectionTimeoutMS=5000,
+                tlsCAFile=certifi.where(),
+                tz_aware=True,
+                tzinfo=UTC,
+            )
+            client.admin.command('ping')
+            db = client[MONGO_DB_NAME]
+            _settings_collection = db['settings']
+            
+            # Create index on key field
+            _settings_collection.create_index([('key', ASCENDING)], unique=True)
+            
+            # Initialize default settings if not present
+            _settings_collection.update_one(
+                {'key': 'whitelist_enabled'},
+                {'$setOnInsert': {'key': 'whitelist_enabled', 'value': False, 'updated_at': datetime.now(UTC)}},
+                upsert=True
+            )
+            
+            print(f"Settings collection initialized")
+        except Exception as err:
+            print(f"✗ Failed to initialize settings collection: {err}")
+            raise
+    return _settings_collection
+
+
+def is_whitelist_enabled():
+    """Check if MAC address whitelisting is enabled"""
+    try:
+        settings = get_settings_collection()
+        setting = settings.find_one({'key': 'whitelist_enabled'})
+        return setting.get('value', False) if setting else False
+    except Exception as e:
+        print(f"⚠️  Error checking whitelist setting: {e}")
+        return False  # Default to disabled if there's an error
+
+
+def is_mac_whitelisted(mac_address):
+    """Check if a MAC address is whitelisted"""
+    if not mac_address:
+        return False
+    
+    try:
+        mac_normalized = normalize_mac_address(mac_address)
+        registry = get_registry_collection()
+        entry = registry.find_one({'mac_address': mac_normalized})
+        
+        if entry:
+            # Default to True for existing entries (backward compatibility)
+            return entry.get('whitelisted', True)
+        return False
+    except Exception as e:
+        print(f"⚠️  Error checking whitelist for {mac_address}: {e}")
+        return False
 
 
 def ensure_registry_entry(mac_address, device_id=None):
@@ -175,6 +242,10 @@ def ensure_registry_entry(mac_address, device_id=None):
             update_data['$set'] = update_data['$set'].copy()
             update_data['$set']['legacy_device_id'] = device_id
         
+        # Ensure whitelisted field exists (default True for backward compatibility)
+        if 'whitelisted' not in entry:
+            update_data['$set']['whitelisted'] = True
+        
         registry.update_one(
             {'mac_address': mac_normalized},
             update_data
@@ -182,7 +253,7 @@ def ensure_registry_entry(mac_address, device_id=None):
         # Refresh entry after update
         entry = registry.find_one({'mac_address': mac_normalized})
     else:
-        # Create new entry
+        # Create new entry - new devices are NOT whitelisted by default when whitelist is enabled
         default_name = device_id or mac_normalized
         entry = {
             'mac_address': mac_normalized,
@@ -190,6 +261,7 @@ def ensure_registry_entry(mac_address, device_id=None):
             'created_at': now,
             'updated_at': now,
             'last_data_received': now,
+            'whitelisted': True,  # Default to True for backward compatibility
         }
         if device_id:
             entry['legacy_device_id'] = device_id
@@ -635,6 +707,28 @@ def receive_data(request):
         print(f"{'='*50}")
         print(json.dumps(data, indent=2))
         
+        # Check MAC address whitelist if enabled
+        mac_address_raw = data.get('mac_address')
+        if is_whitelist_enabled():
+            if not mac_address_raw:
+                print(f"⚠️  MAC address whitelist is enabled but no MAC address provided - rejecting data")
+                return JsonResponse({
+                    'error': 'MAC address is required when whitelist is enabled',
+                    'whitelist_enabled': True
+                }, status=403)
+            
+            if not is_mac_whitelisted(mac_address_raw):
+                try:
+                    mac_normalized = normalize_mac_address(mac_address_raw)
+                    print(f"⚠️  MAC address {mac_normalized} is not whitelisted - rejecting data")
+                except ValueError:
+                    print(f"⚠️  Invalid MAC address {mac_address_raw} - rejecting data")
+                return JsonResponse({
+                    'error': 'MAC address is not whitelisted',
+                    'mac_address': mac_address_raw,
+                    'whitelist_enabled': True
+                }, status=403)
+        
         # Normalize payload to canonical keys
         try:
             normalized = normalize_sensor_data(data)
@@ -651,9 +745,9 @@ def receive_data(request):
         
         # Extract and normalize MAC address (if present)
         mac_address = None
-        if 'mac_address' in data:
+        if mac_address_raw:
             try:
-                mac_address = normalize_mac_address(data['mac_address'])
+                mac_address = normalize_mac_address(mac_address_raw)
                 # Ensure registry entry exists
                 ensure_registry_entry(mac_address, normalized.get('device_id'))
             except ValueError as e:
@@ -2380,4 +2474,336 @@ def ai_chat(request):
         return JsonResponse({
             'status': 'error',
             'message': f'Došlo k chybě: {str(e)}'
+        }, status=500)
+
+
+# ==================== MAC Address Whitelist Management ====================
+
+@require_http_methods(["GET"])
+def admin_whitelist_status(request):
+    """Get the current whitelist enabled status"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        enabled = is_whitelist_enabled()
+        
+        # Also get count of whitelisted vs non-whitelisted devices
+        registry = get_registry_collection()
+        total_devices = registry.count_documents({})
+        whitelisted_devices = registry.count_documents({'whitelisted': True})
+        non_whitelisted_devices = registry.count_documents({'whitelisted': False})
+        # Count devices without explicit whitelisted field (legacy, treated as whitelisted)
+        legacy_devices = total_devices - whitelisted_devices - non_whitelisted_devices
+        
+        return JsonResponse({
+            'status': 'success',
+            'whitelist_enabled': enabled,
+            'device_counts': {
+                'total': total_devices,
+                'whitelisted': whitelisted_devices + legacy_devices,  # Legacy devices count as whitelisted
+                'not_whitelisted': non_whitelisted_devices,
+                'legacy_without_field': legacy_devices
+            }
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_whitelist_toggle(request):
+    """Enable or disable MAC address whitelisting"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        enabled = data.get('enabled')
+        
+        if enabled is None:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Pole "enabled" je povinné (true/false)'
+            }, status=400)
+        
+        if not isinstance(enabled, bool):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Pole "enabled" musí být boolean (true/false)'
+            }, status=400)
+        
+        settings = get_settings_collection()
+        settings.update_one(
+            {'key': 'whitelist_enabled'},
+            {
+                '$set': {
+                    'value': enabled,
+                    'updated_at': datetime.now(UTC)
+                }
+            },
+            upsert=True
+        )
+        
+        action = 'zapnuto' if enabled else 'vypnuto'
+        print(f"✓ MAC address whitelisting {action}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Filtrování MAC adres bylo {"zapnuto" if enabled else "vypnuto"}',
+            'whitelist_enabled': enabled
+        }, status=200)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neplatný JSON v těle požadavku'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def admin_whitelist_devices(request):
+    """Get all devices with their whitelist status"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        registry = get_registry_collection()
+        entries = list(registry.find({}).sort('display_name', 1))
+        
+        devices = []
+        for entry in entries:
+            # Default to True for backward compatibility (legacy devices without the field)
+            is_whitelisted = entry.get('whitelisted', True)
+            
+            devices.append({
+                'mac_address': entry.get('mac_address'),
+                'display_name': entry.get('display_name', entry.get('mac_address')),
+                'device_id': entry.get('legacy_device_id'),
+                'whitelisted': is_whitelisted,
+                'last_data_received': to_readable_timestamp(entry.get('last_data_received')),
+                'created_at': to_readable_timestamp(entry.get('created_at'))
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'whitelist_enabled': is_whitelist_enabled(),
+            'devices': devices
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_whitelist_set(request, mac_address):
+    """Set whitelist status for a specific MAC address"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        whitelisted = data.get('whitelisted')
+        
+        if whitelisted is None:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Pole "whitelisted" je povinné (true/false)'
+            }, status=400)
+        
+        if not isinstance(whitelisted, bool):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Pole "whitelisted" musí být boolean (true/false)'
+            }, status=400)
+        
+        try:
+            mac_normalized = normalize_mac_address(mac_address)
+        except ValueError as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Neplatná MAC adresa: {str(e)}'
+            }, status=400)
+        
+        registry = get_registry_collection()
+        result = registry.update_one(
+            {'mac_address': mac_normalized},
+            {
+                '$set': {
+                    'whitelisted': whitelisted,
+                    'updated_at': datetime.now(UTC)
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Zařízení s MAC adresou {mac_normalized} nebylo nalezeno'
+            }, status=404)
+        
+        action = 'přidáno do' if whitelisted else 'odebráno z'
+        print(f"✓ Zařízení {mac_normalized} bylo {action} whitelistu")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Zařízení bylo {"přidáno do" if whitelisted else "odebráno z"} whitelistu',
+            'mac_address': mac_normalized,
+            'whitelisted': whitelisted
+        }, status=200)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neplatný JSON v těle požadavku'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_whitelist_all(request):
+    """Whitelist all existing MAC addresses in the registry"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        registry = get_registry_collection()
+        
+        # Update all entries to be whitelisted
+        result = registry.update_many(
+            {},
+            {
+                '$set': {
+                    'whitelisted': True,
+                    'updated_at': datetime.now(UTC)
+                }
+            }
+        )
+        
+        print(f"✓ Všechna zařízení ({result.modified_count}) byla přidána do whitelistu")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Všechna zařízení ({result.modified_count}) byla přidána do whitelistu',
+            'updated_count': result.modified_count
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_whitelist_add_mac(request):
+    """Add a new MAC address to the whitelist (create registry entry if needed)"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        mac_address = data.get('mac_address', '').strip()
+        display_name = data.get('display_name', '').strip()
+        
+        if not mac_address:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'MAC adresa je povinná'
+            }, status=400)
+        
+        try:
+            mac_normalized = normalize_mac_address(mac_address)
+        except ValueError as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Neplatná MAC adresa: {str(e)}'
+            }, status=400)
+        
+        registry = get_registry_collection()
+        now = datetime.now(UTC)
+        
+        # Check if already exists
+        existing = registry.find_one({'mac_address': mac_normalized})
+        
+        if existing:
+            # Update existing entry to be whitelisted
+            registry.update_one(
+                {'mac_address': mac_normalized},
+                {
+                    '$set': {
+                        'whitelisted': True,
+                        'updated_at': now
+                    }
+                }
+            )
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Zařízení {mac_normalized} již existuje a bylo přidáno do whitelistu',
+                'mac_address': mac_normalized,
+                'display_name': existing.get('display_name', mac_normalized),
+                'created': False
+            }, status=200)
+        
+        # Create new entry
+        entry = {
+            'mac_address': mac_normalized,
+            'display_name': display_name or mac_normalized,
+            'created_at': now,
+            'updated_at': now,
+            'whitelisted': True
+        }
+        
+        registry.insert_one(entry)
+        
+        print(f"✓ Nové zařízení {mac_normalized} bylo přidáno do whitelistu")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Nové zařízení {mac_normalized} bylo přidáno do whitelistu',
+            'mac_address': mac_normalized,
+            'display_name': display_name or mac_normalized,
+            'created': True
+        }, status=200)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neplatný JSON v těle požadavku'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Chyba: {str(e)}'
         }, status=500)
