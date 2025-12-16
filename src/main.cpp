@@ -53,7 +53,7 @@ const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
 
 // LED Configurations
-const float LED_WARNING_INTERVAL_SEC = 1.0;  // Blink every 1 second when CO2 >= 2000 ppm
+const float LED_WARNING_INTERVAL_SEC = .5;  // Blink every 1 second when CO2 >= 2000 ppm
 
 // Ticker for hardware-timed LED blinking (runs in interrupt, independent of main loop)
 Ticker ledTicker;
@@ -113,6 +113,13 @@ bool sendSingleReading(SensorData data);
 bool sendJsonToUrl(const char* url, const String& jsonPayload);
 void toggleLedISR();  // Interrupt Service Routine for LED
 void updateLedMode();  // Check CO2 and start/stop blinking
+
+// Quiet hours (sleep schedule) functions
+#if QUIET_HOURS_ENABLED
+bool isInQuietHours();
+void enterQuietHoursSleep();
+void checkQuietHours();
+#endif
 
 void setup() {
   Serial.begin(115200);
@@ -187,6 +194,13 @@ void setup() {
   Serial.println("Waiting for NTP time sync...");
   delay(2000);
   
+  // Check quiet hours after time sync
+  #if QUIET_HOURS_ENABLED
+  Serial.println("\nChecking quiet hours schedule...");
+  checkQuietHours();  // Will enter deep sleep if in quiet hours
+  Serial.println("✓ Outside quiet hours - normal operation");
+  #endif
+  
   Serial.println("\nSetup complete!\n");
 }
 
@@ -233,6 +247,11 @@ void loop() {
       displayStatus("Sensor Error!", TFT_RED);
       #endif
     }
+    
+    // Check quiet hours after each reading cycle
+    #if QUIET_HOURS_ENABLED
+    checkQuietHours();  // Will enter deep sleep if in quiet hours
+    #endif
   }
   
   // Update LED mode based on CO2 (hardware timer handles actual blinking)
@@ -671,4 +690,140 @@ bool sendSingleReading(SensorData data) {
   
   return success;
 }
+
+// ===== QUIET HOURS (Sleep Schedule) Implementation =====
+#if QUIET_HOURS_ENABLED
+
+/**
+ * Check if current time is within quiet hours
+ * Quiet hours: QUIET_HOURS_START_HOUR:QUIET_HOURS_START_MIN to QUIET_HOURS_END_HOUR:QUIET_HOURS_END_MIN
+ * Default: 16:00 (4 PM) to 07:30 (7:30 AM)
+ * 
+ * Returns true if in quiet hours, false otherwise
+ */
+bool isInQuietHours() {
+  time_t now = time(nullptr);
+  
+  // Check if time is valid (NTP synced)
+  if (now < 1000000000) {  // Before ~2001, time not synced
+    Serial.println("⚠️  Time not synced, cannot check quiet hours");
+    return false;
+  }
+  
+  struct tm* timeinfo = localtime(&now);
+  int currentHour = timeinfo->tm_hour;
+  int currentMin = timeinfo->tm_min;
+  
+  // Convert times to minutes since midnight for easier comparison
+  int currentTimeMinutes = currentHour * 60 + currentMin;
+  int startTimeMinutes = QUIET_HOURS_START_HOUR * 60 + QUIET_HOURS_START_MIN;
+  int endTimeMinutes = QUIET_HOURS_END_HOUR * 60 + QUIET_HOURS_END_MIN;
+  
+  Serial.print("Current time: ");
+  Serial.print(currentHour);
+  Serial.print(":");
+  if (currentMin < 10) Serial.print("0");
+  Serial.println(currentMin);
+  
+  // Handle overnight quiet hours (e.g., 16:00 to 07:30)
+  bool inQuietHours;
+  if (startTimeMinutes > endTimeMinutes) {
+    // Overnight: quiet if after start OR before end
+    inQuietHours = (currentTimeMinutes >= startTimeMinutes) || (currentTimeMinutes < endTimeMinutes);
+  } else {
+    // Same day: quiet if between start and end
+    inQuietHours = (currentTimeMinutes >= startTimeMinutes) && (currentTimeMinutes < endTimeMinutes);
+  }
+  
+  if (inQuietHours) {
+    Serial.print("📴 In quiet hours (");
+    Serial.print(QUIET_HOURS_START_HOUR);
+    Serial.print(":");
+    if (QUIET_HOURS_START_MIN < 10) Serial.print("0");
+    Serial.print(QUIET_HOURS_START_MIN);
+    Serial.print(" - ");
+    Serial.print(QUIET_HOURS_END_HOUR);
+    Serial.print(":");
+    if (QUIET_HOURS_END_MIN < 10) Serial.print("0");
+    Serial.print(QUIET_HOURS_END_MIN);
+    Serial.println(")");
+  }
+  
+  return inQuietHours;
+}
+
+/**
+ * Enter deep sleep mode for quiet hours
+ * The ESP8266 will turn off WiFi, CPU, sensors - only RTC remains active
+ * Will wake up after QUIET_HOURS_SLEEP_DURATION_US to check if quiet hours ended
+ * 
+ * IMPORTANT: GPIO16 (D0) must be connected to RST for wake-up to work!
+ */
+void enterQuietHoursSleep() {
+  Serial.println("\n========================================");
+  Serial.println("💤 ENTERING QUIET HOURS DEEP SLEEP");
+  Serial.println("========================================");
+  Serial.print("Sleep duration: ");
+  Serial.print(QUIET_HOURS_SLEEP_DURATION_US / 1000000);
+  Serial.println(" seconds");
+  Serial.println("All systems shutting down...");
+  Serial.println("WiFi: OFF | Sensors: OFF | Display: OFF");
+  Serial.println("----------------------------------------");
+  Serial.println("NOTE: GPIO16 (D0) must be connected to RST");
+  Serial.println("========================================\n");
+  
+  // Turn off LED before sleep
+  if (ledBlinkingActive) {
+    ledTicker.detach();
+    ledBlinkingActive = false;
+  }
+  digitalWrite(RED_LED_PIN, HIGH);  // HIGH = LED off
+  
+  // Stop sensor measurements before sleep
+  scd41.stopPeriodicMeasurement();
+  
+  // Turn off display if available
+  #ifdef HAS_DISPLAY
+  if (displayInitialized) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 20);
+    display.println("Quiet Hours");
+    display.setCursor(0, 35);
+    display.println("Sleeping...");
+    display.display();
+    delay(2000);
+    display.clearDisplay();
+    display.display();
+    display.ssd1306_command(SSD1306_DISPLAYOFF);
+  }
+  #endif
+  
+  // Disconnect WiFi gracefully
+  WiFi.disconnect();
+  WiFi.mode(WIFI_OFF);
+  
+  // Small delay to ensure all operations complete
+  delay(100);
+  
+  // Enter deep sleep
+  // WAKE_RF_DISABLED = WiFi will be off when waking up (we'll reconnect manually)
+  ESP.deepSleep(QUIET_HOURS_SLEEP_DURATION_US, WAKE_RF_DISABLED);
+  
+  // Code below this point will never execute during deep sleep
+  // ESP8266 resets after deep sleep wake-up (runs setup() again)
+}
+
+/**
+ * Check quiet hours and enter sleep if needed
+ * Called from setup() and loop() to enforce quiet hours
+ */
+void checkQuietHours() {
+  if (isInQuietHours()) {
+    enterQuietHoursSleep();
+    // Will never reach here - ESP resets after deep sleep
+  }
+}
+
+#endif  // QUIET_HOURS_ENABLED
 
