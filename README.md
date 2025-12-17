@@ -206,8 +206,6 @@ Cognitiv/
 ## Dokumentace
 
 - [TECHNICALITIES.md](TECHNICALITIES.md) — Architektura systému a tok dat
-- [CONNECTION_INFO.md](CONNECTION_INFO.md) — API endpointy a testování
-- [PROJECT_SPECIFICATIONS.txt](PROJECT_SPECIFICATIONS.txt) — Kompletní technické specifikace
 
 ## 3D tištěný kryt
 
