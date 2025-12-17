@@ -137,25 +137,56 @@ def summarize_logs(stdout: str, stderr: str, max_chars: int = 1200) -> str:
     return f"...{trimmed}"
 
 
+def _update_device_id_in_config(device_id: str) -> Path:
+    """Update only the DEVICE_ID in config.h (WiFi credentials come from env vars)."""
+    if not device_id or not isinstance(device_id, str):
+        raise ConfigWriteError("device_id must be a non-empty string")
+    
+    base_content = _load_config_source()
+    updated_content = _replace_define(base_content, "DEVICE_ID", device_id)
+    
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        CONFIG_PATH.write_text(updated_content, encoding="utf-8")
+    except OSError as exc:
+        raise ConfigWriteError(f"Failed to write config.h: {exc}") from exc
+    
+    return CONFIG_PATH
+
+
 def upload_firmware(
     ssid: str, 
     password: str, 
     device_id: str = None
 ) -> Tuple[int, str, str]:
     """
-    Apply WiFi credentials and device ID to include/config.h and invoke PlatformIO upload.
+    Pass WiFi credentials as environment variables and invoke PlatformIO upload.
+    
+    WiFi credentials are passed via environment variables which PlatformIO's
+    build_flags will pick up via ${sysenv.WIFI_SSID} and ${sysenv.WIFI_PASSWORD}.
+    
+    DEVICE_ID is still written to config.h since it's not configured as an env var.
 
     Returns the (returncode, stdout, stderr) tuple from the PlatformIO run so callers
     can surface detailed feedback to the user interface.
     """
-    config_path = apply_wifi_credentials(
-        ssid, 
-        password, 
-        device_id
-    )
-    if not config_path.exists():
-        raise ConfigWriteError("Failed to prepare config.h for upload.")
+    if not ssid or not isinstance(ssid, str):
+        raise ConfigWriteError("SSID is required for upload")
+    
+    # Pass WiFi credentials as environment variables
+    # PlatformIO's ${sysenv.WIFI_SSID} and ${sysenv.WIFI_PASSWORD} will pick these up
+    extra_env = {
+        'WIFI_SSID': ssid,
+        'WIFI_PASSWORD': password if password else '',
+    }
+    
+    # If device_id is provided, update config.h for DEVICE_ID
+    # (DEVICE_ID isn't configured as an env variable in platformio.ini)
+    if device_id:
+        config_path = _update_device_id_in_config(device_id)
+        if not config_path.exists():
+            raise ConfigWriteError("Failed to prepare config.h for upload.")
 
-    return run_platformio_upload()
+    return run_platformio_upload(extra_env=extra_env)
 
 
