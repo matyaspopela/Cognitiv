@@ -398,10 +398,10 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
           
           if (total > 0) {
             setQualityData({
-              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Dobrá', color: 'rgba(76, 175, 80, 0.85)' },
-              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Střední', color: 'rgba(255, 193, 7, 0.75)' },
-              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Špatná', color: 'rgba(255, 152, 0, 0.75)' },
-              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Velmi špatná', color: 'rgba(244, 67, 54, 0.85)' }
+              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Velmi dobrá', color: 'rgba(46, 125, 50, 0.9)' },
+              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Dobrá', color: 'rgba(102, 187, 106, 0.85)' },
+              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Špatná', color: 'rgba(255, 152, 0, 0.85)' },
+              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Velmi špatná', color: 'rgba(244, 67, 54, 0.9)' }
             })
           } else {
             setQualityData(null)

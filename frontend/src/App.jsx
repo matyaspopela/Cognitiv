@@ -24,7 +24,14 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/connect" element={<Connect />} />
+                      <Route
+                        path="/connect"
+                        element={
+                          <ProtectedRoute>
+                            <Connect />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/admin"
                         element={

@@ -347,22 +347,22 @@ export const buildQualityPieChart = (co2Quality) => {
     {
       label: '< 1000 ppm',
       value: good,
-      color: 'rgba(76, 175, 80, 0.85)'
+      color: 'rgba(46, 125, 50, 0.9)'
     },
     {
       label: '1000-1500 ppm',
       value: moderate,
-      color: 'rgba(255, 193, 7, 0.75)'
+      color: 'rgba(102, 187, 106, 0.85)'
     },
     {
       label: '1500-2000 ppm',
       value: high,
-      color: 'rgba(255, 152, 0, 0.75)'
+      color: 'rgba(255, 152, 0, 0.85)'
     },
     {
       label: '2000+ ppm',
       value: critical,
-      color: 'rgba(244, 67, 54, 0.85)'
+      color: 'rgba(244, 67, 54, 0.9)'
     }
   ]
 

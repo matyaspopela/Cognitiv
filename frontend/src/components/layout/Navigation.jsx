@@ -17,6 +17,10 @@ const Navigation = ({ isAdmin, username, onLogout }) => {
   const navItems = [
     { path: '/', label: 'Domů' },
     { path: '/dashboard', label: 'Dashboard' },
+  ]
+  
+  // Admin-only navigation items
+  const adminNavItems = [
     { path: '/connect', label: 'Připojit' },
   ]
 
@@ -39,6 +43,15 @@ const Navigation = ({ isAdmin, username, onLogout }) => {
           {/* Desktop Navigation */}
           <nav className="md3-app-bar__nav md3-app-bar__nav--desktop">
             {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`md3-app-bar__nav-item ${isActive(item.path) ? 'md3-app-bar__nav-item--active' : ''}`}
+              >
+                <span className="md3-app-bar__nav-label">{item.label}</span>
+              </Link>
+            ))}
+            {isAdmin && adminNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -119,6 +132,16 @@ const Navigation = ({ isAdmin, username, onLogout }) => {
                   <span>{item.label}</span>
                 </Link>
               ))}
+              {isAdmin && adminNavItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`md3-nav-drawer__item ${isActive(item.path) ? 'md3-nav-drawer__item--active' : ''}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span>{item.label}</span>
+                </Link>
+              ))}
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -136,6 +159,15 @@ const Navigation = ({ isAdmin, username, onLogout }) => {
       {/* Bottom Navigation (Mobile) */}
       <nav className="md3-bottom-nav">
         {navItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`md3-bottom-nav__item ${isActive(item.path) ? 'md3-bottom-nav__item--active' : ''}`}
+          >
+            <span className="md3-bottom-nav__label">{item.label}</span>
+          </Link>
+        ))}
+        {isAdmin && adminNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
