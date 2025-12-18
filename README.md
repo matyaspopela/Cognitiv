@@ -1,43 +1,59 @@
-# Cognitiv
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-ESP8266-blue?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/Backend-Django-green?style=flat-square" alt="Backend">
+  <img src="https://img.shields.io/badge/Frontend-React-61dafb?style=flat-square" alt="Frontend">
+  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?style=flat-square" alt="Database">
+</p>
 
-IoT systém pro monitorování kvality vzduchu v místnostech — měří CO2, teplotu a vlhkost v reálném čase.
+# 🌬️ Cognitiv
 
-## O projektu
+**IoT systém pro monitorování kvality vzduchu v místnostech** — měří CO₂, teplotu a vlhkost v reálném čase.
+
+---
+
+## 📖 O projektu
 
 Cognitiv je řešení pro sledování kvality prostředí v učebnách, kancelářích nebo jakémkoli vnitřním prostoru. Systém využívá hardware založený na ESP8266, který sbírá data ze senzorů a odesílá je na cloudový server. Data si pak můžete prohlížet přes webový dashboard.
 
-Měřené veličiny:
-- **CO2** (ppm) — ukazuje, kdy je potřeba vyvětrat
-- **Teplota** (°C)
-- **Vlhkost** (%)
+### Měřené veličiny
 
-Systém zahrnuje vizuální upozornění (LED a displej) při překročení bezpečných hodnot CO2 a AI asistenta, který dokáže odpovídat na dotazy o naměřených datech.
+| Veličina | Jednotka | Popis |
+|----------|----------|-------|
+| **CO₂** | ppm | Ukazuje, kdy je potřeba vyvětrat |
+| **Teplota** | °C | Aktuální teplota v místnosti |
+| **Vlhkost** | % | Relativní vlhkost vzduchu |
 
-## Funkce
+Systém zahrnuje vizuální upozornění (LED a displej) při překročení bezpečných hodnot CO₂.
 
-- Měření v reálném čase s nastavitelným intervalem
-- Webový dashboard s historickými grafy a statistikami
-- Klasifikace kvality vzduchu (Dobrá / Střední / Vysoká / Kritická)
-- Export dat do CSV
-- Podpora více zařízení
-- AI asistent pro analýzu dat
-- Volitelný OLED displej pro lokální zobrazení
-- LED indikátor varování při vysokém CO2
+---
 
-## Hardwarové požadavky
+## ✨ Funkce
 
-| Komponenta | Popis |
-|------------|-------|
-| ESP8266 deska | Modul ESP12-E nebo ESP12-S (např. LaskaKit AirBoard 8266) |
-| SCD41 senzor | Senzor CO2, teploty a vlhkosti |
-| OLED displej | Volitelně — 128x64 SSD1306 I2C displej |
-| LED | Volitelně — pro indikaci varování CO2 |
+- 📊 Měření v reálném čase s nastavitelným intervalem
+- 🖥️ Webový dashboard s historickými grafy a statistikami
+- 🚦 Klasifikace kvality vzduchu (Dobrá / Střední / Vysoká / Kritická)
+- 📥 Export dat do CSV
+- 📱 Podpora více zařízení
+- 🖵 Volitelný OLED displej pro lokální zobrazení
+- 💡 LED indikátor varování při vysokém CO₂
 
-Hardware se propojuje přes I2C pomocí LaskaKit μSup konektorů (nebo standardním I2C zapojením).
+---
 
-## Nasazení serveru na Render.com
+## 🔧 Hardwarové požadavky
 
-Tato sekce popisuje, jak spustit backend server na platformě Render.com.
+| Komponenta | Popis | Odkaz |
+|------------|-------|-------|
+| **ESP8266 deska** | Modul ESP12-E nebo ESP12-S | [LaskaKit AirBoard 8266](https://www.laskakit.cz/en/laskakit-airboard-8266-deska-pro-mereni-kvality-vzduchu/) |
+| **SCD41 senzor** | Senzor CO₂, teploty a vlhkosti | [LaskaKit SCD41](https://www.laskakit.cz/laskakit-scd41-senzor-co2--teploty-a-vlhkosti-vzduchu/) |
+| **LiPol baterie** | Volitelně — pro mobilní provoz | [GeB LiPol 4000mAh](https://www.laskakit.cz/geb-lipol-baterie-125054-4000mah-3-7v-jst-ph-2-0/) |
+| **OLED displej** | Volitelně — 128×64 I2C displej | [LaskaKit OLED 0.96"](https://www.laskakit.cz/laskakit-oled-displej-128x64-0-96-i2c/?variantId=13843) |
+| **LED** | Volitelně — pro indikaci varování CO₂ | [LED dioda 5mm](https://www.laskakit.cz/led-dioda-5mm/?variantId=1127) |
+
+> 💡 Hardware se propojuje přes I2C pomocí LaskaKit μSup konektorů (nebo standardním I2C zapojením).
+
+---
+
+## 🚀 Nasazení serveru na Render.com
 
 ### 1. Příprava
 
@@ -53,9 +69,10 @@ Budete potřebovat:
 3. V sekci **Database Access** vytvořte uživatele s heslem
 4. V sekci **Network Access** přidejte IP adresu Render serveru
 5. Klikněte na **Connect** → **Drivers** a zkopírujte connection string:
-   ```
-   mongodb+srv://uzivatel:heslo@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
-   ```
+
+```
+mongodb+srv://uzivatel:heslo@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
+```
 
 ### 3. Vytvoření služby na Render
 
@@ -63,16 +80,23 @@ Budete potřebovat:
 2. Klikněte na **New** → **Web Service**
 3. Propojte svůj GitHub repozitář
 4. Nastavte:
-   - **Name**: `cognitiv` (nebo jiný název)
-   - **Environment**: `Python 3`
-   - **Build Command**:
-     ```bash
-     cd frontend && npm install && npm run build && cd .. && pip install -r server/requirements.txt && cd server && python manage.py collectstatic --noinput
-     ```
-   - **Start Command**:
-     ```bash
-     cd server && gunicorn cognitiv.wsgi:application --bind 0.0.0.0:$PORT
-     ```
+
+| Položka | Hodnota |
+|---------|---------|
+| **Name** | `cognitiv` (nebo jiný název) |
+| **Environment** | `Python 3` |
+| **Build Command** | viz níže |
+| **Start Command** | viz níže |
+
+**Build Command:**
+```bash
+cd frontend && npm install && npm run build && cd .. && pip install -r server/requirements.txt && cd server && python manage.py collectstatic --noinput
+```
+
+**Start Command:**
+```bash
+cd server && gunicorn cognitiv.wsgi:application --bind 0.0.0.0:$PORT
+```
 
 ### 4. Nastavení proměnných prostředí
 
@@ -85,11 +109,11 @@ V sekci **Environment** na Render přidejte tyto proměnné:
 | `DJANGO_SECRET_KEY` | Náhodný řetězec (Render může vygenerovat) |
 | `DEBUG` | `false` |
 | `LOCAL_TIMEZONE` | `Europe/Prague` |
-| `GEMINI_API_KEY` | API klíč pro AI asistenta (volitelné) |
 
 ### 5. Nasazení
 
 Klikněte na **Create Web Service**. Render automaticky:
+
 1. Naklonuje repozitář
 2. Nainstaluje Node.js a Python závislosti
 3. Sestaví frontend
@@ -105,14 +129,16 @@ Upravte `include/config.h` a nastavte URL serveru:
 #define SERVER_URL "https://vase-sluzba.onrender.com/api/data"
 ```
 
-## Lokální vývoj
+---
+
+## 💻 Lokální vývoj
 
 ### Požadavky
 
-- [PlatformIO](https://platformio.org/) (pro nahrání firmware)
+- [PlatformIO](https://platformio.org/) — pro nahrání firmware
 - [Python 3.11+](https://www.python.org/)
 - [Node.js 18+](https://nodejs.org/)
-- [MongoDB](https://www.mongodb.com/) (lokální nebo Atlas)
+- [MongoDB](https://www.mongodb.com/) — lokální nebo Atlas
 
 ### Spuštění backendu
 
@@ -123,7 +149,7 @@ pip install -r requirements.txt
 
 Vytvořte soubor `.env` nebo nastavte proměnné prostředí:
 
-```
+```env
 MONGO_URI=mongodb://localhost:27017/
 MONGO_DB_NAME=cognitiv
 DJANGO_SECRET_KEY=nejaky-tajny-klic
@@ -149,12 +175,14 @@ Dashboard bude dostupný na `http://localhost:5173`.
 
 Nastavte WiFi přihlašovací údaje jako proměnné prostředí:
 
-```bash
-# Windows
+**Windows:**
+```cmd
 set WIFI_SSID=NazevSite
 set WIFI_PASSWORD=VaseHeslo
+```
 
-# Linux/Mac
+**Linux/Mac:**
+```bash
 export WIFI_SSID=NazevSite
 export WIFI_PASSWORD=VaseHeslo
 ```
@@ -165,7 +193,9 @@ Nahrajte firmware:
 pio run --target upload
 ```
 
-## Konfigurace
+---
+
+## ⚙️ Konfigurace
 
 ### Firmware (`include/config.h`)
 
@@ -183,9 +213,10 @@ pio run --target upload
 | `MONGO_URI` | MongoDB connection string |
 | `MONGO_DB_NAME` | Název databáze |
 | `DJANGO_SECRET_KEY` | Django secret key |
-| `GEMINI_API_KEY` | API klíč pro AI asistenta |
 
-## Struktura projektu
+---
+
+## 📁 Struktura projektu
 
 ```
 Cognitiv/
@@ -203,18 +234,30 @@ Cognitiv/
 └── render.yaml             # Konfigurace pro Render.com
 ```
 
-## Dokumentace
+---
+
+## 📚 Dokumentace
 
 - [TECHNICALITIES.md](TECHNICALITIES.md) — Architektura systému a tok dat
 
-## 3D tištěný kryt
+---
+
+## 🖨️ 3D tištěný kryt
 
 3D model krytu pro měřící stanici je dostupný na Printables:
 
-https://www.printables.com/model/1516397-kryt-na-merici-stanici-cognitiv
+🔗 **[Kryt na měřicí stanici Cognitiv](https://www.printables.com/model/1516397-kryt-na-merici-stanici-cognitiv)**
 
-Kryt je volně použitelný a modifikovatelný, ovšem je nutné zmínit autorství: **Matyáš Popela**.
+> Kryt je volně použitelný a modifikovatelný, ovšem je nutné zmínit autorství: **Matyáš Popela**.
 
-## Stav projektu
+---
+
+## 🛠️ Stav projektu
 
 Tento projekt je ve vývoji (work in progress). Příspěvky a zpětná vazba jsou vítány.
+
+---
+
+<p align="center">
+  <sub>Made with ❤️ by Matyáš Popela</sub>
+</p>
