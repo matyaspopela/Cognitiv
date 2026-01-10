@@ -1,0 +1,124 @@
+@import '../../design/tokens.css';
+
+.md3-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md3-spacing-2);
+  padding: var(--md3-spacing-3);
+  border: 1px solid var(--md3-color-border);
+  border-radius: var(--md3-border-radius-md);
+  background: var(--md3-color-surface-default);
+  color: var(--md3-color-text-primary);
+  cursor: pointer;
+  transition: all var(--md3-animation-normal) var(--md3-easing-easeOut);
+  font-family: var(--md3-font-family-primary);
+  font-size: var(--md3-font-size-body-medium);
+  line-height: var(--md3-line-height-compact);
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.md3-theme-toggle:hover {
+  background: var(--md3-color-surface-hover);
+  border-color: var(--md3-color-border-medium);
+  transform: translateY(-1px);
+}
+
+.md3-theme-toggle:active {
+  transform: translateY(0);
+}
+
+.md3-theme-toggle:focus-visible {
+  outline: 2px solid var(--md3-color-primary-500);
+  outline-offset: 2px;
+  border-color: var(--md3-color-primary-500);
+}
+
+.md3-theme-toggle__icon-container {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.md3-theme-toggle__icon {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  color: var(--md3-color-text-primary);
+  transition: all var(--md3-animation-normal) var(--md3-easing-easeOut);
+}
+
+/* Sun Icon - Visible in light mode, hidden in dark mode */
+.md3-theme-toggle__icon--sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.md3-theme-toggle--dark .md3-theme-toggle__icon--sun {
+  opacity: 0;
+  transform: rotate(90deg) scale(0);
+  pointer-events: none;
+}
+
+/* Moon Icon - Hidden in light mode, visible in dark mode */
+.md3-theme-toggle__icon--moon {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0);
+  pointer-events: none;
+}
+
+.md3-theme-toggle--dark .md3-theme-toggle__icon--moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+  pointer-events: auto;
+}
+
+.md3-theme-toggle__label {
+  font-weight: var(--md3-font-weight-medium);
+  color: var(--md3-color-text-primary);
+  transition: color var(--md3-animation-normal) var(--md3-easing-easeOut);
+}
+
+/* Compact variant (icon only) */
+.md3-theme-toggle--compact {
+  min-width: 36px;
+  min-height: 36px;
+  padding: var(--md3-spacing-2);
+}
+
+.md3-theme-toggle--compact .md3-theme-toggle__icon-container {
+  width: 18px;
+  height: 18px;
+}
+
+.md3-theme-toggle--compact .md3-theme-toggle__icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Large variant */
+.md3-theme-toggle--large {
+  min-width: 48px;
+  min-height: 48px;
+  padding: var(--md3-spacing-4);
+}
+
+.md3-theme-toggle--large .md3-theme-toggle__icon-container {
+  width: 24px;
+  height: 24px;
+}
+
+.md3-theme-toggle--large .md3-theme-toggle__icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Theme transitions are handled globally via tokens.css transitions if needed */
+

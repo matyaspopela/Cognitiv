@@ -4,7 +4,7 @@
   padding: var(--md3-spacing-4);
   display: flex;
   flex-direction: column;
-  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
+  transition: all var(--md3-animation-normal) var(--md3-easing-easeOut);
   cursor: pointer;
   min-height: 200px;
   user-select: none;
@@ -13,6 +13,20 @@
 .board-card:hover {
   box-shadow: var(--md3-elevation-3);
   transform: translateY(-2px);
+  transition: all var(--md3-animation-normal) var(--md3-easing-easeOut);
+  border-color: var(--md3-color-border-medium);
+}
+
+.board-card:active {
+  transform: translateY(0);
+  box-shadow: var(--md3-elevation-2);
+  transition: all var(--md3-animation-fast) var(--md3-easing-easeOut);
+}
+
+.board-card:focus-visible {
+  outline: 2px solid var(--md3-color-primary-500);
+  outline-offset: 2px;
+  border-color: var(--md3-color-primary-500);
 }
 
 .board-card--selected {
@@ -134,7 +148,7 @@
   justify-content: space-between;
   gap: var(--md3-spacing-2);
   padding-top: var(--md3-spacing-2);
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--md3-color-border-light);
 }
 
 .board-card__current-label {

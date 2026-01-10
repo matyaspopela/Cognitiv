@@ -169,7 +169,7 @@
   gap: var(--md3-spacing-2);
   margin-top: var(--md3-spacing-3);
   padding-top: var(--md3-spacing-3);
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  border-top: 1px solid var(--md3-color-border-light);
 }
 
 .admin-page__reading {

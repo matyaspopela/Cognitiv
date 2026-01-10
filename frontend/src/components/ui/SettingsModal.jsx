@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTheme } from '../../theme/ThemeProvider'
 import Card from './Card'
 import Button from './Button'
 import Chip from './Chip'
@@ -13,6 +14,7 @@ const SettingsModal = ({
   initialSettings = {},
   devices = []
 }) => {
+  const { theme, setTheme } = useTheme()
   const [settings, setSettings] = useState({
     // History settings
     start: null,
@@ -136,6 +138,52 @@ const SettingsModal = ({
         </div>
 
         <div className="settings-modal__content">
+          {/* Theme Selection Section */}
+          <div className="settings-modal__section">
+            <h3 className="settings-modal__section-title">Vzhled</h3>
+            <div className="settings-modal__theme-selector">
+              <label className={`settings-modal__theme-option ${theme === 'light' ? 'settings-modal__theme-option--checked' : ''}`}>
+                <input
+                  type="radio"
+                  name="theme"
+                  value="light"
+                  checked={theme === 'light'}
+                  onChange={(e) => setTheme(e.target.value)}
+                />
+                <span className="settings-modal__theme-label">
+                  <span className="settings-modal__theme-icon">☀️</span>
+                  <span>Light</span>
+                </span>
+              </label>
+              <label className={`settings-modal__theme-option ${theme === 'dark' ? 'settings-modal__theme-option--checked' : ''}`}>
+                <input
+                  type="radio"
+                  name="theme"
+                  value="dark"
+                  checked={theme === 'dark'}
+                  onChange={(e) => setTheme(e.target.value)}
+                />
+                <span className="settings-modal__theme-label">
+                  <span className="settings-modal__theme-icon">🌙</span>
+                  <span>Dark</span>
+                </span>
+              </label>
+              <label className={`settings-modal__theme-option ${theme === 'system' ? 'settings-modal__theme-option--checked' : ''}`}>
+                <input
+                  type="radio"
+                  name="theme"
+                  value="system"
+                  checked={theme === 'system'}
+                  onChange={(e) => setTheme(e.target.value)}
+                />
+                <span className="settings-modal__theme-label">
+                  <span className="settings-modal__theme-icon">💻</span>
+                  <span>System</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div className="settings-modal__section">
             <h3 className="settings-modal__section-title">Rychlý výběr období</h3>
             <div className="settings-modal__chips">

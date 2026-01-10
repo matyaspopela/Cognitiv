@@ -3,27 +3,62 @@
  * ESP12S + SCD41 Sensor with LaskaKit μSup I2C Connector
  * 
  * ESP12S I2C Pins:
- * - SDA: GPIO 4 (D2)
- * - SCL: GPIO 5 (D1)
+ * - SDA: GPIO 0 (D3)
+ * - SCL: GPIO 2 (D4)
  * 
  * With μSup Connectors (I2C):
  * - Sensors connect to I2C bus via μSup connectors
  * - Power: 3.3V from ESP12S
  * - No manual wiring needed - μSup handles connections!
+ * 
+ * ARDUINO IDE VERSION - All configuration inline
  */
+
+// ===== CONFIGURATION - EDIT THESE VALUES =====
+// WiFi Configuration
+#define WIFI_SSID "YourWiFiNetworkName"      // CHANGE THIS to your WiFi SSID
+#define WIFI_PASSWORD "YourWiFiPassword"     // CHANGE THIS to your WiFi password
+
+// Server Configuration
+#define SERVER_URL "https://cognitiv.onrender.com/api/data"
+#define ENABLE_LOCAL_DEBUG 1
+#define LOCAL_SERVER_URL "http://192.168.1.100:8000/api/data"
+
+// Device ID (unique name for this sensor)
+#define DEVICE_ID "ESP8266A2"
+
+// Timezone (in seconds from UTC)
+// Prague: CET (UTC+1) = 3600, CEST (UTC+2) = 7200 (3600 + 3600 daylight)
+#define GMT_OFFSET_SEC 3600
+#define DAYLIGHT_OFFSET_SEC 0
+
+// Reading interval (milliseconds)
+#define READING_INTERVAL_MS 10000
+
+// LED Configuration
+#define RED_LED_PIN 4  // GPIO4 - LED connected between this pin and GND
+
+// Voltage measurement configuration
+#define VOLTAGE_DIVIDER_RATIO 2.0
+
+// Deep Sleep Schedule
+#define QUIET_HOURS_ENABLED 1
+#define GOTOSLEEP_TIME_HOUR 16
+#define GOTOSLEEP_TIME_MIN 0
+#define WAKEUP_TIME_HOUR 7
+#define WAKEUP_TIME_MIN 50
+#define QUIET_HOURS_SLEEP_DURATION_US 1800000000UL  // 30 minutes in microseconds
+// ===== END CONFIGURATION =====
 
 // Arduino core
 #include <Wire.h>
-
-// ===== CONFIGURATION (must be loaded first for conditional compilation) =====
-#include "config.h"
-
-// ESP8266 libraries (LaskaKit AirBoard 8266)
 #include <ESP8266WiFi.h>
-#include <WiFiClientSecure.h>
-#include <PubSubClient.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
+#include <WiFiClientSecureBearSSL.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
 // LaskaKit AirBoard 8266 specific I2C pins for μSup connectors
 #define I2C_SDA 0  // GPIO 0 (D3) - connected to μSup connectors
 #define I2C_SCL 2  // GPIO 2 (D4) - connected to μSup connectors
@@ -52,7 +87,7 @@ const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 const uint16_t WARNING_CO2_THRESHOLD = 2000;
 
 // LED Configurations
-const float LED_WARNING_INTERVAL_SEC = .5;  // Blink every 1 second when CO2 >= 2000 ppm
+const float LED_WARNING_INTERVAL_SEC = .5;  // Blink every 0.5 seconds when CO2 >= 2000 ppm
 
 // Ticker for hardware-timed LED blinking (runs in interrupt, independent of main loop)
 Ticker ledTicker;
@@ -96,11 +131,6 @@ enum ConnectionState {
 ConnectionState wifiState = CONNECTING;
 ConnectionState serverState = DISCONNECTED;
 
-// MQTT client objects
-WiFiClientSecure mqttSecureClient;
-PubSubClient mqttClient(mqttSecureClient);
-ConnectionState mqttState = DISCONNECTED;
-
 // Forward declarations
 #ifdef HAS_DISPLAY
 void initDisplay();
@@ -114,10 +144,7 @@ SensorData readSensors();
 float readVoltage();
 void connectWiFi();
 bool sendSingleReading(SensorData data);
-bool connectMQTT();
-bool reconnectMQTT();
-bool sendJsonToMQTT(const String& jsonPayload);
-// bool sendJsonToUrl(const char* url, const String& jsonPayload);  // DEPRECATED: Replaced by MQTT
+bool sendJsonToUrl(const char* url, const String& jsonPayload);
 void toggleLedISR();  // Interrupt Service Routine for LED
 void updateLedMode();  // Check CO2 and start/stop blinking
 
@@ -192,11 +219,6 @@ void setup() {
     deviceMacAddress = WiFi.macAddress();
     Serial.print("Device MAC Address: ");
     Serial.println(deviceMacAddress);
-    
-    // Initialize MQTT client
-    mqttClient.setServer(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
-    mqttSecureClient.setInsecure();  // TODO: replace with certificate validation for production
-    Serial.println("MQTT client initialized");
   } else {
     Serial.println("⚠️  WiFi not connected, MAC address not available");
   }
@@ -220,22 +242,12 @@ void loop() {
   // Check WiFi connection
   if (WiFi.status() != WL_CONNECTED) {
     wifiState = DISCONNECTED;
-    mqttState = DISCONNECTED;
     #ifdef HAS_DISPLAY
     displayStatus("WiFi Lost!", TFT_RED);
     #endif
     connectWiFi();
   } else {
     wifiState = CONNECTED;
-    
-    // Check and maintain MQTT connection
-    if (!mqttClient.connected()) {
-      mqttState = DISCONNECTED;
-      reconnectMQTT();
-    } else {
-      mqttClient.loop();  // Process MQTT messages
-      mqttState = CONNECTED;
-    }
   }
   
   // Read sensors at specified interval
@@ -562,14 +574,6 @@ void connectWiFi() {
     #ifdef HAS_DISPLAY
     displayStatus("WiFi Connected", TFT_GREEN);
     #endif
-    
-    // Initialize MQTT client (safe to call multiple times)
-    mqttClient.setServer(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
-    mqttSecureClient.setInsecure();  // TODO: replace with certificate validation for production
-    
-    // Attempt MQTT connection
-    reconnectMQTT();
-    
     delay(1000);
   } else {
     Serial.println("\n✗ WiFi connection failed!");
@@ -616,114 +620,7 @@ void updateLedMode() {
   }
 }
 
-// MQTT connection function
-bool connectMQTT() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("MQTT: WiFi not connected");
-    return false;
-  }
-  
-  Serial.print("MQTT: Connecting to broker ");
-  Serial.print(MQTT_BROKER_HOST);
-  Serial.print(":");
-  Serial.println(MQTT_BROKER_PORT);
-  
-  // Generate unique client ID from MAC address
-  String clientId = "ESP8266_";
-  if (deviceMacAddress.length() > 0) {
-    clientId += deviceMacAddress;
-    clientId.replace(":", "");
-  } else {
-    clientId += String(random(0xffff), HEX);
-  }
-  
-  if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
-    Serial.println("✓ MQTT connected!");
-    mqttState = CONNECTED;
-    return true;
-  } else {
-    Serial.print("✗ MQTT connection failed, rc=");
-    Serial.print(mqttClient.state());
-    Serial.println(" (see PubSubClient.h for error codes)");
-    mqttState = ERROR;
-    return false;
-  }
-}
-
-// MQTT reconnection function with retry logic
-bool reconnectMQTT() {
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-  
-  int maxAttempts = 3;
-  int attempts = 0;
-  
-  while (!mqttClient.connected() && attempts < maxAttempts) {
-    attempts++;
-    Serial.print("MQTT: Reconnection attempt ");
-    Serial.print(attempts);
-    Serial.print("/");
-    Serial.println(maxAttempts);
-    
-    if (connectMQTT()) {
-      return true;
-    }
-    
-    if (attempts < maxAttempts) {
-      delay(2000);  // Wait before retry
-    }
-  }
-  
-  return false;
-}
-
-// Send JSON payload to MQTT topic
-bool sendJsonToMQTT(const String& jsonPayload) {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("MQTT: WiFi not connected");
-    return false;
-  }
-  
-  // Ensure MQTT is connected
-  if (!mqttClient.connected()) {
-    Serial.println("MQTT: Not connected, attempting reconnection...");
-    if (!reconnectMQTT()) {
-      Serial.println("MQTT: Reconnection failed");
-      return false;
-    }
-  }
-  
-  // Publish to MQTT topic
-  Serial.print("MQTT: Publishing to topic ");
-  Serial.print(MQTT_TOPIC);
-  Serial.print(": ");
-  Serial.println(jsonPayload);
-  
-  bool success = mqttClient.publish(MQTT_TOPIC, jsonPayload.c_str());
-  
-  if (success) {
-    Serial.println("✓ MQTT publish successful");
-    mqttState = CONNECTED;
-    return true;
-  } else {
-    Serial.println("✗ MQTT publish failed");
-    mqttState = ERROR;
-    // Try reconnecting and retry once
-    if (reconnectMQTT()) {
-      success = mqttClient.publish(MQTT_TOPIC, jsonPayload.c_str());
-      if (success) {
-        Serial.println("✓ MQTT publish successful after reconnection");
-        mqttState = CONNECTED;
-        return true;
-      }
-    }
-    return false;
-  }
-}
-
-// Helper function to send JSON to any URL (HTTP or HTTPS) - DEPRECATED: Replaced by MQTT
-/*
+// Helper function to send JSON to any URL (HTTP or HTTPS)
 bool sendJsonToUrl(const char* url, const String& jsonPayload) {
   if (WiFi.status() != WL_CONNECTED) {
     return false;
@@ -780,7 +677,6 @@ bool sendJsonToUrl(const char* url, const String& jsonPayload) {
   
   return (httpResponseCode == 200);
 }
-*/
 
 
 bool sendSingleReading(SensorData data) {
@@ -809,8 +705,16 @@ bool sendSingleReading(SensorData data) {
   Serial.print("Sending reading: ");
   Serial.println(jsonString);
   
-  // Send to MQTT broker
-  bool success = sendJsonToMQTT(jsonString);
+  // Send to production server
+  bool prodSuccess = sendJsonToUrl(SERVER_URL, jsonString);
+  
+  // Send to local debug server if enabled
+  #if ENABLE_LOCAL_DEBUG
+  bool localSuccess = sendJsonToUrl(LOCAL_SERVER_URL, jsonString);
+  bool success = prodSuccess || localSuccess;  // Success if at least one works
+  #else
+  bool success = prodSuccess;
+  #endif
   
   if (success) {
     Serial.println("✓ Reading sent successfully");
@@ -1044,4 +948,6 @@ void checkQuietHours() {
 }
 
 #endif  // QUIET_HOURS_ENABLED
+
+
 

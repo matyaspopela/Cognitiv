@@ -5,14 +5,20 @@ import Card from '../components/ui/Card'
 import DashboardBox from '../components/dashboard/DashboardBox'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import DeviceDetailView from '../components/dashboard/DeviceDetailView'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
 import './Dashboard.css'
 
 const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   if (loading) {
     return (
-      <div className="dashboard-loading">
-        <p>Načítám zařízení...</p>
-      </div>
+      <Card className="dashboard-loading" elevation={2}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--md3-spacing-4)', padding: 'var(--md3-spacing-8)' }}>
+          <LoadingSpinner size="large" />
+          <p style={{ margin: 0, color: 'var(--md3-color-text-secondary)', fontSize: 'var(--md3-font-size-body-medium)' }}>
+            Načítám zařízení...
+          </p>
+        </div>
+      </Card>
     )
   }
 

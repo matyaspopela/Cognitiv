@@ -8,7 +8,7 @@
 .board-analysis-view__divider {
   width: 100%;
   height: 1px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--md3-color-surface-dim);
   margin-bottom: var(--md3-spacing-6);
 }
 
@@ -271,7 +271,7 @@
 }
 
 .board-analysis-view__table thead {
-  border-bottom: 2px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 2px solid var(--md3-color-border-light);
 }
 
 .board-analysis-view__table th {
@@ -286,13 +286,13 @@
 
 .board-analysis-view__table td {
   padding: var(--md3-spacing-3);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--md3-color-border-light);
   font-size: var(--md3-font-size-body-medium);
   color: var(--md3-color-text-primary);
 }
 
 .board-analysis-view__table tbody tr:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--md3-color-surface-variant);
 }
 
 .board-analysis-view__empty {

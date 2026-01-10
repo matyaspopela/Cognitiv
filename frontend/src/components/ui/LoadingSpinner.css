@@ -1,0 +1,57 @@
+@import '../../design/tokens.css';
+
+.md3-loading-spinner {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md3-spacing-3);
+}
+
+.md3-loading-spinner__circle {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--md3-color-border-light);
+  border-top-color: var(--md3-color-primary-500);
+  border-radius: 50%;
+  animation: md3-spin var(--md3-animation-slow) linear infinite;
+}
+
+.md3-loading-spinner--small .md3-loading-spinner__circle {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+.md3-loading-spinner--medium .md3-loading-spinner__circle {
+  width: 40px;
+  height: 40px;
+  border-width: 3px;
+}
+
+.md3-loading-spinner--large .md3-loading-spinner__circle {
+  width: 56px;
+  height: 56px;
+  border-width: 4px;
+}
+
+.md3-loading-spinner__label {
+  font-size: var(--md3-font-size-body-small);
+  color: var(--md3-color-text-secondary);
+  font-family: var(--md3-font-family-primary);
+}
+
+@keyframes md3-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md3-loading-spinner__circle {
+    animation: none;
+    border-top-color: var(--md3-color-primary-500);
+    border-right-color: var(--md3-color-primary-500);
+  }
+}
+

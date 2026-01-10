@@ -7,14 +7,14 @@
   transform: translateX(-50%) translateY(100px);
   min-width: 344px;
   max-width: 672px;
-  background: rgba(33, 33, 33, 0.9);
-  backdrop-filter: var(--md3-glass-strong);
-  -webkit-backdrop-filter: var(--md3-glass-strong);
-  color: white;
+  background: var(--md3-color-surface-dark);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--md3-color-text-primary);
   border-radius: var(--md3-border-radius-lg);
   padding: var(--md3-spacing-4) var(--md3-spacing-6);
   box-shadow: var(--md3-elevation-4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--md3-color-border);
   z-index: 1000;
   opacity: 0;
   transition: all var(--md3-animation-slow) var(--md3-easing-easeOut);
@@ -44,7 +44,7 @@
 .md3-snackbar__action {
   background: transparent;
   border: none;
-  color: var(--md3-color-primary-300);
+  color: var(--md3-color-primary-500);
   font-family: var(--md3-font-family-primary);
   font-size: var(--md3-font-size-label-medium);
   font-weight: var(--md3-font-weight-semiBold);
@@ -53,23 +53,23 @@
   padding: var(--md3-spacing-2);
   margin: calc(var(--md3-spacing-2) * -1);
   border-radius: var(--md3-border-radius-sm);
-  transition: background-color var(--md3-animation-normal) var(--md3-easing-ease);
+  transition: background-color var(--md3-animation-normal) var(--md3-easing-easeOut);
 }
 
 .md3-snackbar__action:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--md3-color-surface-hover);
 }
 
 .md3-snackbar--success {
-  background: rgba(76, 175, 80, 0.9);
+  background: var(--md3-color-success-500);
 }
 
 .md3-snackbar--error {
-  background: rgba(244, 67, 54, 0.9);
+  background: var(--md3-color-error-500);
 }
 
 .md3-snackbar--warning {
-  background: rgba(255, 152, 0, 0.9);
+  background: var(--md3-color-warning-500);
 }
 
 @media (max-width: 600px) {

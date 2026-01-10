@@ -16,6 +16,12 @@ const ProgressBar = ({
     return (
       <div className={`md3-progress-circular ${className}`} {...props}>
         <svg className="md3-progress-circular__svg" viewBox="0 0 48 48">
+          <defs>
+            <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--md3-color-primary-400)" />
+              <stop offset="100%" stopColor="var(--md3-color-primary-600)" />
+            </linearGradient>
+          </defs>
           {indeterminate ? (
             <circle
               className="md3-progress-circular__circle md3-progress-circular__circle--indeterminate"
@@ -24,6 +30,7 @@ const ProgressBar = ({
               r="20"
               fill="none"
               strokeWidth="4"
+              stroke="url(#progress-gradient)"
             />
           ) : (
             <circle
@@ -33,6 +40,7 @@ const ProgressBar = ({
               r="20"
               fill="none"
               strokeWidth="4"
+              stroke="url(#progress-gradient)"
               strokeDasharray={`${2 * Math.PI * 20}`}
               strokeDashoffset={`${2 * Math.PI * 20 * (1 - percentage / 100)}`}
             />

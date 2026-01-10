@@ -52,7 +52,7 @@
   position: relative;
   min-height: 140px;
   cursor: pointer;
-  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
+  transition: all var(--md3-animation-normal) var(--md3-easing-easeOut);
   user-select: none;
   border: 2px solid transparent;
 }
@@ -60,7 +60,7 @@
 .device-selection__card:hover {
   box-shadow: var(--md3-elevation-4);
   transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--md3-color-border-light);
 }
 
 .device-selection__card:active {
@@ -70,7 +70,7 @@
 
 .device-selection__card--selected {
   border-color: var(--md3-color-primary-500);
-  background: rgba(103, 80, 164, 0.1);
+  background: var(--md3-color-primary-50);
   box-shadow: var(--md3-elevation-3);
 }
 
@@ -81,7 +81,7 @@
 
 .device-selection__card--offline {
   opacity: 0.7;
-  background: rgba(117, 117, 117, 0.05);
+  background: var(--md3-color-surface-dim);
 }
 
 .device-selection__card--offline:hover {
@@ -148,7 +148,7 @@
   height: 12px;
   border-radius: 50%;
   background: var(--md3-color-primary-500);
-  box-shadow: 0 0 8px rgba(103, 80, 164, 0.6);
+  box-shadow: var(--md3-elevation-3);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -162,6 +162,9 @@
     transform: scale(1.1);
   }
 }
+
+
+
 
 
 

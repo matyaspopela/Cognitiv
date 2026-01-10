@@ -1,0 +1,4 @@
+# Requirements for MQTT testing scripts
+paho-mqtt>=1.6.0
+
+
