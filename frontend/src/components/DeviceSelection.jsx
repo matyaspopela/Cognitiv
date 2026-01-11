@@ -58,9 +58,9 @@ const DeviceSelection = ({ devices, selectedDevice, onDeviceSelect }) => {
   return (
     <section className="device-selection">
       <Card className="device-selection__header" elevation={1}>
-        <h2 className="device-selection__title">Výběr zařízení</h2>
+        <h2 className="device-selection__title">Device Selection</h2>
         <p className="device-selection__description">
-          Vyberte zařízení pro zobrazení jeho statistik. Kliknutím na kartu se URL aktualizuje pro snadné sdílení.
+          Select a device to view its statistics. Clicking on a card updates the URL for easy sharing.
         </p>
       </Card>
 
@@ -72,7 +72,7 @@ const DeviceSelection = ({ devices, selectedDevice, onDeviceSelect }) => {
           onClick={() => handleDeviceClick(null)}
         >
           <div className="device-selection__card-content">
-            <h3 className="device-selection__card-name">Všechna zařízení</h3>
+            <h3 className="device-selection__card-name">All devices</h3>
             <div className="device-selection__card-co2">
               <span className="device-selection__card-value">—</span>
             </div>
@@ -104,7 +104,7 @@ const DeviceSelection = ({ devices, selectedDevice, onDeviceSelect }) => {
                   {!isOffline && co2Value != null ? (
                     <span className="device-selection__card-value">{Math.round(co2Value)} ppm</span>
                   ) : (
-                    <span className="device-selection__card-offline">Toto zařízení je offline</span>
+                    <span className="device-selection__card-offline">This device is offline</span>
                   )}
                 </div>
               </div>

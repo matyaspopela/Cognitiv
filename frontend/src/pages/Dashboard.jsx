@@ -5,6 +5,7 @@ import Card from '../components/ui/Card'
 import DashboardBox from '../components/dashboard/DashboardBox'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import DeviceDetailView from '../components/dashboard/DeviceDetailView'
+import ActivityFeed from '../components/dashboard/ActivityFeed'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import './Dashboard.css'
 
@@ -15,7 +16,7 @@ const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--md3-spacing-4)', padding: 'var(--md3-spacing-8)' }}>
           <LoadingSpinner size="large" />
           <p style={{ margin: 0, color: 'var(--md3-color-text-secondary)', fontSize: 'var(--md3-font-size-body-medium)' }}>
-            Načítám zařízení...
+            Loading devices...
           </p>
         </div>
       </Card>
@@ -25,7 +26,7 @@ const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   if (!devices || devices.length === 0) {
     return (
       <Card className="dashboard-empty">
-        <p>Žádná zařízení nejsou k dispozici.</p>
+        <p>No devices available.</p>
       </Card>
     )
   }
@@ -33,7 +34,6 @@ const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   return (
     <div className="dashboard-box-grid">
       {devices.map((device) => {
-        // Use mac_address as key (preferred) or device_id or display_name
         const deviceKey = typeof device === 'string' 
           ? device 
           : device?.mac_address || device?.device_id || device?.display_name || 'unknown'
@@ -49,41 +49,32 @@ const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   )
 }
 
-
 const Dashboard = () => {
   const location = useLocation()
   const navigate = useNavigate()
-
-  // Read query parameters
-  const searchParams = new URLSearchParams(location.search)
-  const deviceId = searchParams.get('device')
-  // Default to '1h' if no window param exists (first load)
-  // Otherwise use the provided window or fallback to '24h' for backward compatibility
-  const timeWindow = searchParams.get('window') || '1h'
-
-  // State
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Load devices list
+  // Parse URL parameters for device and time window
+  const params = new URLSearchParams(location.search)
+  const deviceId = params.get('device')
+  const timeWindow = params.get('window') || '24h'
+
+  // Load devices
   useEffect(() => {
     const loadDevices = async () => {
       try {
         setLoading(true)
-        setError(null)
         const response = await dataAPI.getDevices()
-        if (response.data && Array.isArray(response.data)) {
-          setDevices(response.data)
-        } else if (response.data?.devices) {
+        if (response.data && response.data.devices) {
           setDevices(response.data.devices)
         } else {
-          setDevices([])
+          setError('Failed to load devices')
         }
       } catch (err) {
         console.error('Error loading devices:', err)
-        setError('Nepodařilo se načíst seznam zařízení')
-        setDevices([])
+        setError('Error loading devices')
       } finally {
         setLoading(false)
       }
@@ -96,7 +87,7 @@ const Dashboard = () => {
   const handleDeviceSelect = (selectedDeviceId) => {
     const params = new URLSearchParams()
     params.set('device', selectedDeviceId)
-    params.set('window', timeWindow) // preserve existing window
+    params.set('window', timeWindow)
     navigate(`/dashboard?${params.toString()}`)
   }
 
@@ -104,7 +95,7 @@ const Dashboard = () => {
     const params = new URLSearchParams(location.search)
     params.set('window', newWindow)
     if (deviceId) {
-      params.set('device', deviceId) // preserve device
+      params.set('device', deviceId)
     }
     navigate(`/dashboard?${params.toString()}`)
   }
@@ -120,20 +111,28 @@ const Dashboard = () => {
       ) : (
         <>
           <div className="dashboard-page__header">
-            <h1>Přehled zařízení</h1>
-            <p>Vyberte zařízení pro zobrazení detailních informací</p>
+            <h1>Dashboard</h1>
+            <p>IoT monitoring overview</p>
           </div>
           {error && (
-            <Card className="dashboard-error">
+            <div className="dashboard-error">
               <p>{error}</p>
-            </Card>
+            </div>
           )}
           <DashboardOverview />
-          <DashboardBoxGrid
-            devices={devices}
-            onDeviceSelect={handleDeviceSelect}
-            loading={loading}
-          />
+          
+          <div className="dashboard-main-grid">
+            <div className="dashboard-grid__devices">
+              <DashboardBoxGrid
+                devices={devices}
+                onDeviceSelect={handleDeviceSelect}
+                loading={loading}
+              />
+            </div>
+            <div className="dashboard-grid__activity">
+              <ActivityFeed />
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -141,4 +140,3 @@ const Dashboard = () => {
 }
 
 export default Dashboard
-

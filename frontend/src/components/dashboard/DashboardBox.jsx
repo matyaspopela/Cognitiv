@@ -1,58 +1,43 @@
 import { useState, useEffect } from 'react'
-import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  TimeScale,
   PointElement,
   LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+  Filler,
 } from 'chart.js'
-import 'chartjs-adapter-date-fns'
+import { Line } from 'react-chartjs-2'
 import { historyAPI } from '../../services/api'
-import { buildMiniCo2Chart, miniChartOptions } from '../../utils/charts'
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  TimeScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-)
+import { buildMiniCo2ChartData, hasValidChartData, getMiniChartOptions } from '../../utils/charts'
 
 import Card from '../ui/Card'
 import Badge from '../ui/Badge'
 import ProgressBar from '../ui/ProgressBar'
 import './DashboardBox.css'
 
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Filler
+)
+
 /**
  * DashboardBox Component
  * Public dashboard box component for displaying device cards.
- * Simplified version of BoardCard without admin features.
  */
 const DashboardBox = ({ device, onClick }) => {
   const [miniChartData, setMiniChartData] = useState(null)
   const [loadingMiniChart, setLoadingMiniChart] = useState(false)
   const [currentCo2, setCurrentCo2] = useState(null)
 
-  // Get device identifier - prefer mac_address for API calls, fall back to device_id
-  // This ensures we use a valid string identifier, never the whole object
   const getDeviceIdentifier = () => {
     if (typeof device === 'string') return device
-    // Prefer mac_address as it's the primary identifier in the new system
     if (device?.mac_address) return device.mac_address
-    // Fall back to device_id for legacy devices
     if (device?.device_id) return device.device_id
-    // Last resort: display_name (can be used to look up device)
     if (device?.display_name) return device.display_name
     return null
   }
@@ -60,24 +45,18 @@ const DashboardBox = ({ device, onClick }) => {
   const deviceIdentifier = getDeviceIdentifier()
   const deviceName = typeof device === 'string' ? device : device?.display_name || device?.device_id || device?.mac_address || 'Unknown'
 
-  // Determine if device is offline based on status and last_seen timestamp
-  // Same logic as BoardCard in admin panel
   const getIsOffline = () => {
     if (!device) return true
-    if (typeof device === 'string') return true // Can't determine status from string
+    if (typeof device === 'string') return true
     
-    // If status is explicitly 'offline', treat as offline
     if (device.status === 'offline') return true
     
-    // If status is 'online', also check last_seen timestamp as safety measure
     if (device.last_seen) {
       try {
-        // Parse last_seen timestamp (format: "2024-01-31 12:00:00")
         const lastSeenDate = new Date(device.last_seen)
         if (!isNaN(lastSeenDate.getTime())) {
           const now = new Date()
           const minutesAgo = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60)
-          // If last_seen is more than 5 minutes ago, consider offline
           if (minutesAgo > 5) {
             return true
           }
@@ -87,13 +66,11 @@ const DashboardBox = ({ device, onClick }) => {
       }
     }
     
-    // Default to checking status
     return device.status !== 'online'
   }
   
   const isOffline = getIsOffline()
 
-  // Initialize current CO2 from device readings
   useEffect(() => {
     if (device?.current_readings?.co2 != null) {
       setCurrentCo2(Math.round(device.current_readings.co2))
@@ -101,8 +78,6 @@ const DashboardBox = ({ device, onClick }) => {
   }, [device])
 
   useEffect(() => {
-    // Load last 1 hour of CO2 data for mini graph
-    // Only load for online devices
     const loadMiniChartData = async () => {
       if (!deviceIdentifier) return
       if (isOffline) {
@@ -118,7 +93,6 @@ const DashboardBox = ({ device, onClick }) => {
         const startIso = oneHourAgo.toISOString()
         const endIso = now.toISOString()
 
-        // Try multiple bucket sizes and handle errors gracefully
         const bucketOptions = ['10min', 'hour', 'raw']
         let chartLoaded = false
 
@@ -136,19 +110,17 @@ const DashboardBox = ({ device, onClick }) => {
               continue
             }
 
-            if (seriesData?.status === 'success' && seriesData.series?.length > 0) {
+            if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
               let seriesToUse = seriesData.series
               if (bucket === 'raw' && seriesToUse.length > 200) {
                 const step = Math.ceil(seriesToUse.length / 200)
                 seriesToUse = seriesToUse.filter((_, index) => index % step === 0)
               }
 
-              const chartData = buildMiniCo2Chart(seriesToUse, bucket)
-              if (chartData.datasets?.[0]?.data?.length > 0) {
+              const chartData = buildMiniCo2ChartData(seriesToUse)
+              if (hasValidChartData(chartData)) {
                 setMiniChartData(chartData)
                 chartLoaded = true
-                // Don't update currentCo2 from chart data - use device.current_readings.co2 instead
-                // The chart shows historical/averaged data, not the current reading
                 break
               }
             }
@@ -157,12 +129,10 @@ const DashboardBox = ({ device, onClick }) => {
           }
         }
 
-        // If no chart data loaded, at least we have current CO2 from device readings
         if (!chartLoaded && device?.current_readings?.co2 != null) {
           setCurrentCo2(Math.round(device.current_readings.co2))
         }
       } catch (error) {
-        // Final fallback - use current reading from device
         if (device?.current_readings?.co2 != null) {
           setCurrentCo2(Math.round(device.current_readings.co2))
         }
@@ -193,7 +163,7 @@ const DashboardBox = ({ device, onClick }) => {
         <div className="dashboard-box__header-actions">
           <Badge
             variant="standard"
-            color={isOffline ? 'error' : 'success'}
+            color={isOffline ? 'offline' : 'success'}
           >
             {isOffline ? 'Offline' : 'Online'}
           </Badge>
@@ -201,16 +171,15 @@ const DashboardBox = ({ device, onClick }) => {
       </div>
 
       <div className="dashboard-box__body">
-        {/* Mini CO2 Graph - Only show for online devices */}
         {!isOffline && (
           <div className="dashboard-box__graph-container">
             {loadingMiniChart ? (
               <div className="dashboard-box__graph-loading">
                 <ProgressBar indeterminate />
               </div>
-            ) : miniChartData && miniChartData.datasets?.[0]?.data?.length > 0 ? (
-              <div className="dashboard-box__graph">
-                <Line data={miniChartData} options={miniChartOptions} />
+            ) : miniChartData ? (
+              <div className="dashboard-box__graph" style={{ height: '100px' }}>
+                <Line data={miniChartData} options={getMiniChartOptions()} />
               </div>
             ) : currentCo2 !== null && currentCo2 !== undefined ? (
               <div className="dashboard-box__graph-placeholder">
@@ -219,16 +188,15 @@ const DashboardBox = ({ device, onClick }) => {
               </div>
             ) : (
               <div className="dashboard-box__graph-empty">
-                <span>Žádná data</span>
+                <span>No data</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Current CO2 Value - Only show for online devices */}
         {!isOffline && (
           <div className="dashboard-box__current-value">
-            <span className="dashboard-box__current-label">Aktuální CO₂:</span>
+            <span className="dashboard-box__current-label">Current CO₂:</span>
             <span className="dashboard-box__current-number">
               {currentCo2 !== null && currentCo2 !== undefined
                 ? `${currentCo2} ppm`
@@ -237,10 +205,9 @@ const DashboardBox = ({ device, onClick }) => {
           </div>
         )}
 
-        {/* Offline message */}
         {isOffline && (
           <div className="dashboard-box__offline-message">
-            <span>Toto zařízení je offline</span>
+            <span>This device is offline</span>
           </div>
         )}
       </div>
@@ -249,4 +216,3 @@ const DashboardBox = ({ device, onClick }) => {
 }
 
 export default DashboardBox
-

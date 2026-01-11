@@ -99,8 +99,8 @@
 }
 
 .settings-modal__section--active {
-  background: var(--md3-color-primary-50);
-  border: 1px solid var(--md3-color-primary-200);
+  background: rgba(96, 165, 250, 0.1); /* blue-400/10 */
+  border: 1px solid rgba(96, 165, 250, 0.2); /* blue-400/20 */
 }
 
 .settings-modal__section-title {
@@ -151,8 +151,8 @@
 }
 
 .settings-modal__bucket-card--active {
-  background: var(--md3-color-primary-50);
-  border: 2px solid var(--md3-color-primary-500);
+  background: rgba(96, 165, 250, 0.1); /* blue-400/10 */
+  border: 1px solid rgba(96, 165, 250, 0.3); /* blue-400/30 */
 }
 
 .settings-modal__bucket-title {
@@ -195,11 +195,11 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: var(--md3-color-primary-500);
+  accent-color: #60a5fa; /* blue-400 */
 }
 
 .settings-modal__theme-option input[type="radio"]:checked + .settings-modal__theme-label {
-  color: var(--md3-color-primary-700);
+  color: #60a5fa; /* blue-400 */
   font-weight: var(--md3-font-weight-semiBold);
 }
 
@@ -225,6 +225,10 @@
 }
 
 .settings-modal__theme-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: inherit;
   font-size: var(--md3-font-size-headline-small);
   line-height: var(--md3-line-height-compact);
 }

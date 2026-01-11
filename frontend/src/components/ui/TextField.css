@@ -15,38 +15,38 @@
   display: flex;
   align-items: center;
   height: 40px;
-  background: var(--md3-color-surface-default);
-  border-radius: var(--md3-border-radius-md);
-  padding: 0 var(--md3-spacing-3);
-  border: 1px solid var(--md3-color-border);
-  transition: all var(--md3-animation-fast) var(--md3-easing-easeOut);
+  background: rgba(0, 0, 0, 0.2); /* bg-black/20 */
+  border-radius: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1); /* border-white/10 */
+  transition: all 150ms ease;
 }
 
 .md3-text-field__container--focused {
-  background: var(--md3-color-surface-default);
-  border-color: var(--md3-color-primary-500);
-  box-shadow: 0 0 0 3px var(--md3-color-primary-50);
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); /* blue-500/30 ring */
   position: relative;
 }
 
 .md3-text-field__container:focus-within {
-  border-color: var(--md3-color-primary-500);
-  box-shadow: 0 0 0 3px var(--md3-color-primary-50);
+  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); /* blue-500/30 ring */
 }
 
 .md3-text-field__container--error {
-  background: var(--md3-color-surface-default);
-  border-color: var(--md3-color-error-500);
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgb(239, 68, 68); /* red-500 */
 }
 
 .md3-text-field__container--error:focus-within {
-  border-color: var(--md3-color-error-500);
-  box-shadow: 0 0 0 3px var(--md3-color-error-50);
+  border-color: rgb(239, 68, 68);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 .md3-text-field__container--error.md3-text-field__container--focused {
-  border-color: var(--md3-color-error-500);
-  box-shadow: 0 0 0 3px var(--md3-color-error-50);
+  border-color: rgb(239, 68, 68);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 .md3-text-field__container--disabled {
@@ -58,17 +58,17 @@
   flex: 1;
   border: none;
   background: transparent;
-  font-family: var(--md3-font-family-primary);
-  font-size: var(--md3-font-size-body-large);
-  color: var(--md3-color-text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  color: rgb(244, 244, 245); /* text-zinc-100 */
   outline: none;
   padding: 0;
   margin: 0;
 }
 
 .md3-text-field__input::placeholder {
-  color: var(--md3-color-text-hint);
-  opacity: 0.6;
+  color: rgb(113, 113, 122); /* text-zinc-500 */
+  opacity: 1;
 }
 
 .md3-text-field__input:disabled {
@@ -77,33 +77,33 @@
 
 .md3-text-field__label {
   position: absolute;
-  left: var(--md3-spacing-3);
-  color: var(--md3-color-text-secondary);
-  font-size: var(--md3-font-size-body-medium);
-  font-family: var(--md3-font-family-primary);
+  left: 12px;
+  color: rgb(113, 113, 122); /* text-zinc-500 */
+  font-size: 14px;
+  font-family: 'Inter', system-ui, sans-serif;
   pointer-events: none;
-  transition: all var(--md3-animation-fast) var(--md3-easing-easeOut);
+  transition: all 150ms ease;
   transform-origin: left top;
   top: 50%;
   transform: translateY(-50%);
-  font-weight: var(--md3-font-weight-regular);
+  font-weight: 400;
 }
 
 .md3-text-field__label--floating {
-  top: var(--md3-spacing-1);
+  top: 4px;
   transform: translateY(0) scale(0.875);
-  color: var(--md3-color-primary-600);
-  font-weight: var(--md3-font-weight-medium);
-  background: var(--md3-color-surface-default);
-  padding: 0 var(--md3-spacing-1);
+  color: rgb(96, 165, 250); /* blue-400 */
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2); /* Match container background */
+  padding: 0 4px;
 }
 
 .md3-text-field__container--error .md3-text-field__label--floating {
-  color: var(--md3-color-error-500);
+  color: rgb(239, 68, 68); /* red-500 */
 }
 
 .md3-text-field__required {
-  color: var(--md3-color-error-500);
+  color: rgb(239, 68, 68); /* red-500 */
 }
 
 .md3-text-field__underline {
@@ -115,12 +115,12 @@
 }
 
 .md3-text-field__helper {
-  margin-top: var(--md3-spacing-2);
-  margin-left: var(--md3-spacing-4);
-  font-size: var(--md3-font-size-body-small);
-  color: var(--md3-color-text-secondary);
+  margin-top: 8px;
+  margin-left: 16px;
+  font-size: 12px;
+  color: rgb(113, 113, 122); /* text-zinc-500 */
 }
 
 .md3-text-field__helper--error {
-  color: var(--md3-color-error-500);
+  color: rgb(239, 68, 68); /* red-500 */
 }

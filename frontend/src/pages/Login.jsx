@@ -42,12 +42,12 @@ const Login = () => {
         <Card className="login-page__card" elevation={3}>
           <div className="login-page__header">
             <h1 className="login-page__title">Cognitiv Admin</h1>
-            <p className="login-page__subtitle">Přihlaste se pro přístup k administračnímu panelu</p>
+            <p className="login-page__subtitle">Sign in to access the admin panel</p>
           </div>
           
           <form onSubmit={handleSubmit} className="login-page__form">
             <TextField
-              label="Uživatelské jméno"
+              label="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -57,7 +57,7 @@ const Login = () => {
             />
 
             <TextField
-              label="Heslo"
+              label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -74,12 +74,12 @@ const Login = () => {
               disabled={loading}
               className="login-page__submit"
             >
-              {loading ? 'Přihlašuji...' : 'Přihlásit se'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
 
           <div className="login-page__footer">
-            <a href="/">Zpět na hlavní stránku</a>
+            <a href="/">Back to main page</a>
           </div>
         </Card>
       </div>

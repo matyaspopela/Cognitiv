@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import './design/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Legacy variable mappings for backward compatibility */
 :root {
@@ -44,26 +48,21 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  margin: 0;
-  font-family: var(--md3-font-family-primary);
-  font-size: var(--md3-font-size-body-large);
-  line-height: var(--md3-line-height-normal);
-  color: var(--md3-color-text-primary);
-  background: #ffffff;
-  min-height: 100vh;
-  position: relative;
+/* Force dark mode by default */
+html,
+html.dark {
+  @apply bg-[#08090A];
 }
 
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #ffffff;
-  z-index: -1;
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgb(244, 244, 245); /* zinc-100 */
+  background: #08090A; /* zinc-950 */
+  min-height: 100vh;
+  position: relative;
 }
 
 a {
@@ -113,5 +112,27 @@ a:hover {
 /* Focus styles - removed blue outline, using blur instead */
 *:focus-visible {
   outline: none;
+}
+
+/* Linear-style typography utilities */
+@layer utilities {
+  .text-header {
+    letter-spacing: -0.02em;
+    font-weight: 500;
+  }
+  
+  .text-kicker {
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgb(113, 113, 122); /* zinc-500 */
+  }
+}
+
+/* Circular progress indeterminate animation */
+@keyframes circular-progress-indeterminate {
+  0% { stroke-dashoffset: 40; }
+  50% { stroke-dashoffset: 10; }
+  100% { stroke-dashoffset: 40; }
 }
 

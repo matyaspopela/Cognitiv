@@ -1,16 +1,17 @@
-import { useAuth } from '../../context/AuthContext'
-import Navigation from './Navigation'
+import Sidebar from './Sidebar'
+import TopHeader from './TopHeader'
 import './AppShell.css'
 
 const AppShell = ({ children }) => {
-  const { isAdmin, username, logout } = useAuth()
-
   return (
-    <div className="md3-app-shell">
-      <Navigation isAdmin={isAdmin} username={username} onLogout={logout} />
-      <main className="md3-app-shell__main">
-        {children}
-      </main>
+    <div className="app-shell">
+      <Sidebar />
+      <div className="app-shell__main">
+        <TopHeader />
+        <div className="app-shell__content">
+          {children}
+        </div>
+      </div>
     </div>
   )
 }

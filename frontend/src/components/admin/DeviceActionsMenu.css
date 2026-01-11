@@ -1,0 +1,64 @@
+.device-actions-menu {
+  position: relative;
+}
+
+.device-actions-menu__trigger {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgb(113, 113, 122); /* zinc-500 */
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.device-actions-menu__trigger:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.device-actions-menu__dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: rgba(24, 24, 27, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 160px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.device-actions-menu__item {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: rgb(244, 244, 245); /* zinc-100 */
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 150ms ease;
+}
+
+.device-actions-menu__item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.device-actions-menu__item span {
+  display: block;
+}
+
+
+

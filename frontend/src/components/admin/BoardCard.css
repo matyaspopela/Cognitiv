@@ -24,14 +24,14 @@
 }
 
 .board-card:focus-visible {
-  outline: 2px solid var(--md3-color-primary-500);
+  outline: 2px solid rgba(96, 165, 250, 0.3); /* blue-400/30 */
   outline-offset: 2px;
-  border-color: var(--md3-color-primary-500);
+  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
 }
 
 .board-card--selected {
-  border: 2px solid var(--md3-color-primary-500);
-  background: var(--md3-color-primary-50);
+  border: 1px solid rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  background: rgba(96, 165, 250, 0.1); /* blue-400/10 */
 }
 
 .board-card__header {
@@ -57,7 +57,7 @@
 .board-card__name {
   font-size: var(--md3-font-size-title-medium);
   font-weight: var(--md3-font-weight-bold);
-  color: var(--md3-color-text-primary);
+  color: rgb(244, 244, 245); /* zinc-100 */
   margin: 0;
   flex: 1;
   min-width: 0;
@@ -105,7 +105,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--md3-color-text-secondary);
+  color: rgb(113, 113, 122); /* zinc-500 */
   font-size: var(--md3-font-size-body-small);
 }
 
@@ -121,19 +121,19 @@
 .board-card__graph-placeholder-value {
   font-size: var(--md3-font-size-headline-small);
   font-weight: var(--md3-font-weight-bold);
-  color: var(--md3-color-text-primary);
+  color: rgb(244, 244, 245); /* zinc-100 */
 }
 
 .board-card__graph-placeholder-label {
   font-size: var(--md3-font-size-body-small);
-  color: var(--md3-color-text-secondary);
+  color: rgb(113, 113, 122); /* zinc-500 */
   text-transform: uppercase;
 }
 
 .board-card__offline-message {
   padding: var(--md3-spacing-4);
   text-align: center;
-  color: var(--md3-color-text-secondary);
+  color: rgb(113, 113, 122); /* zinc-500 */
   font-size: var(--md3-font-size-body-small);
   font-style: italic;
   min-height: 100px;
@@ -153,13 +153,13 @@
 
 .board-card__current-label {
   font-size: var(--md3-font-size-body-small);
-  color: var(--md3-color-text-secondary);
+  color: rgb(113, 113, 122); /* zinc-500 */
 }
 
 .board-card__current-number {
   font-size: var(--md3-font-size-title-small);
   font-weight: var(--md3-font-weight-bold);
-  color: var(--md3-color-text-primary);
+  color: rgb(244, 244, 245); /* zinc-100 */
 }
 
 

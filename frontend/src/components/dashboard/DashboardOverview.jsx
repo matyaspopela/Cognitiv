@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
+import { CheckCircle, Circle, TrendingDown, TrendingUp } from 'lucide-react'
 import { dataAPI } from '../../services/api'
-import Card from '../ui/Card'
+import MetricCard from './MetricCard'
 import ProgressBar from '../ui/ProgressBar'
 import './DashboardOverview.css'
 
 /**
  * DashboardOverview Component
- * Displays aggregate statistics across all devices
+ * Displays aggregate statistics across all devices using MetricCards
  */
 const DashboardOverview = () => {
   const [stats, setStats] = useState({
     totalDevices: 0,
     averageCo2: null,
-    totalDataPoints: 0
+    totalDataPoints: 0,
+    onlineDevices: 0
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -32,10 +34,14 @@ const DashboardOverview = () => {
 
         // Process devices list
         let totalDevices = 0
+        let onlineDevices = 0
 
         if (!devicesResponse.error && devicesResponse.data) {
           const devices = devicesResponse.data?.devices || devicesResponse.data || []
           totalDevices = Array.isArray(devices) ? devices.length : 0
+          onlineDevices = Array.isArray(devices) 
+            ? devices.filter(d => d.status === 'online' || (d.last_seen && (new Date() - new Date(d.last_seen)) < 5 * 60 * 1000)).length 
+            : 0
         }
 
         // Process overall stats
@@ -61,7 +67,8 @@ const DashboardOverview = () => {
         setStats({
           totalDevices,
           averageCo2,
-          totalDataPoints
+          totalDataPoints,
+          onlineDevices
         })
       } catch (err) {
         console.error('Error loading overview statistics:', err)
@@ -77,57 +84,59 @@ const DashboardOverview = () => {
 
   if (loading) {
     return (
-      <Card className="dashboard-overview" elevation={2}>
-        <div className="dashboard-overview__loading">
-          <ProgressBar indeterminate />
-          <p>Načítám přehledové statistiky...</p>
-        </div>
-      </Card>
+      <div className="dashboard-overview-loading">
+        <ProgressBar indeterminate />
+        <p>Načítám přehledové statistiky...</p>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Card className="dashboard-overview dashboard-overview--error" elevation={2}>
-        <p className="dashboard-overview__error">{error}</p>
-      </Card>
+      <div className="dashboard-overview-error">
+        <p>{error}</p>
+      </div>
     )
   }
 
   return (
-    <Card className="dashboard-overview" elevation={2}>
-      <div className="dashboard-overview__header">
-        <h2 className="dashboard-overview__title">Přehled systému</h2>
-      </div>
-      <div className="dashboard-overview__content">
-        <div className="dashboard-overview__stat">
-          <span className="dashboard-overview__stat-label">Celkem zařízení</span>
-          <span className="dashboard-overview__stat-value">{stats.totalDevices}</span>
-        </div>
-
-        <div className="dashboard-overview__divider" />
-
-        <div className="dashboard-overview__stat">
-          <span className="dashboard-overview__stat-label">Průměrná CO₂</span>
-          <span className="dashboard-overview__stat-value">
-            {stats.averageCo2 !== null && stats.averageCo2 !== undefined
-              ? `${Math.round(stats.averageCo2)} ppm`
-              : '--'}
-          </span>
-        </div>
-
-        <div className="dashboard-overview__divider" />
-
-        <div className="dashboard-overview__stat">
-          <span className="dashboard-overview__stat-label">Celkem měření</span>
-          <span className="dashboard-overview__stat-value">
-            {stats.totalDataPoints > 0
-              ? stats.totalDataPoints.toLocaleString('cs-CZ')
-              : '--'}
-          </span>
-        </div>
-      </div>
-    </Card>
+    <div className="dashboard-overview-grid">
+      <MetricCard
+        label="Total Devices"
+        value={stats.totalDevices}
+        trend={null}
+      />
+      <MetricCard
+        label="Online Devices"
+        value={stats.onlineDevices}
+        trend={stats.totalDevices > 0 ? {
+          direction: stats.onlineDevices === stats.totalDevices ? 'up' : 'neutral',
+          icon: stats.onlineDevices === stats.totalDevices ? <CheckCircle size={14} strokeWidth={2} /> : <Circle size={14} strokeWidth={2} />,
+          value: `${Math.round((stats.onlineDevices / stats.totalDevices) * 100)}%`
+        } : null}
+      />
+      <MetricCard
+        label="Average CO₂"
+        value={stats.averageCo2 !== null && stats.averageCo2 !== undefined
+          ? `${Math.round(stats.averageCo2)} ppm`
+          : '--'}
+        trend={stats.averageCo2 !== null && stats.averageCo2 < 1500 ? {
+          direction: 'up',
+          icon: <TrendingDown size={14} strokeWidth={2} />,
+          value: 'Good'
+        } : stats.averageCo2 !== null ? {
+          direction: 'down',
+          icon: <TrendingUp size={14} strokeWidth={2} />,
+          value: 'High'
+        } : null}
+      />
+      <MetricCard
+        label="Total Measurements"
+        value={stats.totalDataPoints > 0
+          ? stats.totalDataPoints.toLocaleString('en-US')
+          : '--'}
+      />
+    </div>
   )
 }
 

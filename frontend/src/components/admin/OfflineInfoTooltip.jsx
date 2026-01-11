@@ -7,7 +7,7 @@ import './OfflineInfoTooltip.css'
  */
 const OfflineInfoTooltip = ({ lastSeen, totalDataPoints, isOffline, children }) => {
   const formatLastSeen = (timestamp) => {
-    if (!timestamp || timestamp === 'Nikdy') return 'Nikdy'
+    if (!timestamp || timestamp === 'Never') return 'Never'
     try {
       // Handle ISO 8601 format with timezone (e.g., "2025-11-12T20:32:48+01:00")
       let date
@@ -25,7 +25,7 @@ const OfflineInfoTooltip = ({ lastSeen, totalDataPoints, isOffline, children }) 
       
       if (isNaN(date.getTime())) return timestamp
       
-      return date.toLocaleString('cs-CZ', {
+      return date.toLocaleString('en-US', {
         dateStyle: 'medium',
         timeStyle: 'short'
       })
@@ -36,7 +36,7 @@ const OfflineInfoTooltip = ({ lastSeen, totalDataPoints, isOffline, children }) 
 
   const formatDataPoints = (count) => {
     if (!count && count !== 0) return '--'
-    return count.toLocaleString('cs-CZ')
+    return count.toLocaleString('en-US')
   }
 
   // Show tooltip for offline devices or if we have info to show
@@ -53,11 +53,11 @@ const OfflineInfoTooltip = ({ lastSeen, totalDataPoints, isOffline, children }) 
       </div>
       <div className="offline-info-tooltip__content">
         <div className="offline-info-tooltip__item">
-          <span className="offline-info-tooltip__label">Naposledy viděno:</span>
+          <span className="offline-info-tooltip__label">Last seen:</span>
           <span className="offline-info-tooltip__value">{formatLastSeen(lastSeen)}</span>
         </div>
         <div className="offline-info-tooltip__item">
-          <span className="offline-info-tooltip__label">Celkem datových bodů:</span>
+          <span className="offline-info-tooltip__label">Total data points:</span>
           <span className="offline-info-tooltip__value">{formatDataPoints(totalDataPoints)}</span>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { X } from 'lucide-react'
 import { aiAPI } from '../../services/api'
 import Card from '../ui/Card'
 import Button from '../ui/Button'
@@ -109,14 +110,14 @@ const AIAssistant = ({ deviceId = null, className = '' }) => {
         }}>
           <Card variant="elevated" elevation={3} className="ai-assistant-panel">
             <div className="ai-assistant-header">
-              <h3>MolekulAI asistent</h3>
+              <h3>MolekulAI Assistant</h3>
               <Button
                 variant="text"
                 size="small"
                 onClick={() => setIsOpen(false)}
-                aria-label="Zavřít"
+                aria-label="Close"
               >
-                ✕
+                <X strokeWidth={2} size={20} />
               </Button>
             </div>
 
@@ -152,7 +153,7 @@ const AIAssistant = ({ deviceId = null, className = '' }) => {
               <textarea
                 ref={inputRef}
                 className="ai-assistant-input"
-                placeholder="Zeptej se mě na cokoliv o svých datech nebo aplikaci..."
+                placeholder="Ask me anything about your data or application..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -166,7 +167,7 @@ const AIAssistant = ({ deviceId = null, className = '' }) => {
                 disabled={!inputValue.trim() || isLoading}
                 className="ai-assistant-send-button"
               >
-                Odeslat
+                Send
               </Button>
             </div>
           </Card>

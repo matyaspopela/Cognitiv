@@ -32,38 +32,38 @@
 }
 
 .md3-chip--clickable:focus-visible {
-  outline: 2px solid var(--md3-color-primary-500);
+  outline: 2px solid rgba(96, 165, 250, 0.3); /* blue-400/30 */
   outline-offset: 2px;
-  border-color: var(--md3-color-primary-500);
+  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
 }
 
 .md3-chip--filter {
-  background: var(--md3-color-surface-hover);
-  color: var(--md3-color-text-primary);
+  background: rgba(255, 255, 255, 0.05); /* white/5 */
+  color: rgb(244, 244, 245); /* zinc-100 */
 }
 
 .md3-chip--filter.md3-chip--selected {
-  background: var(--md3-color-primary-500);
-  color: var(--md3-color-text-onDark);
-  border-color: var(--md3-color-primary-600);
-  box-shadow: var(--md3-elevation-2);
+  background: rgba(96, 165, 250, 0.2); /* blue-400/20 */
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  box-shadow: none;
 }
 
 .md3-chip--choice {
-  background: var(--md3-color-surface-dim);
-  color: var(--md3-color-text-primary);
-  border: 1px solid var(--md3-color-border);
+  background: rgba(255, 255, 255, 0.05); /* white/5 */
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border: 1px solid rgba(255, 255, 255, 0.1); /* white/10 */
 }
 
 .md3-chip--choice.md3-chip--selected {
-  background: var(--md3-color-primary-500);
-  color: var(--md3-color-text-onDark);
-  border-color: var(--md3-color-primary-600);
+  background: rgba(96, 165, 250, 0.2); /* blue-400/20 */
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
 }
 
 .md3-chip--input {
-  background: var(--md3-color-surface-hover);
-  color: var(--md3-color-text-primary);
+  background: rgba(255, 255, 255, 0.05); /* white/5 */
+  color: rgb(244, 244, 245); /* zinc-100 */
 }
 
 .md3-chip--disabled {

@@ -331,3 +331,7 @@ The application now looks and feels more like a modern, professional SaaS produc
 
 *Redesign completed following Linear.app's design principles: clean, minimal, purposeful, and fast.*
 
+
+
+
+

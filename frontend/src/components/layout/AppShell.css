@@ -1,22 +1,36 @@
-@import '../../design/tokens.css';
-
-.md3-app-shell {
+.app-shell {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  background: #ffffff;
+  background: #08090A; /* zinc-950 */
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
-.md3-app-shell__main {
+.app-shell__main {
   flex: 1;
-  padding-top: 64px;
-  min-height: calc(100vh - 64px);
+  margin-left: 240px; /* Sidebar width */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #08090A; /* zinc-950 */
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
-@media (max-width: 960px) {
-  .md3-app-shell__main {
-    padding-top: 56px;
-    padding-bottom: 80px;
-    min-height: calc(100vh - 56px - 80px);
+.app-shell__content {
+  flex: 1;
+  padding: 24px 32px;
+  max-width: 1280px; /* max-w-7xl */
+  width: 100%;
+  margin: 0 auto;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* Mobile: Sidebar is hidden by default, main takes full width */
+@media (max-width: 768px) {
+  .app-shell__main {
+    margin-left: 0;
+  }
+
+  .app-shell__content {
+    padding: 16px;
   }
 }

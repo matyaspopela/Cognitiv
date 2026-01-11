@@ -1,56 +1,36 @@
 @import '../../design/tokens.css';
 
 .md3-card {
-  background: var(--md3-color-surface-default);
-  backdrop-filter: var(--md3-glass-medium);
-  -webkit-backdrop-filter: var(--md3-glass-medium);
-  border-radius: var(--md3-border-radius-lg);
-  padding: var(--md3-spacing-6);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  transition: all var(--md3-animation-normal) var(--md3-easing-ease);
-}
-
-.md3-card--elevated {
-  box-shadow: var(--md3-elevation-1);
-}
-
-.md3-card--elevation-0 {
+  background: rgba(24, 24, 27, 0.5); /* bg-zinc-900/50 */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05); /* border-white/5 */
+  transition: all 150ms ease;
+  /* Linear style: no elevation shadows */
   box-shadow: none;
 }
 
-.md3-card--elevation-1 {
-  box-shadow: var(--md3-elevation-1);
-}
-
-.md3-card--elevation-2 {
-  box-shadow: var(--md3-elevation-2);
-}
-
-.md3-card--elevation-3 {
-  box-shadow: var(--md3-elevation-3);
-}
-
-.md3-card--elevation-4 {
-  box-shadow: var(--md3-elevation-4);
-}
-
+.md3-card--elevated,
+.md3-card--elevation-0,
+.md3-card--elevation-1,
+.md3-card--elevation-2,
+.md3-card--elevation-3,
+.md3-card--elevation-4,
 .md3-card--elevation-5 {
-  box-shadow: var(--md3-elevation-5);
+  box-shadow: none; /* No shadows in Linear style */
 }
 
 .md3-card--filled {
-  background: var(--md3-color-surface-variant);
-  backdrop-filter: var(--md3-glass-light);
-  -webkit-backdrop-filter: var(--md3-glass-light);
+  background: rgba(24, 24, 27, 0.6);
   box-shadow: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .md3-card--outlined {
-  background: var(--md3-color-surface-default);
-  backdrop-filter: var(--md3-glass-medium);
-  -webkit-backdrop-filter: var(--md3-glass-medium);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: none;
 }
 
@@ -59,12 +39,15 @@
 }
 
 .md3-card--clickable:hover {
-  box-shadow: var(--md3-elevation-3);
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(24, 24, 27, 0.6);
+  transform: none; /* No transform for Linear style */
+  /* Optional subtle glow for active states */
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
 }
 
 .md3-card--clickable:active {
-  box-shadow: var(--md3-elevation-1);
-  transform: translateY(0);
+  background: rgba(24, 24, 27, 0.7);
+  transform: none;
+  box-shadow: none;
 }

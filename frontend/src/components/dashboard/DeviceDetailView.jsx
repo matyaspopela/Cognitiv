@@ -1,28 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Line, Doughnut } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  TimeScale,
   PointElement,
   LineElement,
-  ArcElement,
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  TimeScale,
+  ArcElement,
 } from 'chart.js'
+import { Line, Doughnut } from 'react-chartjs-2'
 import 'chartjs-adapter-date-fns'
 import { dataAPI, historyAPI } from '../../services/api'
 import { 
-  buildCo2Chart, 
-  buildClimateChart, 
-  buildQualityPieChart,
-  getCo2ChartOptions,
+  buildCo2ChartData, 
+  buildClimateChartData, 
+  buildQualityChartData,
+  hasValidChartData,
+  getChartOptions,
   getClimateChartOptions,
-  co2FillGradientPlugin
 } from '../../utils/charts'
 import { getTimeWindowRange, getBucketSize, getHoursForStats } from '../../utils/timeWindow'
 import Card from '../ui/Card'
@@ -30,40 +30,22 @@ import TimeWindowSelector from './TimeWindowSelector'
 import ProgressBar from '../ui/ProgressBar'
 import './DeviceDetailView.css'
 
-/**
- * Check if chart data has actual displayable data points
- * @param {Object} chartData - Chart.js data object
- * @returns {boolean} True if there are valid data points to display
- */
-const hasValidChartData = (chartData) => {
-  if (!chartData || !chartData.datasets || !Array.isArray(chartData.datasets)) {
-    return false
-  }
-  
-  // Check if any dataset has at least one valid data point
-  return chartData.datasets.some(dataset => {
-    if (!dataset.data || !Array.isArray(dataset.data)) {
-      return false
-    }
-    
-    return dataset.data.some(point => {
-      // Handle both {x, y} format and simple value format
-      if (point === null || point === undefined) return false
-      if (typeof point === 'object') {
-        return point.y !== null && point.y !== undefined && !isNaN(point.y)
-      }
-      return !isNaN(point)
-    })
-  })
-}
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  TimeScale,
+  ArcElement
+)
 
 /**
  * Filter series data to only include points within the requested time range
- * This prevents stale/cached data from other time ranges being displayed
- * @param {Array} series - Array of series data points
- * @param {string} startISO - Start time ISO string
- * @param {string} endISO - End time ISO string
- * @returns {Array} Filtered series data
  */
 const filterSeriesInRange = (series, startISO, endISO) => {
   if (!series || !Array.isArray(series)) return []
@@ -71,29 +53,13 @@ const filterSeriesInRange = (series, startISO, endISO) => {
   const startTime = new Date(startISO).getTime()
   const endTime = new Date(endISO).getTime()
   
-  // Filter out any points outside the requested range
   return series.filter(item => {
     if (!item.bucket_start) return false
     const pointTime = new Date(item.bucket_start).getTime()
-    // Point must be within range (with small buffer for edge cases)
     return pointTime >= startTime && pointTime <= endTime
   })
 }
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  TimeScale,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  co2FillGradientPlugin
-)
 
 /**
  * Numerical Values Section Component
@@ -157,7 +123,7 @@ const NumericalValues = ({ deviceId, timeWindow }) => {
         </div>
         <div className="numerical-values__divider" />
         <div className="numerical-values__item">
-          <span className="numerical-values__label">Teplota:</span>
+          <span className="numerical-values__label">Temperature:</span>
           <span className="numerical-values__value">
             {values?.temperature !== null && values?.temperature !== undefined
               ? `${values.temperature.toFixed(1)}°C`
@@ -166,7 +132,7 @@ const NumericalValues = ({ deviceId, timeWindow }) => {
         </div>
         <div className="numerical-values__divider" />
         <div className="numerical-values__item">
-          <span className="numerical-values__label">Vlhkost:</span>
+          <span className="numerical-values__label">Humidity:</span>
           <span className="numerical-values__value">
             {values?.humidity !== null && values?.humidity !== undefined
               ? `${Math.round(values.humidity)}%`
@@ -175,10 +141,10 @@ const NumericalValues = ({ deviceId, timeWindow }) => {
         </div>
         <div className="numerical-values__divider" />
         <div className="numerical-values__item">
-          <span className="numerical-values__label">Počet měření:</span>
+          <span className="numerical-values__label">Readings:</span>
           <span className="numerical-values__value">
             {values?.readings !== null && values?.readings !== undefined
-              ? values.readings.toLocaleString('cs-CZ')
+              ? values.readings.toLocaleString('en-US')
               : '--'}
           </span>
         </div>
@@ -190,10 +156,11 @@ const NumericalValues = ({ deviceId, timeWindow }) => {
 /**
  * CO2 Graph Component
  */
-const Co2Graph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
+const Co2Graph = ({ deviceId, timeWindow }) => {
   const [chartData, setChartData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const chartRef = useRef(null)
 
   useEffect(() => {
     const loadChartData = async () => {
@@ -202,54 +169,59 @@ const Co2Graph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
       try {
         setLoading(true)
         setError(null)
-        setChartData(null) // Clear previous chart data immediately
+        setChartData(null)
         const { start, end } = getTimeWindowRange(timeWindow)
         const bucket = getBucketSize(timeWindow)
 
         const response = await historyAPI.getSeries(start, end, bucket, deviceId)
         
         if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Nepodařilo se načíst data')
+          setError('Failed to load data')
           return
         }
 
         const seriesData = response?.data || response
 
-        if (seriesData?.status === 'success' && seriesData.series?.length > 0) {
-          // Filter series to only include data within the requested time range
+        if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
           const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
           
           if (filteredSeries.length > 0) {
-            const data = buildCo2Chart(filteredSeries, bucket, useRealTimeScale)
-            // Validate that chart data has actual displayable points
+            const data = buildCo2ChartData(filteredSeries, bucket)
             if (hasValidChartData(data)) {
               setChartData(data)
             } else {
-              setError('Žádná data k zobrazení')
+              setError('No data to display')
             }
           } else {
-            setError('Žádná data k zobrazení')
+            setError('No data to display')
           }
         } else {
-          setError('Žádná data k zobrazení')
+          setError('No data to display')
         }
       } catch (err) {
         console.error('Error loading CO2 graph:', err)
-        setError('Chyba při načítání dat')
+        setError('Error loading data')
       } finally {
         setLoading(false)
       }
     }
 
     loadChartData()
-  }, [deviceId, timeWindow, useRealTimeScale])
+  }, [deviceId, timeWindow])
 
-  // Get chart options based on scale mode
-  const options = getCo2ChartOptions(useRealTimeScale)
+  const options = getChartOptions('line', {
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: (context) => `${context.dataset.label}: ${context.parsed.y} ppm`
+        }
+      }
+    }
+  })
 
   return (
     <Card className="chart-container">
-      <h3 className="chart-container__title">CO₂ Koncentrace</h3>
+      <h3 className="chart-container__title">CO₂ Concentration</h3>
       <div className="chart-container__content">
         {loading ? (
           <div className="chart-container__loading">
@@ -260,12 +232,12 @@ const Co2Graph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
             <p>{error}</p>
           </div>
         ) : chartData ? (
-          <div className="chart-container__chart">
-            <Line data={chartData} options={options} />
+          <div className="chart-container__chart" style={{ height: '400px' }}>
+            <Line ref={chartRef} data={chartData} options={options} />
           </div>
         ) : (
           <div className="chart-container__empty">
-            <p>Žádná data k zobrazení</p>
+            <p>No data to display</p>
           </div>
         )}
       </div>
@@ -276,10 +248,11 @@ const Co2Graph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
 /**
  * Climate Graph Component (Temperature + Humidity)
  */
-const ClimateGraph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
+const ClimateGraph = ({ deviceId, timeWindow }) => {
   const [chartData, setChartData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const chartRef = useRef(null)
 
   useEffect(() => {
     const loadChartData = async () => {
@@ -288,54 +261,51 @@ const ClimateGraph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
       try {
         setLoading(true)
         setError(null)
-        setChartData(null) // Clear previous chart data immediately
+        setChartData(null)
         const { start, end } = getTimeWindowRange(timeWindow)
         const bucket = getBucketSize(timeWindow)
 
         const response = await historyAPI.getSeries(start, end, bucket, deviceId)
         
         if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Nepodařilo se načíst data')
+          setError('Failed to load data')
           return
         }
 
         const seriesData = response?.data || response
 
-        if (seriesData?.status === 'success' && seriesData.series?.length > 0) {
-          // Filter series to only include data within the requested time range
+        if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
           const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
           
           if (filteredSeries.length > 0) {
-            const data = buildClimateChart(filteredSeries, bucket, useRealTimeScale)
-            // Validate that chart data has actual displayable points
+            const data = buildClimateChartData(filteredSeries, bucket)
             if (hasValidChartData(data)) {
               setChartData(data)
             } else {
-              setError('Žádná data k zobrazení')
+              setError('No data to display')
             }
           } else {
-            setError('Žádná data k zobrazení')
+            setError('No data to display')
           }
         } else {
-          setError('Žádná data k zobrazení')
+          setError('No data to display')
         }
       } catch (err) {
         console.error('Error loading climate graph:', err)
-        setError('Chyba při načítání dat')
+        setError('Error loading data')
       } finally {
         setLoading(false)
       }
     }
 
     loadChartData()
-  }, [deviceId, timeWindow, useRealTimeScale])
+  }, [deviceId, timeWindow])
 
-  // Get chart options based on scale mode
-  const options = getClimateChartOptions(useRealTimeScale)
+  const options = getClimateChartOptions()
 
   return (
     <Card className="chart-container">
-      <h3 className="chart-container__title">Teplota a Vlhkost</h3>
+      <h3 className="chart-container__title">Temperature and Humidity</h3>
       <div className="chart-container__content">
         {loading ? (
           <div className="chart-container__loading">
@@ -346,12 +316,12 @@ const ClimateGraph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
             <p>{error}</p>
           </div>
         ) : chartData ? (
-          <div className="chart-container__chart">
-            <Line data={chartData} options={options} />
+          <div className="chart-container__chart" style={{ height: '400px' }}>
+            <Line ref={chartRef} data={chartData} options={options} />
           </div>
         ) : (
           <div className="chart-container__empty">
-            <p>Žádná data k zobrazení</p>
+            <p>No data to display</p>
           </div>
         )}
       </div>
@@ -361,7 +331,6 @@ const ClimateGraph = ({ deviceId, timeWindow, useRealTimeScale = true }) => {
 
 /**
  * Quality Distribution Boxes Component
- * Shows color-differentiated boxes with percentages
  */
 const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
   const [qualityData, setQualityData] = useState(null)
@@ -375,13 +344,13 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
       try {
         setLoading(true)
         setError(null)
-        setQualityData(null) // Clear previous data immediately
+        setQualityData(null)
         const { start, end } = getTimeWindowRange(timeWindow)
 
         const response = await historyAPI.getSummary(start, end, deviceId)
         
         if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Nepodařilo se načíst data')
+          setError('Failed to load data')
           return
         }
 
@@ -398,20 +367,20 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
           
           if (total > 0) {
             setQualityData({
-              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Velmi dobrá', color: 'rgba(46, 125, 50, 0.9)' },
-              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Dobrá', color: 'rgba(102, 187, 106, 0.85)' },
-              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Špatná', color: 'rgba(255, 152, 0, 0.85)' },
-              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Velmi špatná', color: 'rgba(244, 67, 54, 0.9)' }
+              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good', color: 'rgba(46, 125, 50, 0.9)' },
+              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Good', color: 'rgba(102, 187, 106, 0.85)' },
+              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Poor', color: 'rgba(255, 152, 0, 0.85)' },
+              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Very Poor', color: 'rgba(244, 67, 54, 0.9)' }
             })
           } else {
             setQualityData(null)
           }
         } else {
-          setError('Žádná data k zobrazení')
+          setError('No data to display')
         }
       } catch (err) {
         console.error('Error loading quality distribution:', err)
-        setError('Chyba při načítání dat')
+        setError('Error loading data')
       } finally {
         setLoading(false)
       }
@@ -434,7 +403,7 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
     return (
       <Card className="quality-distribution-boxes">
         <div className="quality-distribution-boxes__error">
-          <p>{error || 'Žádná data k zobrazení'}</p>
+          <p>{error || 'No data to display'}</p>
         </div>
       </Card>
     )
@@ -442,7 +411,7 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
 
   return (
     <Card className="quality-distribution-boxes" elevation={2}>
-      <h3 className="quality-distribution-boxes__title">Rozložení kvality vzduchu</h3>
+      <h3 className="quality-distribution-boxes__title">Air Quality Distribution</h3>
       <div className="quality-distribution-boxes__content">
         <div 
           className="quality-distribution-boxes__box"
@@ -492,32 +461,31 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
       try {
         setLoading(true)
         setError(null)
-        setChartData(null) // Clear previous chart data immediately
+        setChartData(null)
         const { start, end } = getTimeWindowRange(timeWindow)
 
         const response = await historyAPI.getSummary(start, end, deviceId)
         
         if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Nepodařilo se načíst data')
+          setError('Failed to load data')
           return
         }
 
         const summaryData = response?.data || response
 
         if (summaryData?.status === 'success' && summaryData?.summary?.co2_quality) {
-          const data = buildQualityPieChart(summaryData.summary.co2_quality)
-          // buildQualityPieChart returns null if no valid data
-          if (data && hasValidChartData(data)) {
+          const data = buildQualityChartData(summaryData.summary.co2_quality)
+          if (hasValidChartData(data)) {
             setChartData(data)
           } else {
-            setError('Žádná data k zobrazení')
+            setError('No data to display')
           }
         } else {
-          setError('Žádná data k zobrazení')
+          setError('No data to display')
         }
       } catch (err) {
         console.error('Error loading quality pie chart:', err)
-        setError('Chyba při načítání dat')
+        setError('Error loading data')
       } finally {
         setLoading(false)
       }
@@ -526,36 +494,33 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
     loadChartData()
   }, [deviceId, timeWindow])
 
-  const pieChartOptions = {
+  const options = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'right',
         labels: {
-          font: {
-            family: 'Inter, sans-serif',
-            size: 12
-          },
-          color: 'rgba(33, 33, 33, 0.9)',
-          padding: 12
+          color: '#9ca3af',
+          usePointStyle: true,
+          padding: 20,
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(33, 33, 33, 0.9)',
+        backgroundColor: 'rgba(26, 28, 41, 0.95)',
         titleColor: '#fff',
         bodyColor: '#fff',
-        padding: 12,
+        borderColor: 'rgba(0, 242, 234, 0.3)',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        cornerRadius: 8
+        padding: 12,
+        cornerRadius: 8,
       }
     }
   }
 
   return (
     <Card className="chart-container chart-container--pie">
-      <h3 className="chart-container__title">Rozložení kvality vzduchu</h3>
+      <h3 className="chart-container__title">Air Quality Distribution</h3>
       <div className="chart-container__content">
         {loading ? (
           <div className="chart-container__loading">
@@ -566,12 +531,12 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
             <p>{error}</p>
           </div>
         ) : chartData ? (
-          <div className="chart-container__chart chart-container__chart--pie">
-            <Doughnut data={chartData} options={pieChartOptions} />
+          <div className="chart-container__chart chart-container__chart--pie" style={{ height: '400px' }}>
+            <Doughnut data={chartData} options={options} />
           </div>
         ) : (
           <div className="chart-container__empty">
-            <p>Žádná data k zobrazení</p>
+            <p>No data to display</p>
           </div>
         )}
       </div>
@@ -581,13 +546,10 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
 
 /**
  * DeviceDetailView Component
- * Complete device detail view with all graphs and numerical values
  */
 const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
   const [deviceName, setDeviceName] = useState(deviceId)
-  const [useRealTimeScale, setUseRealTimeScale] = useState(true)
 
-  // Fetch device display name
   useEffect(() => {
     const fetchDeviceName = async () => {
       try {
@@ -605,7 +567,6 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
           }
         }
       } catch (error) {
-        // Keep original deviceId if fetch fails
         console.error('Error fetching device name:', error)
       }
     }
@@ -620,45 +581,23 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
       <div className="device-detail-view__header">
         <h2 className="device-detail-view__title">{deviceName || deviceId}</h2>
         <Link to="/dashboard" className="device-detail-view__back-link">
-          ← Zpět na přehled
+          ← Back to overview
         </Link>
       </div>
 
-      {/* Quality distribution boxes at top */}
       <QualityDistributionBoxes deviceId={deviceId} timeWindow={timeWindow} />
 
       <TimeWindowSelector value={timeWindow} onChange={onTimeWindowChange} />
 
-      {/* Real time scale toggle */}
-      <div className="device-detail-view__chart-options">
-        <label className="device-detail-view__toggle">
-          <input
-            type="checkbox"
-            checked={useRealTimeScale}
-            onChange={(e) => setUseRealTimeScale(e.target.checked)}
-          />
-          <span className="device-detail-view__toggle-label">
-            Reálné časové vzdálenosti
-          </span>
-          <span className="device-detail-view__toggle-hint">
-            {useRealTimeScale 
-              ? '(body jsou rozmístěny podle skutečného času)' 
-              : '(body jsou rozmístěny rovnoměrně)'}
-          </span>
-        </label>
-      </div>
-
       <NumericalValues deviceId={deviceId} timeWindow={timeWindow} />
 
-      <Co2Graph deviceId={deviceId} timeWindow={timeWindow} useRealTimeScale={useRealTimeScale} />
+      <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
 
-      <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} useRealTimeScale={useRealTimeScale} />
+      <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} />
 
-      {/* Quality pie chart at bottom (where it was before) */}
       <QualityPieChart deviceId={deviceId} timeWindow={timeWindow} />
     </div>
   )
 }
 
 export default DeviceDetailView
-

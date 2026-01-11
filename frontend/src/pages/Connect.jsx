@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { Upload, HelpCircle, X } from 'lucide-react'
 import { connectAPI } from '../services/api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import TextField from '../components/ui/TextField'
 import Snackbar from '../components/ui/Snackbar'
-import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
 import './Connect.css'
 
@@ -14,6 +14,7 @@ const Connect = () => {
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState({ type: '', message: '', show: false })
   const [loading, setLoading] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   const setStatusMessage = (type, message) => {
     setStatus({ type, message, show: true })
@@ -27,17 +28,17 @@ const Connect = () => {
     e.preventDefault()
 
     if (!boardName.trim()) {
-      setStatusMessage('error', 'Název desky je povinný.')
+      setStatusMessage('error', 'Board name is required.')
       return
     }
 
     if (!ssid.trim()) {
-      setStatusMessage('error', 'SSID je povinné.')
+      setStatusMessage('error', 'WiFi SSID is required.')
       return
     }
 
     clearStatus()
-    setStatusMessage('neutral', 'Připravuji nahrávání…')
+    setStatusMessage('neutral', 'Preparing upload…')
     setLoading(true)
 
     try {
@@ -50,12 +51,12 @@ const Connect = () => {
       const payload = response.data
 
       if (!response.ok || payload.status !== 'success') {
-        const errorMessage = payload.message || payload.error || 'Nahrávání selhalo. Zkontrolujte logy serveru.'
+        const errorMessage = payload.message || payload.error || 'Upload failed. Check server logs.'
         setStatusMessage('error', errorMessage)
         return
       }
 
-      let message = 'Firmware byl úspěšně nahrán.'
+      let message = 'Firmware uploaded successfully.'
       if (payload.log_excerpt) {
         message += ` ${payload.log_excerpt}`
       }
@@ -64,8 +65,8 @@ const Connect = () => {
       setSsid('')
       setPassword('')
     } catch (error) {
-      console.error('Chyba při nahrávání:', error)
-      setStatusMessage('error', 'Při nahrávání došlo k neočekávané chybě. Zkontrolujte připojení desky a zkuste to znovu.')
+      console.error('Upload error:', error)
+      setStatusMessage('error', 'Unexpected error occurred. Check device connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -87,32 +88,47 @@ const Connect = () => {
   return (
     <div className="connect-page">
       <div className="connect-page__container">
-        <main className="connect-page__main">
-          <Card className="connect-page__info-card" elevation={2}>
-            <Badge variant="standard" color="primary" className="connect-page__step-badge">
-              Krok 1
-            </Badge>
-            <h1 className="connect-page__title">Připojte desku k serveru</h1>
-            <p className="connect-page__description">
-              Zadejte údaje Wi-Fi, které má deska používat, a zbytek nechte na serveru s PlatformIO.
-              Není potřeba terminál ani ruční flashování.
-            </p>
-            <div className="connect-page__tips">
-              <div className="connect-page__tip">• Během nahrávání nechte desku připojenou přes USB.</div>
-              <div className="connect-page__tip">• Tento postup zopakujte pro každou desku, kterou chcete připravit.</div>
-              <div className="connect-page__tip">• Zadejte jedinečný název pro každou desku (např. třída, místnost) pro snadnou identifikaci.</div>
-              <div className="connect-page__tip">• Systém ukládá MAC adresu desky, aby bylo možné ji identifikovat.</div>
-            </div>
-          </Card>
+        <header className="connect-page__header">
+          <h1 className="connect-page__title">Firmware Upload</h1>
+          <button
+            className="connect-page__help-toggle"
+            onClick={() => setShowHelp(!showHelp)}
+            aria-label="Toggle help"
+            title="Show help"
+          >
+            <HelpCircle size={20} strokeWidth={1.5} />
+          </button>
+        </header>
 
-          <Card className="connect-page__form-card" elevation={2}>
-            <h2 className="connect-page__form-title">Detaily Wi-Fi</h2>
+        {showHelp && (
+          <Card className="connect-page__help-card">
+            <div className="connect-page__help-header">
+              <h3 className="connect-page__help-title">Quick Guide</h3>
+              <button
+                className="connect-page__help-close"
+                onClick={() => setShowHelp(false)}
+                aria-label="Close help"
+              >
+                <X size={18} strokeWidth={2} />
+              </button>
+            </div>
+            <ul className="connect-page__help-list">
+              <li>Ensure device is connected via USB before uploading</li>
+              <li>Enter a unique board name for identification</li>
+              <li>Provide WiFi credentials the device should use</li>
+              <li>System automatically detects MAC address</li>
+            </ul>
+          </Card>
+        )}
+
+        <main className="connect-page__main">
+          <Card className="connect-page__form-card">
             {loading && <ProgressBar indeterminate className="connect-page__progress" />}
             <form onSubmit={handleSubmit} className="connect-page__form">
               <TextField
-                label="Název desky"
-                helperText="Název pro identifikaci desky (např. třída, místnost)."
-                placeholder="např. Třída 1A"
+                label="Board Name"
+                helperText="Unique identifier (e.g., room, location)"
+                placeholder="e.g., Room 101"
                 value={boardName}
                 onChange={(e) => setBoardName(e.target.value)}
                 required
@@ -122,9 +138,9 @@ const Connect = () => {
               />
 
               <TextField
-                label="Název sítě (SSID)"
-                helperText="Síť, ke které se má deska připojit."
-                placeholder="např. Cognitiv-Lab"
+                label="WiFi SSID"
+                helperText="Network name to connect to"
+                placeholder="e.g., Cognitiv-Lab"
                 value={ssid}
                 onChange={(e) => setSsid(e.target.value)}
                 required
@@ -134,10 +150,10 @@ const Connect = () => {
               />
 
               <TextField
-                label="Heslo"
-                helperText="U otevřených sítí ponechte prázdné."
+                label="Password"
+                helperText="Leave empty for open networks"
                 type="password"
-                placeholder="Heslo sítě"
+                placeholder="Network password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
@@ -151,7 +167,14 @@ const Connect = () => {
                   size="large"
                   disabled={loading}
                 >
-                  {loading ? 'Nahrávám…' : '⟳ Nahrát firmware'}
+                  {loading ? (
+                    <>Uploading…</>
+                  ) : (
+                    <>
+                      <Upload size={18} strokeWidth={2} style={{ marginRight: '8px' }} />
+                      Upload Firmware
+                    </>
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -160,16 +183,12 @@ const Connect = () => {
                   onClick={handleReset}
                   disabled={loading}
                 >
-                  Vymazat
+                  Clear
                 </Button>
               </div>
             </form>
           </Card>
         </main>
-
-        <footer className="connect-page__footer">
-          Hotovo? Ověřte, že deska odesílá data.
-        </footer>
       </div>
 
       <Snackbar

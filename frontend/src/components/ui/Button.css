@@ -15,59 +15,50 @@
   overflow: hidden;
   transition: all var(--md3-animation-normal) var(--md3-easing-ease);
   outline: none;
-  backdrop-filter: var(--md3-glass-light);
-  -webkit-backdrop-filter: var(--md3-glass-light);
 }
 
 .md3-button:focus-visible {
   outline: none;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3); /* blue-400/30 ring */
 }
 
-/* Variants */
+/* Variants - Dark mode Linear style */
 .md3-button--filled {
-  background: linear-gradient(135deg, var(--md3-color-primary-500), var(--md3-color-primary-600));
-  color: var(--md3-color-text-onDark);
-  box-shadow: var(--md3-elevation-2);
+  background: rgb(244, 244, 245); /* zinc-100 - white button */
+  color: rgb(8, 9, 10); /* zinc-950 - black text for high contrast */
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .md3-button--filled:hover:not(.md3-button--disabled) {
-  box-shadow: var(--md3-elevation-3);
-  transform: translateY(-2px);
-  background: linear-gradient(135deg, var(--md3-color-primary-600), var(--md3-color-primary-700));
+  background: rgb(255, 255, 255);
+  transform: none; /* No transform on hover for Linear style */
 }
 
 .md3-button--filled:active:not(.md3-button--disabled) {
-  box-shadow: var(--md3-elevation-1);
-  transform: translateY(0);
+  background: rgb(228, 228, 231); /* zinc-200 */
+  transform: none;
 }
 
 .md3-button--outlined {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: var(--md3-glass-light);
-  -webkit-backdrop-filter: var(--md3-glass-light);
-  color: var(--md3-color-primary-600);
-  border: 2px solid var(--md3-color-primary-500);
+  background: transparent;
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border: 1px solid rgba(255, 255, 255, 0.1); /* white/10 */
 }
 
 .md3-button--outlined:hover:not(.md3-button--disabled) {
-  background: rgba(33, 150, 243, 0.1);
-  border-color: var(--md3-color-primary-600);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05); /* white/5 */
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: none;
 }
 
 .md3-button--text {
   background: transparent;
-  color: var(--md3-color-primary-600);
-  backdrop-filter: none;
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border: none;
 }
 
 .md3-button--text:hover:not(.md3-button--disabled) {
-  background: rgba(33, 150, 243, 0.1);
-  backdrop-filter: var(--md3-glass-light);
-  -webkit-backdrop-filter: var(--md3-glass-light);
+  background: rgba(255, 255, 255, 0.05); /* white/5 - ghost button style */
 }
 
 /* Sizes */
@@ -91,18 +82,19 @@
 
 /* Colors */
 .md3-button--secondary {
-  background: linear-gradient(135deg, var(--md3-color-secondary-500), var(--md3-color-secondary-600));
-  color: var(--md3-color-text-onDark);
+  background: rgba(255, 255, 255, 0.05); /* white/5 */
+  color: rgb(244, 244, 245); /* zinc-100 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .md3-button--secondary.md3-button--outlined {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--md3-color-secondary-600);
-  border-color: var(--md3-color-secondary-500);
+  background: transparent;
+  color: rgb(244, 244, 245);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .md3-button--secondary.md3-button--text {
-  color: var(--md3-color-secondary-600);
+  color: rgb(244, 244, 245);
 }
 
 /* Disabled */

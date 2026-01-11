@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../theme/ThemeProvider'
+import { X, Sun, Moon, Monitor } from 'lucide-react'
 import Card from './Card'
 import Button from './Button'
 import Chip from './Chip'
@@ -107,14 +108,14 @@ const SettingsModal = ({
     { id: '7d', label: '7d' },
     { id: '30d', label: '30d' },
     { id: '90d', label: '90d' },
-    { id: 'custom', label: 'Vlastní' },
+    { id: 'custom', label: 'Custom' },
   ]
 
   const bucketOptions = [
-    { value: 'raw', label: 'Bez granularity', desc: 'Všechna data bez agregace' },
-    { value: '10min', label: '10 minut', desc: 'Průměr za 10 minut' },
-    { value: 'hour', label: 'Hodinová', desc: 'Průměr za hodinu' },
-    { value: 'day', label: 'Denní', desc: 'Průměr za den' },
+    { value: 'raw', label: 'No granularity', desc: 'All data without aggregation' },
+    { value: '10min', label: '10 minutes', desc: 'Average over 10 minutes' },
+    { value: 'hour', label: 'Hourly', desc: 'Average over hour' },
+    { value: 'day', label: 'Daily', desc: 'Average over day' },
   ]
 
   return (
@@ -126,21 +127,21 @@ const SettingsModal = ({
     >
       <Card className="settings-modal" elevation={5}>
         <div className="settings-modal__header">
-          <h2 className="settings-modal__title">Nastavení</h2>
+          <h2 className="settings-modal__title">Settings</h2>
           <Button
             variant="text"
             size="small"
             onClick={handleCancel}
-            aria-label="Zavřít"
+            aria-label="Close"
           >
-            ✕
+            <X strokeWidth={2} size={20} />
           </Button>
         </div>
 
         <div className="settings-modal__content">
           {/* Theme Selection Section */}
           <div className="settings-modal__section">
-            <h3 className="settings-modal__section-title">Vzhled</h3>
+            <h3 className="settings-modal__section-title">Appearance</h3>
             <div className="settings-modal__theme-selector">
               <label className={`settings-modal__theme-option ${theme === 'light' ? 'settings-modal__theme-option--checked' : ''}`}>
                 <input
@@ -151,7 +152,7 @@ const SettingsModal = ({
                   onChange={(e) => setTheme(e.target.value)}
                 />
                 <span className="settings-modal__theme-label">
-                  <span className="settings-modal__theme-icon">☀️</span>
+                  <Sun className="settings-modal__theme-icon" strokeWidth={1.5} size={20} />
                   <span>Light</span>
                 </span>
               </label>
@@ -164,7 +165,7 @@ const SettingsModal = ({
                   onChange={(e) => setTheme(e.target.value)}
                 />
                 <span className="settings-modal__theme-label">
-                  <span className="settings-modal__theme-icon">🌙</span>
+                  <Moon className="settings-modal__theme-icon" strokeWidth={1.5} size={20} />
                   <span>Dark</span>
                 </span>
               </label>
@@ -177,7 +178,7 @@ const SettingsModal = ({
                   onChange={(e) => setTheme(e.target.value)}
                 />
                 <span className="settings-modal__theme-label">
-                  <span className="settings-modal__theme-icon">💻</span>
+                  <Monitor className="settings-modal__theme-icon" strokeWidth={1.5} size={20} />
                   <span>System</span>
                 </span>
               </label>
@@ -185,7 +186,7 @@ const SettingsModal = ({
           </div>
 
           <div className="settings-modal__section">
-            <h3 className="settings-modal__section-title">Rychlý výběr období</h3>
+            <h3 className="settings-modal__section-title">Quick Period Selection</h3>
             <div className="settings-modal__chips">
               {presetOptions.map((preset) => (
                 <Chip
@@ -207,11 +208,11 @@ const SettingsModal = ({
           </div>
 
           <div className={`settings-modal__section ${settings.selectedPreset === 'custom' ? 'settings-modal__section--active' : ''}`}>
-            <h3 className="settings-modal__section-title">Vlastní časové období</h3>
+            <h3 className="settings-modal__section-title">Custom Time Period</h3>
             <div className="settings-modal__date-range">
               <TextField
                 type="datetime-local"
-                label="Od"
+                label="From"
                 value={settings.start || ''}
                 onChange={(e) => {
                   setSettings(prev => ({ 
@@ -224,7 +225,7 @@ const SettingsModal = ({
               />
               <TextField
                 type="datetime-local"
-                label="Do"
+                label="To"
                 value={settings.end || ''}
                 onChange={(e) => {
                   setSettings(prev => ({ 
@@ -239,7 +240,7 @@ const SettingsModal = ({
           </div>
 
           <div className="settings-modal__section">
-            <h3 className="settings-modal__section-title">Granularita dat</h3>
+            <h3 className="settings-modal__section-title">Data Granularity</h3>
             <div className="settings-modal__buckets">
               {bucketOptions.map((bucket) => (
                 <Card
@@ -257,11 +258,11 @@ const SettingsModal = ({
 
           <div className="settings-modal__section">
             <Select
-              label="Zařízení"
+              label="Device"
               value={settings.deviceId || ''}
               onChange={(e) => setSettings(prev => ({ ...prev, deviceId: e.target.value }))}
               options={[
-                { value: '', label: 'Všechna zařízení' },
+                { value: '', label: 'All devices' },
                 ...(devices || []).map((device) => {
                   const deviceId = typeof device === 'string' ? device : (device?.device_id || device)
                   return { value: deviceId, label: deviceId }
@@ -278,14 +279,14 @@ const SettingsModal = ({
             size="medium"
             onClick={handleCancel}
           >
-            Zrušit
+            Cancel
           </Button>
           <Button
             variant="filled"
             size="medium"
             onClick={handleApply}
           >
-            Použít
+            Apply
           </Button>
         </div>
       </Card>

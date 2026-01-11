@@ -4,17 +4,17 @@
  */
 
 :root {
-  /* Primary - Blue */
-  --md3-color-primary-50: #E3F2FD;
-  --md3-color-primary-100: #BBDEFB;
-  --md3-color-primary-200: #90CAF9;
-  --md3-color-primary-300: #64B5F6;
-  --md3-color-primary-400: #42A5F5;
-  --md3-color-primary-500: #2196F3;
-  --md3-color-primary-600: #1E88E5;
-  --md3-color-primary-700: #1976D2;
-  --md3-color-primary-800: #1565C0;
-  --md3-color-primary-900: #0D47A1;
+  /* Primary - Muted Blue for Linear dark mode */
+  --md3-color-primary-50: rgba(96, 165, 250, 0.1); /* blue-400/10 */
+  --md3-color-primary-100: rgba(96, 165, 250, 0.15); /* blue-400/15 */
+  --md3-color-primary-200: rgba(96, 165, 250, 0.2); /* blue-400/20 */
+  --md3-color-primary-300: rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  --md3-color-primary-400: #60a5fa; /* blue-400 - muted electric blue */
+  --md3-color-primary-500: #60a5fa; /* blue-400 - main primary */
+  --md3-color-primary-600: #3b82f6; /* blue-500 */
+  --md3-color-primary-700: #2563eb; /* blue-600 */
+  --md3-color-primary-800: #1d4ed8; /* blue-700 */
+  --md3-color-primary-900: #1e40af; /* blue-800 */
 
   /* Secondary - Teal */
   --md3-color-secondary-50: #E0F2F1;
@@ -51,11 +51,11 @@
   --md3-color-background-variant: linear-gradient(135deg, #2196F3 0%, #009688 50%, #9C27B0 100%);
   --md3-color-background-paper: rgba(255, 255, 255, 0.9);
 
-  /* Text colors */
-  --md3-color-text-primary: #1A1A1A;
-  --md3-color-text-secondary: #4A4A4A;
-  --md3-color-text-disabled: #9E9E9E;
-  --md3-color-text-hint: #757575;
+  /* Text colors - Dark mode */
+  --md3-color-text-primary: rgb(244, 244, 245); /* zinc-100 */
+  --md3-color-text-secondary: rgb(113, 113, 122); /* zinc-500 */
+  --md3-color-text-disabled: rgb(82, 82, 91); /* zinc-600 */
+  --md3-color-text-hint: rgb(113, 113, 122); /* zinc-500 */
   --md3-color-text-onDark: #FFFFFF;
 
   /* Status colors */

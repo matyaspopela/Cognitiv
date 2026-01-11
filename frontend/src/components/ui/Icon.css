@@ -1,0 +1,25 @@
+.icon {
+  @apply flex-shrink-0;
+  color: currentColor;
+}
+
+.icon--small {
+  @apply w-4 h-4;
+}
+
+.icon--medium {
+  @apply w-5 h-5;
+}
+
+.icon--large {
+  @apply w-6 h-6;
+}
+
+/* Ensure icons inherit text color for dark mode */
+.icon {
+  color: inherit;
+}
+
+
+
+

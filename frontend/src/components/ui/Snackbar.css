@@ -10,7 +10,7 @@
   background: var(--md3-color-surface-dark);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: var(--md3-color-text-primary);
+  color: rgb(244, 244, 245); /* zinc-100 */
   border-radius: var(--md3-border-radius-lg);
   padding: var(--md3-spacing-4) var(--md3-spacing-6);
   box-shadow: var(--md3-elevation-4);
@@ -44,7 +44,7 @@
 .md3-snackbar__action {
   background: transparent;
   border: none;
-  color: var(--md3-color-primary-500);
+  color: #60a5fa; /* blue-400 */
   font-family: var(--md3-font-family-primary);
   font-size: var(--md3-font-size-label-medium);
   font-weight: var(--md3-font-weight-semiBold);

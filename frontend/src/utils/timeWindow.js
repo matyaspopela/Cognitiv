@@ -60,17 +60,17 @@ export const formatTimeLabel = (timestamp, window) => {
     return ''
   }
   
-  // Use Czech locale to match backend timezone (Europe/Prague)
+  // Use English locale
   if (window === '1h' || window === '24h') {
     // Show hours/minutes for 1h and 24h windows
-    return date.toLocaleTimeString('cs-CZ', { 
+    return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: false
     })
   } else if (window === '7d') {
     // Show day and time for 7d window
-    return date.toLocaleDateString('cs-CZ', { 
+    return date.toLocaleDateString('en-US', { 
       weekday: 'short', 
       hour: '2-digit', 
       minute: '2-digit',
@@ -78,7 +78,7 @@ export const formatTimeLabel = (timestamp, window) => {
     })
   } else {
     // Show date for 30d window
-    return date.toLocaleDateString('cs-CZ', { 
+    return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric'
     })

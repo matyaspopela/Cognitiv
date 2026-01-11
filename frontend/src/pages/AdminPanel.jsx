@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { adminAPI } from '../services/api'
-import Card from '../components/ui/Card'
+import { RefreshCw } from 'lucide-react'
+import { adminAPI, historyAPI } from '../services/api'
 import Button from '../components/ui/Button'
-import ProgressBar from '../components/ui/ProgressBar'
-import BoardCard from '../components/admin/BoardCard'
+import Skeleton from '../components/ui/Skeleton'
+import DataTable from '../components/ui/DataTable'
+import DeviceActionsMenu from '../components/admin/DeviceActionsMenu'
 import BoardAnalysisView from '../components/admin/BoardAnalysisView'
 import DeviceRenameModal from '../components/admin/DeviceRenameModal'
-import './AdminPanel.css'
 
 const AdminPanel = () => {
   const [devices, setDevices] = useState([])
@@ -25,16 +25,12 @@ const AdminPanel = () => {
       setError('')
       const response = await adminAPI.getDevices()
       if (response.data.status === 'success') {
-        // Sort devices: online first, then offline
-        // Also recalculate status based on last_seen (5-minute threshold)
         const devicesList = response.data.devices || []
         
-        // Helper function to determine if device is actually online (client-side check)
         const isDeviceOnline = (device) => {
           if (!device) return false
           if (device.status === 'offline') return false
           
-          // Check last_seen timestamp (5-minute threshold)
           if (device.last_seen) {
             try {
               const lastSeenDate = new Date(device.last_seen)
@@ -42,18 +38,17 @@ const AdminPanel = () => {
                 const now = new Date()
                 const minutesAgo = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60)
                 if (minutesAgo > 5) {
-                  return false // Offline if more than 5 minutes
+                  return false
                 }
               }
             } catch (error) {
-              // If parsing fails, fall back to status
+              // Fallback to status
             }
           }
           
           return device.status === 'online'
         }
         
-        // Update status based on client-side check
         const devicesWithStatus = devicesList.map(device => ({
           ...device,
           status: isDeviceOnline(device) ? 'online' : 'offline'
@@ -62,15 +57,15 @@ const AdminPanel = () => {
         const sortedDevices = [...devicesWithStatus].sort((a, b) => {
           const aOnline = a.status === 'online' ? 1 : 0
           const bOnline = b.status === 'online' ? 1 : 0
-          return bOnline - aOnline // Online devices first (1 - 0 = 1, so b comes before a)
+          return bOnline - aOnline
         })
         setDevices(sortedDevices)
       } else {
-        setError(response.data.message || 'Nepodařilo se načíst seznam zařízení')
+        setError(response.data.message || 'Failed to load device list')
       }
     } catch (error) {
       console.error('Error loading devices:', error)
-      setError('Nepodařilo se načíst seznam zařízení')
+      setError('Failed to load device list')
     } finally {
       setLoading(false)
     }
@@ -89,7 +84,7 @@ const AdminPanel = () => {
   }
 
   const handleRenameSuccess = () => {
-    loadDevices()  // Refresh device list
+    loadDevices()
     setRenameDevice(null)
   }
 
@@ -97,60 +92,169 @@ const AdminPanel = () => {
     setRenameDevice(null)
   }
 
+  const handleExportCSV = async (device) => {
+    if (!device?.device_id) {
+      console.error('Cannot export: missing device_id')
+      return
+    }
+
+    try {
+      const now = new Date()
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const startIso = thirtyDaysAgo.toISOString()
+      const endIso = now.toISOString()
+
+      const response = await historyAPI.exportCSV(startIso, endIso, device.device_id)
+      
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      
+      const deviceNameSafe = (device.display_name || device.device_id || 'device').replace(/[^a-z0-9]/gi, '_').toLowerCase()
+      const dateStr = now.toISOString().split('T')[0]
+      link.download = `cognitiv_${deviceNameSafe}_${dateStr}.csv`
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      alert('Failed to export CSV. Please try again later.')
+    }
+  }
+
+  // Define table columns
+  const columns = [
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value, row) => row.status,
+    },
+    {
+      key: 'name',
+      label: 'Name',
+    },
+    {
+      key: 'location',
+      label: 'MAC Address',
+    },
+    {
+      key: 'co2',
+      label: 'CO₂',
+      align: 'right',
+    },
+    {
+      key: 'temp',
+      label: 'Temp',
+      align: 'right',
+    },
+    {
+      key: 'lastSeen',
+      label: 'Last Seen',
+    },
+  ]
+
+  // Transform devices to table data
+  const tableData = devices.map((device) => ({
+    id: device.mac_address || device.device_id,
+    status: device.status,
+    name: device.display_name || device.device_id || 'Unknown',
+    location: device.mac_address || device.device_id || '—',
+    co2: device.current_readings?.co2 != null ? `${Math.round(device.current_readings.co2)} ppm` : '—',
+    temp: device.current_readings?.temperature != null ? `${Math.round(device.current_readings.temperature)}°C` : '—',
+    lastSeen: device.last_seen || '—',
+    device,
+  }))
+
   return (
-    <div className="admin-page">
-      <div className="admin-page__container">
-        <header className="admin-page__header">
-          <Card className="admin-page__header-card" elevation={2}>
-            <div className="admin-page__header-content">
-              <div className="admin-page__header-text">
-                <h1 className="admin-page__title">Administrační panel</h1>
-                <p className="admin-page__subtitle">Správa a přehled všech zařízení v systému</p>
+    <div className="flex-1 flex flex-col w-full">
+      <div className="flex flex-col gap-6">
+        {/* Header */}
+        <header className="mb-2">
+          <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-1 min-w-[400px]">
+                <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">
+                  Admin Panel
+                </h1>
+                <p className="text-sm text-zinc-500">
+                  Manage and view all devices in the system
+                </p>
               </div>
-              <Button variant="filled" size="medium" onClick={loadDevices} disabled={loading}>
-                ⟳ Aktualizovat
+              <Button 
+                variant="filled" 
+                size="medium" 
+                onClick={loadDevices} 
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw 
+                  size={18} 
+                  strokeWidth={2} 
+                  className={loading ? 'animate-spin' : ''} 
+                />
+                Refresh
               </Button>
             </div>
-          </Card>
+          </div>
         </header>
 
+        {/* Error State */}
         {error && (
-          <Card className="admin-page__error-card" elevation={2}>
-            <div className="admin-page__error">{error}</div>
-          </Card>
+          <div className="p-4 bg-red-900/20 border border-red-700/30 rounded-lg">
+            <div className="text-sm font-medium text-red-400">{error}</div>
+          </div>
         )}
 
-        <div className="admin-page__content">
-          <section className="admin-page__devices">
-            <Card className="admin-page__devices-card" elevation={2}>
-              <h2 className="admin-page__section-title">Seznam zařízení</h2>
+        {/* Main Content */}
+        <div className="flex flex-col gap-6">
+          <section>
+            <div className="bg-transparent border-none p-0">
+              <h2 className="text-lg font-semibold text-zinc-100 tracking-tight mb-4">
+                Device List
+              </h2>
+              
               {loading ? (
-                <div className="admin-page__loading">
-                  <ProgressBar indeterminate />
-                  <p>Načítám zařízení...</p>
+                <div className="flex flex-col gap-4 p-12 bg-zinc-900/50 border border-white/10 rounded-lg">
+                  {/* Skeleton table rows */}
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton variant="circular" width={10} height={10} />
+                      <Skeleton variant="text" width="20%" />
+                      <Skeleton variant="text" width="25%" />
+                      <Skeleton variant="text" width="15%" className="ml-auto" />
+                      <Skeleton variant="text" width="15%" />
+                      <Skeleton variant="text" width="20%" />
+                    </div>
+                  ))}
+                  <p className="text-sm text-zinc-500 text-center mt-2">
+                    Loading devices...
+                  </p>
                 </div>
-              ) : devices.length === 0 ? (
-                <div className="admin-page__empty">Žádná zařízení nebyla nalezena.</div>
               ) : (
-                <div className="admin-page__devices-grid">
-                  {devices.map((device) => {
-                    // Use mac_address as key if available, otherwise device_id
-                    const deviceKey = device.mac_address || device.device_id
-                    // For selection, prefer device_id (still used in API calls)
-                    const deviceIdForSelection = device.device_id
-                    return (
-                      <BoardCard
-                        key={deviceKey}
-                        device={device}
-                        onDetailsClick={handleDetailsClick}
-                        onRenameClick={handleRenameClick}
-                        selected={selectedBoard === deviceIdForSelection}
+                <DataTable
+                  columns={columns}
+                  data={tableData}
+                  onRowClick={(row) => {
+                    // Prefer mac_address over device_id for unique identification
+                    const deviceIdentifier = row.device?.mac_address || row.device?.device_id
+                    handleDetailsClick(deviceIdentifier)
+                  }}
+                  actions={{
+                    render: (row) => (
+                      <DeviceActionsMenu
+                        device={row.device}
+                        onRename={handleRenameClick}
+                        onExport={handleExportCSV}
+                        onDetails={handleDetailsClick}
                       />
                     )
-                  })}
-                </div>
+                  }}
+                />
               )}
-            </Card>
+            </div>
           </section>
 
           {selectedBoard && (
@@ -171,4 +275,3 @@ const AdminPanel = () => {
 }
 
 export default AdminPanel
-

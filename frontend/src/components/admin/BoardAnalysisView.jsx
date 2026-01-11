@@ -1,44 +1,41 @@
-import { useState, useEffect } from 'react'
-import { Line, Doughnut } from 'react-chartjs-2'
+import { useState, useEffect, useRef } from 'react'
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  TimeScale,
   PointElement,
   LineElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import 'chartjs-adapter-date-fns'
-import annotationPlugin from 'chartjs-plugin-annotation'
-import { historyAPI, dataAPI } from '../../services/api'
-import {
-  buildCo2Chart,
-  buildClimateChart,
-  buildQualityPieChart,
-  getCo2ChartOptions,
-  getClimateChartOptions,
-  co2FillGradientPlugin
-} from '../../utils/charts'
-
-// Register Chart.js components and plugins
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  TimeScale,
-  PointElement,
-  LineElement,
-  ArcElement,
   Title,
   Tooltip,
   Legend,
   Filler,
-  annotationPlugin,
-  co2FillGradientPlugin
+  TimeScale,
+  ArcElement,
+} from 'chart.js'
+import { Line, Doughnut } from 'react-chartjs-2'
+import 'chartjs-adapter-date-fns'
+import { historyAPI, dataAPI, adminAPI } from '../../services/api'
+import {
+  buildCo2ChartData,
+  buildClimateChartData,
+  buildQualityChartData,
+  hasValidChartData,
+  getChartOptions,
+  getClimateChartOptions,
+} from '../../utils/charts'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  TimeScale,
+  ArcElement
 )
 import Card from '../ui/Card'
 import Button from '../ui/Button'
@@ -48,30 +45,6 @@ import TextField from '../ui/TextField'
 import ProgressBar from '../ui/ProgressBar'
 import './BoardAnalysisView.css'
 
-/**
- * Check if chart data has actual displayable data points
- * @param {Object} chartData - Chart.js data object
- * @returns {boolean} True if there are valid data points to display
- */
-const hasValidChartData = (chartData) => {
-  if (!chartData || !chartData.datasets || !Array.isArray(chartData.datasets)) {
-    return false
-  }
-  
-  return chartData.datasets.some(dataset => {
-    if (!dataset.data || !Array.isArray(dataset.data)) {
-      return false
-    }
-    
-    return dataset.data.some(point => {
-      if (point === null || point === undefined) return false
-      if (typeof point === 'object') {
-        return point.y !== null && point.y !== undefined && !isNaN(point.y)
-      }
-      return !isNaN(point)
-    })
-  })
-}
 
 /**
  * Filter series data to only include points within the requested time range
@@ -118,17 +91,21 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   useEffect(() => {
     const fetchDeviceName = async () => {
       try {
-        const response = await dataAPI.getDevices()
-        if (response.data && response.data.devices) {
+        // Use adminAPI since we're in the admin panel - it has all device info
+        const response = await adminAPI.getDevices()
+        if (response.data && response.data.status === 'success' && response.data.devices) {
+          // Prefer MAC address matching since that's now the primary identifier
           const device = response.data.devices.find(
-            (d) => d.device_id === deviceId || 
-                   d.mac_address === deviceId || 
+            (d) => d.mac_address === deviceId || 
+                   d.device_id === deviceId || 
                    d.display_name === deviceId
           )
           if (device && device.display_name) {
             setDeviceName(device.display_name)
           } else if (device && device.device_id) {
             setDeviceName(device.device_id)
+          } else if (device && device.mac_address) {
+            setDeviceName(device.mac_address)
           }
         }
       } catch (error) {
@@ -198,12 +175,29 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       return
     }
 
-    if (preset === '30d') {
-      const now = new Date()
-      const start = formatDateForInput(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
-      const end = formatDateForInput(now)
-      setTimeRange({ start, end })
+    const now = new Date()
+    let days = 30
+    
+    switch (preset) {
+      case '1d':
+        days = 1
+        break
+      case '7d':
+        days = 7
+        break
+      case '30d':
+        days = 30
+        break
+      case '90d':
+        days = 90
+        break
+      default:
+        days = 30
     }
+    
+    const start = formatDateForInput(new Date(now.getTime() - days * 24 * 60 * 60 * 1000))
+    const end = formatDateForInput(now)
+    setTimeRange({ start, end })
   }
 
   // Initialize time range on mount (only if not already set)
@@ -224,12 +218,10 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   useEffect(() => {
     const loadAnalysisData = async () => {
       if (!deviceId) {
-        console.log('loadAnalysisData: No deviceId')
         return
       }
       
       if (!timeRange.start || !timeRange.end) {
-        console.log('loadAnalysisData: Missing dates', { start: timeRange.start, end: timeRange.end })
         return
       }
 
@@ -246,16 +238,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         const startIso = toISOStringOrNull(timeRange.start)
         const endIso = toISOStringOrNull(timeRange.end)
 
-        console.log('Date conversion:', {
-          startInput: timeRange.start,
-          endInput: timeRange.end,
-          startIso,
-          endIso,
-          selectedPreset
-        })
-
         if (!startIso || !endIso) {
-          setError('Neplatné datum. Zkontrolujte, zda jsou obě data správně vyplněna.')
+          setError('Invalid date. Please check that both dates are correctly filled in.')
           setLoading(false)
           return
         }
@@ -264,21 +248,11 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         const startDate = new Date(startIso)
         const endDate = new Date(endIso)
         if (startDate >= endDate) {
-          setError('Počáteční datum musí být dříve než koncové datum.')
+          setError('Start date must be earlier than end date.')
           setLoading(false)
           return
         }
 
-        // Log date values for debugging
-        console.log('Loading analysis data:', {
-          start: timeRange.start,
-          end: timeRange.end,
-          startIso,
-          endIso,
-          deviceId,
-          selectedPreset,
-          dateRange: `${startDate.toLocaleString()} to ${endDate.toLocaleString()}`
-        })
 
         let summaryData = null
         let seriesData = null
@@ -306,8 +280,6 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         // Choose bucket: raw data for <= 30 days, hourly aggregation for > 30 days
         const bucket = daysDiff <= 30 ? 'raw' : 'hour'
         
-        console.log(`Time range: ${daysDiff.toFixed(2)} days, using bucket: ${bucket}`)
-        
         let seriesLoaded = false
 
         try {
@@ -324,7 +296,6 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             } else if (data?.status === 'success' && data.series && Array.isArray(data.series)) {
               seriesData = data
               seriesLoaded = true
-              console.log(`Successfully loaded series data with bucket: ${bucket}`, { count: data.series.length })
             }
           }
         } catch (seriesError) {
@@ -340,13 +311,14 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             const hoursDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60))
             // Cap at reasonable limit for dataAPI (it's less efficient than history API)
             const hours = Math.max(1, Math.min(hoursDiff, 30 * 24)) // Cap at 30 days, min 1 hour
-            console.log('Falling back to dataAPI, hours:', hours)
             const dataResponse = await dataAPI.getData(hours, 1000, deviceId)
             const dataJson = dataResponse?.data
 
             if (dataJson?.status === 'success' && dataJson.data && Array.isArray(dataJson.data) && dataJson.data.length > 0) {
               // Convert dataAPI format to history series format for charts
-              const convertedSeries = dataJson.data.map(item => ({
+              // Filter out invalid items before mapping
+              const validDataItems = dataJson.data.filter(item => item && typeof item === 'object')
+              const convertedSeries = validDataItems.map(item => ({
                 bucket_start: item.timestamp_iso || item.timestamp,
                 device_id: item.device_id || deviceId,
                 co2: { avg: item.co2 ?? item.co2 ?? null },
@@ -374,7 +346,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
         // Only set error if both summary and series completely failed
         if (!summaryData && !seriesLoaded) {
-          setError('Nepodařilo se načíst analytická data. Zkuste to prosím později.')
+          setError('Failed to load analysis data. Please try again later.')
         } else {
           // Set whatever data we have
           if (summaryData?.status === 'success') {
@@ -382,7 +354,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
             // Build quality distribution chart if available
             if (summaryData.summary?.co2_quality) {
-              const pieChartData = buildQualityPieChart(summaryData.summary.co2_quality)
+              const pieChartData = buildQualityChartData(summaryData.summary.co2_quality)
               // Only set if there's valid data to display
               if (pieChartData && hasValidChartData(pieChartData)) {
                 setQualityPieChart(pieChartData)
@@ -390,29 +362,36 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             }
           }
 
-          if (seriesData && (seriesData.status === 'success' || seriesData.series) && seriesData.series?.length > 0) {
+          if (seriesData && (seriesData.status === 'success' || seriesData.series) && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
             // Filter series to only include data within the requested time range
             const filteredSeries = filterSeriesInRange(seriesData.series, startIso, endIso)
             
-            if (filteredSeries.length > 0) {
+            if (Array.isArray(filteredSeries) && filteredSeries.length > 0) {
               setSeries(filteredSeries)
-              // Build charts with bucket info for gap detection and time scale option
-              const co2ChartData = buildCo2Chart(filteredSeries, bucket, useRealTimeScale)
-              const climateChartData = buildClimateChart(filteredSeries, bucket, useRealTimeScale)
-              
-              // Only set charts if they have valid displayable data
-              if (hasValidChartData(co2ChartData)) {
-                setCo2Chart(co2ChartData)
+              // Build charts with bucket info for gap detection
+              try {
+                const co2ChartData = buildCo2ChartData(filteredSeries, bucket)
+                if (hasValidChartData(co2ChartData)) {
+                  setCo2Chart(co2ChartData)
+                }
+              } catch (co2Error) {
+                console.error('Error building CO2 chart data:', co2Error)
               }
-              if (hasValidChartData(climateChartData)) {
-                setClimateChart(climateChartData)
+              
+              try {
+                const climateChartData = buildClimateChartData(filteredSeries, bucket)
+                if (hasValidChartData(climateChartData)) {
+                  setClimateChart(climateChartData)
+                }
+              } catch (climateError) {
+                console.error('Error building climate chart data:', climateError)
               }
             }
           }
         }
       } catch (error) {
         // Final error handling
-        const errorMessage = error?.response?.data?.error || error?.message || 'Nepodařilo se načíst analytická data'
+        const errorMessage = error?.response?.data?.error || error?.message || 'Failed to load analysis data'
         console.error('Error loading analysis data:', {
           error,
           message: errorMessage,
@@ -435,7 +414,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
   const handleExportCSV = async () => {
     if (!deviceId) {
-      setError('Nelze exportovat: chybí ID zařízení')
+      setError('Cannot export: missing device ID')
       return
     }
 
@@ -444,7 +423,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       const endIso = toISOStringOrNull(timeRange.end)
 
       if (!startIso || !endIso) {
-        setError('Nelze exportovat: neplatné datum. Zkontrolujte, zda jsou obě data správně vyplněna.')
+        setError('Cannot export: invalid date. Please check that both dates are correctly filled in.')
         return
       }
 
@@ -452,7 +431,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       const startDate = new Date(startIso)
       const endDate = new Date(endIso)
       if (startDate >= endDate) {
-        setError('Nelze exportovat: počáteční datum musí být dříve než koncové datum.')
+        setError('Cannot export: start date must be earlier than end date.')
         return
       }
 
@@ -476,7 +455,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting CSV:', error)
-      setError('Nepodařilo se exportovat CSV. Zkuste to prosím později.')
+      setError('Failed to export CSV. Please try again later.')
     }
   }
 
@@ -496,12 +475,12 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             size="medium" 
             onClick={handleExportCSV}
             disabled={!timeRange.start || !timeRange.end}
-            title="Exportovat data do CSV"
+            title="Export data to CSV"
           >
-            📥 Exportovat CSV
+            📥 Export CSV
           </Button>
           <Button variant="outlined" size="medium" onClick={onClose}>
-            Zavřít
+            Close
           </Button>
         </div>
       </div>
@@ -510,15 +489,15 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       <Card className="board-analysis-view__time-range-card" elevation={1}>
         <div className="board-analysis-view__time-range">
           <div className="board-analysis-view__time-presets">
-            <span className="board-analysis-view__time-label">Období:</span>
-            {['30d', 'custom'].map((preset) => (
+            <span className="board-analysis-view__time-label">Period:</span>
+            {['1d', '7d', '30d', '90d', 'custom'].map((preset) => (
               <Chip
                 key={preset}
                 selected={selectedPreset === preset}
                 onClick={() => applyPreset(preset)}
                 className="board-analysis-view__time-preset-chip"
               >
-                {preset === 'custom' ? 'Vlastní' : preset}
+                {preset === 'custom' ? 'Custom' : preset}
               </Chip>
             ))}
           </div>
@@ -526,33 +505,23 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             <div className="board-analysis-view__time-custom">
               <TextField
                 type="datetime-local"
-                label="Od"
+                label="From"
                 value={timeRange.start || ''}
                 onChange={(e) => {
-                  const newValue = e.target.value
-                  console.log('Start date changed:', newValue)
-                  setTimeRange(prev => {
-                    const updated = { ...prev, start: newValue }
-                    console.log('Updated timeRange:', updated)
-                    return updated
-                  })
+                  setTimeRange(prev => ({ ...prev, start: e.target.value }))
                 }}
                 className="board-analysis-view__time-input"
+                fullWidth
               />
               <TextField
                 type="datetime-local"
-                label="Do"
+                label="To"
                 value={timeRange.end || ''}
                 onChange={(e) => {
-                  const newValue = e.target.value
-                  console.log('End date changed:', newValue)
-                  setTimeRange(prev => {
-                    const updated = { ...prev, end: newValue }
-                    console.log('Updated timeRange:', updated)
-                    return updated
-                  })
+                  setTimeRange(prev => ({ ...prev, end: e.target.value }))
                 }}
                 className="board-analysis-view__time-input"
+                fullWidth
               />
             </div>
           )}
@@ -562,7 +531,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       {loading && (
         <Card className="board-analysis-view__loading" elevation={2}>
           <ProgressBar indeterminate />
-          <p>Načítám analytická data...</p>
+          <p>Loading analysis data...</p>
         </Card>
       )}
 
@@ -585,26 +554,26 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                 </div>
               </Card>
               <Card className="board-analysis-view__summary-item" elevation={1}>
-                <div className="board-analysis-view__summary-label">Teplota (°C)</div>
+                <div className="board-analysis-view__summary-label">Temperature (°C)</div>
                 <div className="board-analysis-view__summary-value">{safeValue(summary.temperature?.avg)}</div>
                 <div className="board-analysis-view__summary-footer">
                   Min {safeValue(summary.temperature?.min)} · Max {safeValue(summary.temperature?.max)}
                 </div>
               </Card>
               <Card className="board-analysis-view__summary-item" elevation={1}>
-                <div className="board-analysis-view__summary-label">Vlhkost (%)</div>
+                <div className="board-analysis-view__summary-label">Humidity (%)</div>
                 <div className="board-analysis-view__summary-value">{safeValue(summary.humidity?.avg)}</div>
                 <div className="board-analysis-view__summary-footer">
                   Min {safeValue(summary.humidity?.min)} · Max {safeValue(summary.humidity?.max)}
                 </div>
               </Card>
               <Card className="board-analysis-view__summary-item" elevation={1}>
-                <div className="board-analysis-view__summary-label">Vzorky</div>
+                <div className="board-analysis-view__summary-label">Samples</div>
                 <div className="board-analysis-view__summary-value">{safeValue(summary.samples)}</div>
                 <div className="board-analysis-view__summary-footer">
-                  Od: {summary.range?.data_start || '–'}
+                  From: {summary.range?.data_start || '–'}
                   <br />
-                  Do: {summary.range?.data_end || '–'}
+                  To: {summary.range?.data_end || '–'}
                 </div>
               </Card>
             </div>
@@ -619,12 +588,12 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                 onChange={(e) => setUseRealTimeScale(e.target.checked)}
               />
               <span className="board-analysis-view__toggle-label">
-                Reálné časové vzdálenosti
+                Real time spacing
               </span>
               <span className="board-analysis-view__toggle-hint">
                 {useRealTimeScale 
-                  ? '(body jsou rozmístěny podle skutečného času)' 
-                  : '(body jsou rozmístěny rovnoměrně)'}
+                  ? '(points are spaced according to actual time)' 
+                  : '(points are evenly spaced)'}
               </span>
             </label>
           </div>
@@ -635,39 +604,50 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               <div className="board-analysis-view__chart-header">
                 <h3 className="board-analysis-view__chart-title">CO₂</h3>
               </div>
-              <div className="board-analysis-view__chart-container">
+              <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
                 {co2Chart ? (
-                  <Line data={co2Chart} options={getCo2ChartOptions(useRealTimeScale)} />
+                  <Line 
+                    data={co2Chart} 
+                    options={getChartOptions('line', {
+                      plugins: {
+                        tooltip: {
+                          callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y} ppm`
+                          }
+                        }
+                      }
+                    })} 
+                  />
                 ) : (
-                  <div className="board-analysis-view__empty">Žádná data k zobrazení</div>
+                  <div className="board-analysis-view__empty">No data to display</div>
                 )}
               </div>
             </Card>
 
             <Card className="board-analysis-view__chart-card" elevation={2}>
               <div className="board-analysis-view__chart-header">
-                <h3 className="board-analysis-view__chart-title">Teplota & Vlhkost</h3>
+                <h3 className="board-analysis-view__chart-title">Temperature & Humidity</h3>
               </div>
-              <div className="board-analysis-view__chart-container">
+              <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
                 {climateChart ? (
-                  <Line data={climateChart} options={getClimateChartOptions(useRealTimeScale)} />
+                  <Line data={climateChart} options={getClimateChartOptions()} />
                 ) : (
-                  <div className="board-analysis-view__empty">Žádná data k zobrazení</div>
+                  <div className="board-analysis-view__empty">No data to display</div>
                 )}
               </div>
             </Card>
           </div>
 
-          {/* Distribution Graph (CRITICAL: Preserves exact format from History view) */}
+          {/* Distribution Graph */}
           <Card className="board-analysis-view__distribution-card" elevation={2}>
             <div className="board-analysis-view__distribution-header">
-              <h3 className="board-analysis-view__distribution-title">Rozložení kvality vzduchu</h3>
+              <h3 className="board-analysis-view__distribution-title">Air Quality Distribution</h3>
             </div>
             <div className="board-analysis-view__distribution-content">
-              <div className="board-analysis-view__distribution-chart">
+              <div className="board-analysis-view__distribution-chart" style={{ height: '400px' }}>
                 {qualityPieChart ? (
-                  <Doughnut
-                    data={qualityPieChart}
+                  <Doughnut 
+                    data={qualityPieChart} 
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -675,28 +655,25 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                         legend: {
                           position: 'right',
                           labels: {
-                            font: {
-                              family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                            },
-                            padding: 15
+                            color: '#9ca3af',
+                            usePointStyle: true,
+                            padding: 20,
                           }
                         },
                         tooltip: {
-                          callbacks: {
-                            label: (context) => {
-                              const label = context.label || ''
-                              const value = context.parsed || 0
-                              const total = context.dataset.data.reduce((a, b) => a + b, 0)
-                              const percentage = ((value / total) * 100).toFixed(1)
-                              return `${label}: ${value} (${percentage}%)`
-                            }
-                          }
+                          backgroundColor: 'rgba(26, 28, 41, 0.95)',
+                          titleColor: '#fff',
+                          bodyColor: '#fff',
+                          borderColor: 'rgba(0, 242, 234, 0.3)',
+                          borderWidth: 1,
+                          padding: 12,
+                          cornerRadius: 8,
                         }
                       }
                     }}
                   />
                 ) : (
-                  <div className="board-analysis-view__empty">Žádná data k zobrazení.</div>
+                  <div className="board-analysis-view__empty">No data to display.</div>
                 )}
               </div>
             </div>
@@ -705,15 +682,15 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
           {/* Quality Breakdown Table (matching History view format) */}
           <Card className="board-analysis-view__quality-table-card" elevation={2}>
             <div className="board-analysis-view__quality-header">
-              <h3 className="board-analysis-view__quality-title">Kvalita vzduchu</h3>
+              <h3 className="board-analysis-view__quality-title">Air Quality</h3>
             </div>
             <table className="board-analysis-view__table">
               <thead>
                 <tr>
-                  <th>Úroveň</th>
-                  <th>Vzorků</th>
-                  <th>Podíl</th>
-                  <th>Popis</th>
+                  <th>Level</th>
+                  <th>Samples</th>
+                  <th>Share</th>
+                  <th>Description</th>
                 </tr>
               </thead>
               <tbody>
@@ -721,7 +698,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                   <>
                     <tr>
                       <td>
-                        <Badge variant="standard" color="success">Dobrá kvalita</Badge>
+                        <Badge variant="standard" color="success">Good Quality</Badge>
                       </td>
                       <td>{qualityTableData.good || 0}</td>
                       <td>{qualityTableData.good_percent || 0}%</td>
@@ -729,7 +706,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                     </tr>
                     <tr>
                       <td>
-                        <Badge variant="standard" color="warning">Střední kvalita</Badge>
+                        <Badge variant="standard" color="warning">Moderate Quality</Badge>
                       </td>
                       <td>{qualityTableData.moderate || 0}</td>
                       <td>{qualityTableData.moderate_percent || 0}%</td>
@@ -737,7 +714,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                     </tr>
                     <tr>
                       <td>
-                        <Badge variant="standard" color="warning">Zhoršená kvalita</Badge>
+                        <Badge variant="standard" color="warning">Poor Quality</Badge>
                       </td>
                       <td>{qualityTableData.high || 0}</td>
                       <td>{qualityTableData.high_percent || 0}%</td>
@@ -745,7 +722,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                     </tr>
                     <tr>
                       <td>
-                        <Badge variant="standard" color="error">Kritická kvalita</Badge>
+                        <Badge variant="standard" color="error">Critical Quality</Badge>
                       </td>
                       <td>{qualityTableData.critical || 0}</td>
                       <td>{qualityTableData.critical_percent || 0}%</td>
@@ -755,7 +732,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                 ) : (
                   <tr>
                     <td colSpan="4" className="board-analysis-view__empty">
-                      Zatím nejsou k dispozici žádná data.
+                      No data available yet.
                     </td>
                   </tr>
                 )}

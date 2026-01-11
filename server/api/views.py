@@ -2001,59 +2001,8 @@ def admin_devices(request):
                     'current_readings': current_readings
                 })
         
-        # Get legacy devices (by device_id, excluding those with MAC)
-        all_device_ids = collection.distinct('device_id')
-        devices_with_mac = set()
-        for doc in collection.find({'mac_address': {'$exists': True, '$ne': None}}, {'device_id': 1}):
-            did = doc.get('device_id')
-            if did:
-                devices_with_mac.add(did)
-        
-        legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac]
-        
-        for device_id in legacy_device_ids:
-            total_count = collection.count_documents({'device_id': device_id})
-            
-            latest_doc = collection.find_one(
-                {'device_id': device_id},
-                sort=[('timestamp', -1)]
-            )
-            
-            status = 'offline'
-            last_seen = None
-            current_readings = None
-            
-            if latest_doc:
-                last_seen_dt = latest_doc.get('timestamp')
-                if last_seen_dt:
-                    if isinstance(last_seen_dt, datetime):
-                        last_seen = to_readable_timestamp(last_seen_dt)
-                        if last_seen_dt >= cutoff_time:
-                            status = 'online'
-                
-                # Get voltage from top-level or fall back to raw_payload
-                voltage = latest_doc.get('voltage')
-                if voltage is None:
-                    raw_payload = latest_doc.get('raw_payload', {})
-                    if isinstance(raw_payload, dict):
-                        voltage = raw_payload.get('voltage')
-                
-                current_readings = {
-                    'temperature': latest_doc.get('temperature'),
-                    'humidity': latest_doc.get('humidity'),
-                    'co2': latest_doc.get('co2'),
-                    'voltage': voltage
-                }
-
-            devices.append({
-                'mac_address': None,  # No MAC for legacy devices
-                'display_name': device_id,  # Use device_id as display name
-                'device_id': device_id,
-                'status': status,
-                'total_data_points': total_count,
-                'last_seen': last_seen,
-                'current_readings': current_readings
-            })
+        # Only return MAC-tracked devices (legacy devices excluded)
+        # This prevents duplicates and ensures all devices have MAC addresses for rename functionality
 
         # Sort by display_name or device_id
         devices.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
