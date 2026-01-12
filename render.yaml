@@ -1,5 +1,6 @@
 services:
   # Web Server - serves the Django API and React frontend
+  # Also runs MQTT subscriber in the background (no extra cost!)
   - type: web
     name: cognitiv-server
     env: python
@@ -7,8 +8,9 @@ services:
       cd frontend && npm install && npm run build && cd ..
       pip install -r server/requirements.txt
       cd server && python manage.py collectstatic --noinput || true
+      chmod +x server/start.sh
     startCommand: |
-      cd server && gunicorn cognitiv.wsgi:application --bind 0.0.0.0:$PORT
+      cd server && bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -22,20 +24,7 @@ services:
         sync: false  # Set this in Render dashboard
       - key: LOCAL_TIMEZONE
         value: Europe/Prague
-
-  # MQTT Subscriber - receives sensor data from HiveMQ broker
-  - type: worker
-    name: cognitiv-mqtt-subscriber
-    env: python
-    buildCommand: |
-      pip install -r server/requirements.txt
-    startCommand: |
-      cd server && python manage.py mqtt_subscriber
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: MONGO_URI
-        sync: false  # Set this in Render dashboard (same as web service)
+      # MQTT Configuration (for subscriber running in background)
       - key: MQTT_BROKER_HOST
         value: fc716f4d434d4d7689ca16c9be2ebf2b.s1.eu.hivemq.cloud
       - key: MQTT_BROKER_PORT
@@ -43,10 +32,8 @@ services:
       - key: MQTT_USERNAME
         value: Mongo_puller
       - key: MQTT_PASSWORD
-        sync: false  # Set this in Render dashboard for security
+        sync: false  # Set this in Render dashboard: espASS12
       - key: MQTT_TOPIC
         value: sensors/esp_12s_school_1/data
-      - key: LOCAL_TIMEZONE
-        value: Europe/Prague
 
 
