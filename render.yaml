@@ -1,4 +1,5 @@
 services:
+  # Web Server - serves the Django API and React frontend
   - type: web
     name: cognitiv-server
     env: python
@@ -19,5 +20,33 @@ services:
         value: false
       - key: MONGO_URI
         sync: false  # Set this in Render dashboard
+      - key: LOCAL_TIMEZONE
+        value: Europe/Prague
+
+  # MQTT Subscriber - receives sensor data from HiveMQ broker
+  - type: worker
+    name: cognitiv-mqtt-subscriber
+    env: python
+    buildCommand: |
+      pip install -r server/requirements.txt
+    startCommand: |
+      cd server && python manage.py mqtt_subscriber
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: MONGO_URI
+        sync: false  # Set this in Render dashboard (same as web service)
+      - key: MQTT_BROKER_HOST
+        value: fc716f4d434d4d7689ca16c9be2ebf2b.s1.eu.hivemq.cloud
+      - key: MQTT_BROKER_PORT
+        value: "8883"
+      - key: MQTT_USERNAME
+        value: Mongo_puller
+      - key: MQTT_PASSWORD
+        sync: false  # Set this in Render dashboard for security
+      - key: MQTT_TOPIC
+        value: sensors/esp_12s_school_1/data
+      - key: LOCAL_TIMEZONE
+        value: Europe/Prague
 
 

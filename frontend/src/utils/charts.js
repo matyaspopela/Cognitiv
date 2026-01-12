@@ -3,24 +3,72 @@
  * Converts API data to Chart.js-compatible format
  */
 
-// Sci-Fi color palette
-const scifiColors = {
-  safe: '#00f2ea',      // Cyan / Electric Teal
-  warning: '#ffc107',   // Amber / Gold  
-  danger: '#ff0055',    // Magenta / Hot Pink
-  temperature: '#00f2ea', // Cyan
-  humidity: '#ffc107',    // Amber
-  grid: 'rgba(255, 255, 255, 0.1)',
-  text: '#9ca3af',
+// Apple-modern color palette - Green to Red scale for danger communication
+const appleModernColors = {
+  good: '#10B981',         // Emerald Green - Good air quality
+  moderate: '#F59E0B',     // Amber - Moderate (warning zone)
+  danger: '#EF4444',       // Red - Danger (>1500 ppm)
+  dangerDark: '#DC2626',   // Darker Red - Critical (>2000)
+  accent: '#14B8A6',       // Accent Teal (temperature)
+  grid: 'rgba(229, 231, 235, 0.5)',  // Softer grid lines
+  textSecondary: '#586169', // Secondary text
+  textPrimary: '#16181C',  // Primary text
 }
 
 /**
- * Get color based on CO2 value
+ * Get color based on CO2 value - Green to Red gradient
+ * Green = Good, Yellow/Orange = Warning, Red = Danger
  */
 export const getColorForCO2 = (co2) => {
-  if (co2 < 800) return scifiColors.safe
-  if (co2 < 1200) return scifiColors.warning
-  return scifiColors.danger
+  if (co2 < 1000) return appleModernColors.good      // Green: Excellent
+  if (co2 < 1500) return appleModernColors.moderate  // Amber: Moderate
+  return appleModernColors.danger                     // Red: Danger
+}
+
+/**
+ * Get segment color for CO2 chart - implements red warning for >1500 ppm
+ * This function colors each line segment based on CO2 values at both endpoints
+ */
+export const getCO2SegmentColor = (context) => {
+  // Safety checks
+  if (!context || !context.dataset || !context.dataset.data) {
+    return appleModernColors.good
+  }
+  
+  const p0Index = context.p0DataIndex
+  const p1Index = context.p1DataIndex
+  const data = context.dataset.data
+  
+  // Check if indices are valid
+  if (p0Index === undefined || p1Index === undefined || 
+      p0Index < 0 || p1Index < 0 || 
+      p0Index >= data.length || p1Index >= data.length) {
+    return appleModernColors.good
+  }
+  
+  const v0 = data[p0Index]
+  const v1 = data[p1Index]
+  
+  // Check for null/undefined values
+  if (v0 === null || v0 === undefined || v1 === null || v1 === undefined) {
+    return appleModernColors.good
+  }
+  
+  // Use the worse (higher) value to determine segment color
+  const maxValue = Math.max(v0, v1)
+  
+  // Red for danger zone (>1500)
+  if (maxValue >= 1500) {
+    return appleModernColors.danger
+  }
+  
+  // Amber for moderate zone (1000-1500)
+  if (maxValue >= 1000) {
+    return appleModernColors.moderate
+  }
+  
+  // Green for good zone (<1000)
+  return appleModernColors.good
 }
 
 /**
@@ -60,21 +108,26 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
     datasets: [{
       label: 'CO₂ (ppm)',
       data: values,
-      borderColor: scifiColors.safe,
+      // Segment-based coloring: changes color based on CO2 levels
+      segment: {
+        borderColor: (ctx) => getCO2SegmentColor(ctx),
+      },
+      borderColor: appleModernColors.good, // Fallback color (green)
+      borderWidth: 2,
       backgroundColor: (context) => {
         const chart = context.chart
         const { ctx, chartArea } = chart
-        if (!chartArea) return 'rgba(0, 242, 234, 0.2)'
+        if (!chartArea) return 'rgba(16, 185, 129, 0.1)'
         const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
-        gradient.addColorStop(0, 'rgba(0, 242, 234, 0)')
-        gradient.addColorStop(1, 'rgba(0, 242, 234, 0.25)')
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0)')
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.15)')
         return gradient
       },
       fill: true,
       tension: 0.4,
       pointRadius: 0,
       pointHoverRadius: 6,
-      pointHoverBackgroundColor: scifiColors.safe,
+      pointHoverBackgroundColor: appleModernColors.good,
       pointHoverBorderColor: '#fff',
       pointHoverBorderWidth: 2,
     }]
@@ -119,13 +172,13 @@ export const buildClimateChartData = (data, bucket = '10min') => {
       {
         label: 'Temperature (°C)',
         data: tempValues,
-        borderColor: scifiColors.temperature,
-        backgroundColor: 'rgba(0, 242, 234, 0.05)',
+        borderColor: appleModernColors.accent,
+        backgroundColor: 'rgba(20, 184, 166, 0.05)',
         fill: false,
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 6,
-        pointHoverBackgroundColor: scifiColors.temperature,
+        pointHoverBackgroundColor: appleModernColors.accent,
         pointHoverBorderColor: '#fff',
         pointHoverBorderWidth: 2,
         yAxisID: 'y',
@@ -133,13 +186,13 @@ export const buildClimateChartData = (data, bucket = '10min') => {
       {
         label: 'Humidity (%)',
         data: humidityValues,
-        borderColor: scifiColors.humidity,
-        backgroundColor: 'rgba(255, 193, 7, 0.05)',
+        borderColor: appleModernColors.warning,
+        backgroundColor: 'rgba(245, 158, 11, 0.05)',
         fill: false,
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 6,
-        pointHoverBackgroundColor: scifiColors.humidity,
+        pointHoverBackgroundColor: appleModernColors.warning,
         pointHoverBorderColor: '#fff',
         pointHoverBorderWidth: 2,
         yAxisID: 'y1',
@@ -169,10 +222,10 @@ export const buildQualityChartData = (co2Quality) => {
     datasets: [{
       data: [good, moderate, high, critical],
       backgroundColor: [
-        '#10b981', // emerald
-        '#f59e0b', // amber
-        '#f97316', // orange
-        '#ef4444', // red
+        appleModernColors.good,        // #10B981 - green for <1000
+        appleModernColors.moderate,    // #F59E0B - amber for 1000-1500
+        appleModernColors.danger,      // #EF4444 - red for 1500-2000
+        appleModernColors.dangerDark,  // #DC2626 - dark red for 2000+
       ],
       borderColor: 'transparent',
       borderWidth: 0,
@@ -217,6 +270,10 @@ export const buildMiniCo2ChartData = (data) => {
     labels,
     datasets: [{
       data: values,
+      // Use segment coloring for mini charts with green-to-red gradient
+      segment: {
+        borderColor: (ctx) => getCO2SegmentColor(ctx),
+      },
       borderColor: lineColor,
       backgroundColor: 'transparent',
       fill: false,
@@ -244,7 +301,7 @@ export const hasValidChartData = (chartData) => {
 }
 
 /**
- * Common Chart.js options for dark theme
+ * Common Chart.js options for modern Apple aesthetic
  */
 export const getChartOptions = (type = 'line', options = {}) => {
   const baseOptions = {
@@ -259,7 +316,7 @@ export const getChartOptions = (type = 'line', options = {}) => {
         display: options.showLegend !== false,
         position: 'top',
         labels: {
-          color: scifiColors.text,
+          color: appleModernColors.textSecondary,
           usePointStyle: true,
           padding: 20,
           font: { size: 12 }
@@ -267,10 +324,10 @@ export const getChartOptions = (type = 'line', options = {}) => {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(26, 28, 41, 0.95)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: 'rgba(0, 242, 234, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.96)',
+        titleColor: appleModernColors.textPrimary,
+        bodyColor: appleModernColors.textSecondary,
+        borderColor: appleModernColors.grid,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -289,10 +346,10 @@ export const getChartOptions = (type = 'line', options = {}) => {
         },
         grid: {
           display: false,
-          color: scifiColors.grid,
+          color: appleModernColors.grid,
         },
         ticks: {
-          color: scifiColors.text,
+          color: appleModernColors.textSecondary,
           maxRotation: 0,
           autoSkip: true,
           maxTicksLimit: 8,
@@ -303,11 +360,11 @@ export const getChartOptions = (type = 'line', options = {}) => {
       },
       y: {
         grid: {
-          color: scifiColors.grid,
+          color: appleModernColors.grid,
           drawBorder: false,
         },
         ticks: {
-          color: scifiColors.text,
+          color: appleModernColors.textSecondary,
         },
         border: {
           display: false,
@@ -336,14 +393,14 @@ export const getClimateChartOptions = (options = {}) => {
         title: {
           display: true,
           text: 'Temperature (°C)',
-          color: scifiColors.temperature,
+          color: appleModernColors.accent,
         },
         grid: {
-          color: scifiColors.grid,
+          color: appleModernColors.grid,
           drawBorder: false,
         },
         ticks: {
-          color: scifiColors.temperature,
+          color: appleModernColors.accent,
         },
         border: {
           display: false,
@@ -356,13 +413,13 @@ export const getClimateChartOptions = (options = {}) => {
         title: {
           display: true,
           text: 'Humidity (%)',
-          color: scifiColors.humidity,
+          color: appleModernColors.warning,
         },
         grid: {
           drawOnChartArea: false,
         },
         ticks: {
-          color: scifiColors.humidity,
+          color: appleModernColors.warning,
         },
         border: {
           display: false,

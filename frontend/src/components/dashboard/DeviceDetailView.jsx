@@ -367,10 +367,10 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
           
           if (total > 0) {
             setQualityData({
-              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good', color: 'rgba(46, 125, 50, 0.9)' },
-              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Good', color: 'rgba(102, 187, 106, 0.85)' },
-              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Poor', color: 'rgba(255, 152, 0, 0.85)' },
-              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Very Poor', color: 'rgba(244, 67, 54, 0.9)' }
+              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good', color: '#10B981' },
+              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Good', color: '#F59E0B' },
+              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Poor', color: '#EF4444' },
+              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Very Poor', color: '#DC2626' }
             })
           } else {
             setQualityData(null)
@@ -501,16 +501,16 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
       legend: {
         position: 'right',
         labels: {
-          color: '#9ca3af',
+          color: '#586169',
           usePointStyle: true,
           padding: 20,
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(26, 28, 41, 0.95)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: 'rgba(0, 242, 234, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.96)',
+        titleColor: '#16181C',
+        bodyColor: '#586169',
+        borderColor: 'rgba(229, 231, 235, 0.5)',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
