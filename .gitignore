@@ -61,10 +61,22 @@ analysis/*.png
 firmware/config.h
 include/config.h
 CONNECTION_INFO.md
+**/config.h
+!**/config.h.example
+
+# Test files with credentials (DO NOT COMMIT)
+test_mqtt*.py
 
 # Frontend build
 frontend/node_modules/
 frontend/dist/
+
+# Frontend test artifacts
+frontend/playwright-report/
+frontend/test-results/
+frontend/*.png
+frontend/inspection-*.png
+frontend/connect-page-inspection.png
 
 # OS
 Thumbs.db
@@ -84,3 +96,4 @@ logs/
 
 # Documentation (not needed in repo)
 PROJECT_SPECIFICATIONS.txt
+CLEANUP_GIT_HISTORY.md

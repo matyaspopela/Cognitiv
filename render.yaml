@@ -31,7 +31,7 @@ services:
       - key: MQTT_USERNAME
         value: Mongo_puller
       - key: MQTT_PASSWORD
-        sync: false  # Set this in Render dashboard: espASS12
+        sync: false  # Set this in Render dashboard
       - key: MQTT_TOPIC
         value: sensors/esp_12s_school_1/data
 

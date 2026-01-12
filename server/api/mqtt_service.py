@@ -10,12 +10,19 @@ from django.http import JsonResponse
 import json
 import sys
 
-# MQTT Configuration
-MQTT_BROKER_HOST = os.getenv('MQTT_BROKER_HOST', 'fc716f4d434d4d7689ca16c9be2ebf2b.s1.eu.hivemq.cloud')
+# MQTT Configuration - All values MUST be set via environment variables
+MQTT_BROKER_HOST = os.getenv('MQTT_BROKER_HOST')
 MQTT_BROKER_PORT = int(os.getenv('MQTT_BROKER_PORT', '8883'))
-MQTT_USERNAME = os.getenv('MQTT_USERNAME', 'Mongo_puller')
-MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', 'espASS12')
-MQTT_TOPIC = os.getenv('MQTT_TOPIC', 'sensors/esp_12s_school_1/data')
+MQTT_USERNAME = os.getenv('MQTT_USERNAME')
+MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
+MQTT_TOPIC = os.getenv('MQTT_TOPIC')
+
+# Validate required environment variables
+_REQUIRED_MQTT_VARS = ['MQTT_BROKER_HOST', 'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_TOPIC']
+_MISSING_VARS = [var for var in _REQUIRED_MQTT_VARS if not os.getenv(var)]
+if _MISSING_VARS:
+    print(f"[WARN] MQTT environment variables not set: {', '.join(_MISSING_VARS)}")
+    print("       MQTT subscriber will not be available until these are configured.")
 
 # Global state
 _mqtt_thread = None

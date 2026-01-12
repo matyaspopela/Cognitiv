@@ -1,0 +1,63 @@
+// Configuration file template
+// Copy this to config.h and fill in your values
+// NEVER commit config.h to git!
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// WiFi Configuration
+// Set these as environment variables before building:
+//   Windows: set WIFI_SSID=YourNetworkName && set WIFI_PASSWORD=YourPassword
+//   Linux/Mac: export WIFI_SSID=YourNetworkName && export WIFI_PASSWORD=YourPassword
+#ifndef WIFI_SSID
+    #error "WIFI_SSID not defined! Set the WIFI_SSID environment variable before building."
+#endif
+#ifndef WIFI_PASSWORD
+    #error "WIFI_PASSWORD not defined! Set the WIFI_PASSWORD environment variable before building."
+#endif
+
+// MQTT Configuration
+// Replace with your HiveMQ Cloud credentials
+#define MQTT_BROKER_HOST "your-broker-id.s1.eu.hivemq.cloud"
+#define MQTT_BROKER_PORT 8883  // TLS port
+#define MQTT_USERNAME "your_mqtt_username"
+#define MQTT_PASSWORD "your_mqtt_password"
+#define MQTT_TOPIC "sensors/your_device/data"
+
+// Device ID (unique name for this sensor)
+#define DEVICE_ID "ESP8266_YOUR_ID"
+
+// Timezone (in seconds from UTC)
+// Examples: EST = -18000, CET = 3600, UTC = 0
+// Prague: CET (UTC+1) = 3600, CEST (UTC+2) = 7200 (3600 + 3600 daylight)
+#define GMT_OFFSET_SEC 3600
+#define DAYLIGHT_OFFSET_SEC 0
+
+// Reading interval (milliseconds)
+// 5000 = 5 seconds (testing), 30000 = 30 seconds, 60000 = 1 minute, 300000 = 5 minutes
+#define READING_INTERVAL_MS 10000
+
+// LED Configuration
+#define RED_LED_PIN 4  // GPIO4 - LED connected between this pin and GND
+
+// Voltage measurement configuration
+#define VOLTAGE_DIVIDER_RATIO 2.0
+
+// ===== DEEP SLEEP SCHEDULE =====
+// Board will enter deep sleep during these hours to save power
+// Set QUIET_HOURS_ENABLED to 1 to enable, 0 to disable
+#define QUIET_HOURS_ENABLED 1
+
+// Go to sleep time (24-hour format)
+#define GOTOSLEEP_TIME_HOUR 16
+#define GOTOSLEEP_TIME_MIN 0
+
+// Wake up time (24-hour format)
+#define WAKEUP_TIME_HOUR 7
+#define WAKEUP_TIME_MIN 50
+
+// Deep sleep check interval (microseconds)
+// 30 minutes = 30 * 60 * 1000000 = 1,800,000,000 microseconds
+#define QUIET_HOURS_SLEEP_DURATION_US 1800000000UL
+
+#endif
