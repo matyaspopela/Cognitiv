@@ -8,9 +8,8 @@ services:
       cd frontend && npm install && npm run build && cd ..
       pip install -r server/requirements.txt
       cd server && python manage.py collectstatic --noinput || true
-      chmod +x server/start.sh
     startCommand: |
-      cd server && bash start.sh
+      cd server && gunicorn cognitiv.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
