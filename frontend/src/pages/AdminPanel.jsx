@@ -7,12 +7,14 @@ import DataTable from '../components/ui/DataTable'
 import DeviceActionsMenu from '../components/admin/DeviceActionsMenu'
 import BoardAnalysisView from '../components/admin/BoardAnalysisView'
 import DeviceRenameModal from '../components/admin/DeviceRenameModal'
+import DeviceCustomizationModal from '../components/admin/DeviceCustomizationModal'
 
 const AdminPanel = () => {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedBoard, setSelectedBoard] = useState(null)
   const [renameDevice, setRenameDevice] = useState(null)
+  const [customizeDevice, setCustomizeDevice] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -92,6 +94,19 @@ const AdminPanel = () => {
     setRenameDevice(null)
   }
 
+  const handleCustomizeClick = (device) => {
+    setCustomizeDevice(device)
+  }
+
+  const handleCustomizeSuccess = () => {
+    loadDevices()
+    setCustomizeDevice(null)
+  }
+
+  const handleCloseCustomizeModal = () => {
+    setCustomizeDevice(null)
+  }
+
   const handleExportCSV = async (device) => {
     if (!device?.device_id) {
       console.error('Cannot export: missing device_id')
@@ -151,10 +166,31 @@ const AdminPanel = () => {
       align: 'right',
     },
     {
+      key: 'voltage',
+      label: 'Voltage',
+      align: 'right',
+    },
+    {
       key: 'lastSeen',
       label: 'Last Seen',
     },
   ]
+
+  // Format voltage helper function
+  const formatVoltage = (voltage) => {
+    if (voltage == null) return '—'
+    
+    const voltageNum = typeof voltage === 'string' 
+      ? parseFloat(voltage) 
+      : typeof voltage === 'number' 
+        ? voltage 
+        : null
+    
+    if (voltageNum != null && !isNaN(voltageNum) && isFinite(voltageNum)) {
+      return `${voltageNum.toFixed(2)}V`
+    }
+    return '—'
+  }
 
   // Transform devices to table data
   const tableData = devices.map((device) => ({
@@ -164,6 +200,7 @@ const AdminPanel = () => {
     location: device.mac_address || device.device_id || '—',
     co2: device.current_readings?.co2 != null ? `${Math.round(device.current_readings.co2)} ppm` : '—',
     temp: device.current_readings?.temperature != null ? `${Math.round(device.current_readings.temperature)}°C` : '—',
+    voltage: formatVoltage(device.current_readings?.voltage),
     lastSeen: device.last_seen || '—',
     device,
   }))
@@ -249,6 +286,7 @@ const AdminPanel = () => {
                         onRename={handleRenameClick}
                         onExport={handleExportCSV}
                         onDetails={handleDetailsClick}
+                        onCustomize={handleCustomizeClick}
                       />
                     )
                   }}
@@ -267,6 +305,14 @@ const AdminPanel = () => {
             device={renameDevice}
             onClose={handleCloseRenameModal}
             onRenameSuccess={handleRenameSuccess}
+          />
+        )}
+
+        {customizeDevice && (
+          <DeviceCustomizationModal
+            device={customizeDevice}
+            onClose={handleCloseCustomizeModal}
+            onCustomizeSuccess={handleCustomizeSuccess}
           />
         )}
       </div>

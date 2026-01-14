@@ -14,6 +14,8 @@ import {
 } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
 import 'chartjs-adapter-date-fns'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import { historyAPI, dataAPI, adminAPI } from '../../services/api'
 import {
   buildCo2ChartData,
@@ -40,10 +42,15 @@ ChartJS.register(
 import Card from '../ui/Card'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
-import Chip from '../ui/Chip'
-import TextField from '../ui/TextField'
 import ProgressBar from '../ui/ProgressBar'
+import { Calendar, Clock, CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react'
 import './BoardAnalysisView.css'
+
+// Fixed times for school day
+const START_TIME_HOURS = 7
+const START_TIME_MINUTES = 50
+const END_TIME_HOURS = 16
+const END_TIME_MINUTES = 0
 
 
 /**
@@ -66,6 +73,24 @@ const filterSeriesInRange = (series, startISO, endISO) => {
   })
 }
 
+// Helper to create date with fixed time
+const createDateWithTime = (date, hours, minutes) => {
+  if (!date) return null
+  const result = new Date(date)
+  result.setHours(hours, minutes, 0, 0)
+  return result
+}
+
+// Format date for display
+const formatDisplayDate = (date) => {
+  if (!date) return ''
+  return date.toLocaleDateString('en-GB', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric' 
+  })
+}
+
 /**
  * BoardAnalysisView Component
  * Comprehensive analysis section showing trend graphs, summary statistics,
@@ -80,12 +105,10 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   const [qualityPieChart, setQualityPieChart] = useState(null)
   const [error, setError] = useState('')
   const [selectedPreset, setSelectedPreset] = useState('30d')
-  const [timeRange, setTimeRange] = useState({
-    start: null,
-    end: null
-  })
+  const [startDate, setStartDate] = useState(null)
+  const [endDate, setEndDate] = useState(null)
   const [deviceName, setDeviceName] = useState(deviceId)
-  const [useRealTimeScale, setUseRealTimeScale] = useState(true)
+  const [useRealTimeScale, setUseRealTimeScale] = useState(false) // Off by default
 
   // Fetch device display name
   useEffect(() => {
@@ -119,45 +142,17 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     }
   }, [deviceId])
 
-  const formatDateForInput = (date) => {
-    if (!date) return ''
-    if (typeof date === 'string') return date
-    const pad = (n) => String(n).padStart(2, '0')
-    const year = date.getFullYear()
-    const month = pad(date.getMonth() + 1)
-    const day = pad(date.getDate())
-    const hours = pad(date.getHours())
-    const minutes = pad(date.getMinutes())
-    return `${year}-${month}-${day}T${hours}:${minutes}`
+  // Get ISO strings with fixed times for API calls
+  const getStartISO = () => {
+    if (!startDate) return null
+    const date = createDateWithTime(startDate, START_TIME_HOURS, START_TIME_MINUTES)
+    return date ? date.toISOString() : null
   }
 
-  const toISOStringOrNull = (value) => {
-    if (!value) return null
-    if (typeof value !== 'string' && !(value instanceof Date)) {
-      console.warn('Invalid date value type:', typeof value, value)
-      return null
-    }
-    try {
-      // Handle datetime-local format "YYYY-MM-DDTHH:mm" (no timezone)
-      // Create Date object which interprets it as local time
-      const date = new Date(value)
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date value (NaN):', value)
-        return null
-      }
-      // Validate date is reasonable (not too far in past/future)
-      const now = new Date()
-      const minDate = new Date(now.getTime() - 10 * 365 * 24 * 60 * 60 * 1000) // 10 years ago
-      const maxDate = new Date(now.getTime() + 1 * 365 * 24 * 60 * 60 * 1000) // 1 year in future
-      if (date < minDate || date > maxDate) {
-        console.warn('Date out of reasonable range:', value, date)
-        return null
-      }
-      return date.toISOString()
-    } catch (err) {
-      console.error('Date conversion error:', err, value)
-      return null
-    }
+  const getEndISO = () => {
+    if (!endDate) return null
+    const date = createDateWithTime(endDate, END_TIME_HOURS, END_TIME_MINUTES)
+    return date ? date.toISOString() : null
   }
 
   const applyPreset = (preset) => {
@@ -165,12 +160,10 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     
     if (preset === 'custom') {
       // For custom, ensure dates are initialized if they're not set
-      // Use current time range if available, otherwise default to 30 days
-      if (!timeRange.start || !timeRange.end) {
+      if (!startDate || !endDate) {
         const now = new Date()
-        const start = formatDateForInput(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
-        const end = formatDateForInput(now)
-        setTimeRange({ start, end })
+        setStartDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
+        setEndDate(now)
       }
       return
     }
@@ -195,9 +188,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         days = 30
     }
     
-    const start = formatDateForInput(new Date(now.getTime() - days * 24 * 60 * 60 * 1000))
-    const end = formatDateForInput(now)
-    setTimeRange({ start, end })
+    setStartDate(new Date(now.getTime() - days * 24 * 60 * 60 * 1000))
+    setEndDate(now)
   }
 
   // Initialize time range on mount (only if not already set)
@@ -205,15 +197,12 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     if (!deviceId) return
     
     // Only initialize if dates are not already set (preserves custom dates)
-    if (!timeRange.start || !timeRange.end) {
+    if (!startDate || !endDate) {
       const now = new Date()
-      const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
-      setTimeRange({
-        start: formatDateForInput(start),
-        end: formatDateForInput(now)
-      })
+      setStartDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
+      setEndDate(now)
     }
-  }, [deviceId]) // Only depend on deviceId, not timeRange to avoid resetting custom dates
+  }, [deviceId]) // Only depend on deviceId
 
   useEffect(() => {
     const loadAnalysisData = async () => {
@@ -221,7 +210,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         return
       }
       
-      if (!timeRange.start || !timeRange.end) {
+      if (!startDate || !endDate) {
         return
       }
 
@@ -235,19 +224,19 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       setSeries([])
 
       try {
-        const startIso = toISOStringOrNull(timeRange.start)
-        const endIso = toISOStringOrNull(timeRange.end)
+        const startIso = getStartISO()
+        const endIso = getEndISO()
 
         if (!startIso || !endIso) {
-          setError('Invalid date. Please check that both dates are correctly filled in.')
+          setError('Invalid date. Please check that both dates are selected.')
           setLoading(false)
           return
         }
 
         // Validate date range: start must be before end
-        const startDate = new Date(startIso)
-        const endDate = new Date(endIso)
-        if (startDate >= endDate) {
+        const startDateTime = new Date(startIso)
+        const endDateTime = new Date(endIso)
+        if (startDateTime >= endDateTime) {
           setError('Start date must be earlier than end date.')
           setLoading(false)
           return
@@ -274,8 +263,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         }
 
         // Try series with appropriate bucket based on time range
-        // Calculate time difference in days (reuse startDate and endDate from validation above)
-        const daysDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        // Calculate time difference in days
+        const daysDiff = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60 * 24)
         
         // Choose bucket: raw data for <= 30 days, hourly aggregation for > 30 days
         const bucket = daysDiff <= 30 ? 'raw' : 'hour'
@@ -307,8 +296,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         // Fallback: If history API failed, try dataAPI (similar to Dashboard)
         if (!seriesLoaded) {
           try {
-            // Calculate hours from the actual time range (reuse startDate and endDate from validation above)
-            const hoursDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60))
+            // Calculate hours from the actual time range
+            const hoursDiff = Math.ceil((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60))
             // Cap at reasonable limit for dataAPI (it's less efficient than history API)
             const hours = Math.max(1, Math.min(hoursDiff, 30 * 24)) // Cap at 30 days, min 1 hour
             const dataResponse = await dataAPI.getData(hours, 1000, deviceId)
@@ -397,7 +386,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
           message: errorMessage,
           response: error?.response,
           deviceId,
-          timeRange
+          startDate,
+          endDate
         })
         setError(errorMessage)
       } finally {
@@ -406,7 +396,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     }
 
     loadAnalysisData()
-  }, [deviceId, timeRange.start, timeRange.end, useRealTimeScale])
+  }, [deviceId, startDate, endDate, useRealTimeScale])
 
   const safeValue = (value) => {
     return value === undefined || value === null || Number.isNaN(value) ? '–' : value
@@ -419,18 +409,18 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     }
 
     try {
-      const startIso = toISOStringOrNull(timeRange.start)
-      const endIso = toISOStringOrNull(timeRange.end)
+      const startIso = getStartISO()
+      const endIso = getEndISO()
 
       if (!startIso || !endIso) {
-        setError('Cannot export: invalid date. Please check that both dates are correctly filled in.')
+        setError('Cannot export: invalid date. Please select both dates.')
         return
       }
 
       // Validate date range
-      const startDate = new Date(startIso)
-      const endDate = new Date(endIso)
-      if (startDate >= endDate) {
+      const startDateTime = new Date(startIso)
+      const endDateTime = new Date(endIso)
+      if (startDateTime >= endDateTime) {
         setError('Cannot export: start date must be earlier than end date.')
         return
       }
@@ -445,8 +435,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       
       // Generate filename with device name and date range
       const deviceNameSafe = (deviceName || deviceId).replace(/[^a-z0-9]/gi, '_').toLowerCase()
-      const startStr = startDate.toISOString().split('T')[0]
-      const endStr = endDate.toISOString().split('T')[0]
+      const startStr = startDateTime.toISOString().split('T')[0]
+      const endStr = endDateTime.toISOString().split('T')[0]
       link.download = `cognitiv_${deviceNameSafe}_${startStr}_to_${endStr}.csv`
       
       document.body.appendChild(link)
@@ -474,7 +464,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             variant="filled" 
             size="medium" 
             onClick={handleExportCSV}
-            disabled={!timeRange.start || !timeRange.end}
+            disabled={!startDate || !endDate}
             title="Export data to CSV"
           >
             📥 Export CSV
@@ -488,41 +478,153 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       {/* Time Range Selection */}
       <Card className="board-analysis-view__time-range-card" elevation={1}>
         <div className="board-analysis-view__time-range">
-          <div className="board-analysis-view__time-presets">
-            <span className="board-analysis-view__time-label">Period:</span>
-            {['1d', '7d', '30d', '90d', 'custom'].map((preset) => (
-              <Chip
-                key={preset}
-                selected={selectedPreset === preset}
-                onClick={() => applyPreset(preset)}
-                className="board-analysis-view__time-preset-chip"
-              >
-                {preset === 'custom' ? 'Custom' : preset}
-              </Chip>
-            ))}
+          <div className="board-analysis-view__time-header">
+            <div className="board-analysis-view__time-header-content">
+              <Clock size={20} className="board-analysis-view__time-icon" />
+              <span className="board-analysis-view__time-label">Time Period</span>
+            </div>
+            {startDate && endDate && (
+              <div className="board-analysis-view__time-display">
+                <Calendar size={14} />
+                <span className="board-analysis-view__time-display-text">
+                  {formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}
+                </span>
+              </div>
+            )}
           </div>
+          
+          <div className="board-analysis-view__time-presets">
+            {[
+              { value: '1d', label: '1 Day', icon: Calendar },
+              { value: '7d', label: '7 Days', icon: Calendar },
+              { value: '30d', label: '30 Days', icon: Calendar },
+              { value: '90d', label: '90 Days', icon: Calendar },
+              { value: 'custom', label: 'Custom', icon: CalendarRange }
+            ].map((preset) => {
+              const IconComponent = preset.icon
+              return (
+                <button
+                  key={preset.value}
+                  className={`board-analysis-view__time-preset-button ${
+                    selectedPreset === preset.value ? 'board-analysis-view__time-preset-button--active' : ''
+                  }`}
+                  onClick={() => applyPreset(preset.value)}
+                  aria-pressed={selectedPreset === preset.value}
+                >
+                  <IconComponent size={16} className="board-analysis-view__time-preset-icon" />
+                  <span className="board-analysis-view__time-preset-label">{preset.label}</span>
+                </button>
+              )
+            })}
+          </div>
+          
           {selectedPreset === 'custom' && (
             <div className="board-analysis-view__time-custom">
-              <TextField
-                type="datetime-local"
-                label="From"
-                value={timeRange.start || ''}
-                onChange={(e) => {
-                  setTimeRange(prev => ({ ...prev, start: e.target.value }))
-                }}
-                className="board-analysis-view__time-input"
-                fullWidth
-              />
-              <TextField
-                type="datetime-local"
-                label="To"
-                value={timeRange.end || ''}
-                onChange={(e) => {
-                  setTimeRange(prev => ({ ...prev, end: e.target.value }))
-                }}
-                className="board-analysis-view__time-input"
-                fullWidth
-              />
+              <div className="board-analysis-view__time-custom-header">
+                <CalendarRange size={18} className="board-analysis-view__time-custom-icon" />
+                <span className="board-analysis-view__time-custom-label">Select Date Range</span>
+                <span className="board-analysis-view__time-custom-note">
+                  (7:50 AM - 4:00 PM)
+                </span>
+              </div>
+              <div className="board-analysis-view__date-picker-row">
+                <div className="board-analysis-view__date-picker-group">
+                  <label className="board-analysis-view__date-picker-label">Start Date</label>
+                  <DatePicker
+                    selected={startDate}
+                    onChange={(date) => setStartDate(date)}
+                    selectsStart
+                    startDate={startDate}
+                    endDate={endDate}
+                    maxDate={endDate || new Date()}
+                    dateFormat="dd MMM yyyy"
+                    placeholderText="Select start date"
+                    className="board-analysis-view__date-picker-input"
+                    calendarClassName="board-analysis-view__calendar"
+                    popperClassName="board-analysis-view__date-picker-popper"
+                    renderCustomHeader={({
+                      date,
+                      decreaseMonth,
+                      increaseMonth,
+                      prevMonthButtonDisabled,
+                      nextMonthButtonDisabled,
+                    }) => (
+                      <div className="board-analysis-view__calendar-header">
+                        <button
+                          onClick={decreaseMonth}
+                          disabled={prevMonthButtonDisabled}
+                          className="board-analysis-view__calendar-nav"
+                          type="button"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <span className="board-analysis-view__calendar-month">
+                          {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button
+                          onClick={increaseMonth}
+                          disabled={nextMonthButtonDisabled}
+                          className="board-analysis-view__calendar-nav"
+                          type="button"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    )}
+                  />
+                </div>
+                
+                <div className="board-analysis-view__date-picker-separator">
+                  <span>→</span>
+                </div>
+                
+                <div className="board-analysis-view__date-picker-group">
+                  <label className="board-analysis-view__date-picker-label">End Date</label>
+                  <DatePicker
+                    selected={endDate}
+                    onChange={(date) => setEndDate(date)}
+                    selectsEnd
+                    startDate={startDate}
+                    endDate={endDate}
+                    minDate={startDate}
+                    maxDate={new Date()}
+                    dateFormat="dd MMM yyyy"
+                    placeholderText="Select end date"
+                    className="board-analysis-view__date-picker-input"
+                    calendarClassName="board-analysis-view__calendar"
+                    popperClassName="board-analysis-view__date-picker-popper"
+                    renderCustomHeader={({
+                      date,
+                      decreaseMonth,
+                      increaseMonth,
+                      prevMonthButtonDisabled,
+                      nextMonthButtonDisabled,
+                    }) => (
+                      <div className="board-analysis-view__calendar-header">
+                        <button
+                          onClick={decreaseMonth}
+                          disabled={prevMonthButtonDisabled}
+                          className="board-analysis-view__calendar-nav"
+                          type="button"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <span className="board-analysis-view__calendar-month">
+                          {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button
+                          onClick={increaseMonth}
+                          disabled={nextMonthButtonDisabled}
+                          className="board-analysis-view__calendar-nav"
+                          type="button"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -609,6 +711,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                   <Line 
                     data={co2Chart} 
                     options={getChartOptions('line', {
+                      useRealTimeScale,
                       plugins: {
                         tooltip: {
                           callbacks: {
@@ -630,7 +733,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               </div>
               <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
                 {climateChart ? (
-                  <Line data={climateChart} options={getClimateChartOptions()} />
+                  <Line data={climateChart} options={getClimateChartOptions({ useRealTimeScale })} />
                 ) : (
                   <div className="board-analysis-view__empty">No data to display</div>
                 )}

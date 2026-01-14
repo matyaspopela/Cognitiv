@@ -17,6 +17,7 @@ const Select = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [focused, setFocused] = useState(false)
+  const [openAbove, setOpenAbove] = useState(false)
   const selectRef = useRef(null)
   const dropdownRef = useRef(null)
 
@@ -51,6 +52,21 @@ const Select = ({
     }
   }, [isOpen])
 
+  // Calculate dropdown position when opened
+  useEffect(() => {
+    if (isOpen && selectRef.current) {
+      const rect = selectRef.current.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const dropdownHeight = Math.min(options.length * 44 + 16, 300) // Approximate height
+      
+      // Check if dropdown would go below viewport
+      const wouldOverflowBottom = rect.bottom + dropdownHeight + 8 > viewportHeight
+      const hasSpaceAbove = rect.top > dropdownHeight + 8
+      
+      setOpenAbove(wouldOverflowBottom && hasSpaceAbove)
+    }
+  }, [isOpen, options.length])
+
   const handleToggle = () => {
     if (!disabled) {
       setIsOpen(!isOpen)
@@ -75,7 +91,7 @@ const Select = ({
     <div className={`md3-select ${fullWidth ? 'md3-select--full-width' : ''} ${className}`}>
       <div
         ref={selectRef}
-        className={`md3-select__container ${focused || isOpen ? 'md3-select__container--focused' : ''} ${error ? 'md3-select__container--error' : ''} ${disabled ? 'md3-select__container--disabled' : ''} ${isOpen ? 'md3-select__container--open' : ''}`}
+        className={`md3-select__container ${focused || isOpen ? 'md3-select__container--focused' : ''} ${error ? 'md3-select__container--error' : ''} ${disabled ? 'md3-select__container--disabled' : ''} ${isOpen ? (openAbove ? 'md3-select__container--open-above' : 'md3-select__container--open') : ''}`}
         onClick={handleToggle}
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -118,7 +134,7 @@ const Select = ({
         </label>
       )}
       {isOpen && (
-        <div ref={dropdownRef} className="md3-select__dropdown">
+        <div ref={dropdownRef} className={`md3-select__dropdown ${openAbove ? 'md3-select__dropdown--above' : ''}`}>
           <div className="md3-select__dropdown-content">
             {options.map((option, index) => {
               const optionValue = typeof option === 'string' ? option : option.value

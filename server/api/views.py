@@ -1995,6 +1995,8 @@ def admin_devices(request):
                     'mac_address': mac,
                     'display_name': entry.get('display_name', mac),
                     'device_id': latest_doc.get('device_id') if latest_doc else entry.get('legacy_device_id'),
+                    'class': entry.get('class', ''),
+                    'school': entry.get('school', ''),
                     'status': status,
                     'total_data_points': total_count,
                     'last_seen': last_seen,
@@ -2084,6 +2086,106 @@ def admin_rename_device(request, mac_address):
         return JsonResponse({
             'status': 'error',
             'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_customize_device(request, mac_address):
+    """Customize device by MAC address - update name, class, and school"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        display_name = (data.get('display_name') or '').strip()
+        class_name = (data.get('class') or '').strip()
+        school = (data.get('school') or '').strip()
+        
+        if not display_name:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Name is required'
+            }, status=400)
+        
+        if len(display_name) > 100:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Name must not exceed 100 characters'
+            }, status=400)
+        
+        if len(class_name) > 50:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Class must not exceed 50 characters'
+            }, status=400)
+        
+        if len(school) > 100:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'School must not exceed 100 characters'
+            }, status=400)
+        
+        mac_normalized = normalize_mac_address(mac_address)
+        registry = get_registry_collection()
+        
+        update_data = {
+            '$set': {
+                'display_name': display_name,
+                'updated_at': datetime.now(UTC)
+            }
+        }
+        
+        # Add class if provided, otherwise unset it
+        if class_name:
+            update_data['$set']['class'] = class_name
+        else:
+            if '$unset' not in update_data:
+                update_data['$unset'] = {}
+            update_data['$unset']['class'] = ''
+        
+        # Add school if provided, otherwise unset it
+        if school:
+            update_data['$set']['school'] = school
+        else:
+            if '$unset' not in update_data:
+                update_data['$unset'] = {}
+            update_data['$unset']['school'] = ''
+        
+        result = registry.update_one(
+            {'mac_address': mac_normalized},
+            update_data
+        )
+        
+        if result.matched_count == 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Device not found'
+            }, status=404)
+        
+        # Get updated entry
+        updated_entry = registry.find_one({'mac_address': mac_normalized})
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Device customized successfully',
+            'mac_address': mac_normalized,
+            'display_name': display_name,
+            'class': updated_entry.get('class', ''),
+            'school': updated_entry.get('school', '')
+        }, status=200)
+    except ValueError as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Invalid MAC address: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
         }, status=500)
 
 

@@ -155,6 +155,10 @@ export const adminAPI = {
       display_name: displayName
     })
   },
+
+  customizeDevice: async (macAddress, customization) => {
+    return apiClient.post(`/admin/devices/${macAddress}/customize`, customization)
+  },
 }
 
 // AI Assistant API

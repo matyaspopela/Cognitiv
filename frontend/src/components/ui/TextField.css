@@ -92,7 +92,7 @@
 .md3-text-field__label--floating {
   top: 4px;
   transform: translateY(0) scale(0.875);
-  color: rgb(96, 165, 250); /* blue-400 */
+  color: rgb(161, 161, 170); /* zinc-400 */
   font-weight: 500;
   background: rgba(0, 0, 0, 0.2); /* Match container background */
   padding: 0 4px;

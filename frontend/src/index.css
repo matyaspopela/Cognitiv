@@ -127,9 +127,7 @@ a:hover {
     text-transform: uppercase;
     color: rgb(113, 113, 122); /* zinc-500 */
   }
-}
-
-/* Circular progress indeterminate animation */
+}/* Circular progress indeterminate animation */
 @keyframes circular-progress-indeterminate {
   0% { stroke-dashoffset: 40; }
   50% { stroke-dashoffset: 10; }

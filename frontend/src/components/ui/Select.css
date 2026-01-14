@@ -46,6 +46,13 @@
   border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
 }
 
+.md3-select__container--open-above {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: var(--md3-border-radius-lg);
+  border-bottom-right-radius: var(--md3-border-radius-lg);
+}
+
 .md3-select__container--error {
   border-color: var(--md3-color-error-500);
 }
@@ -117,7 +124,7 @@
 .md3-select__label--floating {
   top: var(--md3-spacing-2);
   transform: translateY(0) scale(0.85);
-  color: #60a5fa; /* blue-400 */
+  color: rgb(161, 161, 170); /* zinc-400 */
   font-weight: var(--md3-font-weight-medium);
 }
 
@@ -172,6 +179,29 @@
   from {
     opacity: 0;
     transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Position above when near bottom of viewport */
+.md3-select__dropdown--above {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: -1px;
+  border-top: 1px solid rgba(96, 165, 250, 0.3);
+  border-bottom: none;
+  border-radius: var(--md3-border-radius-lg) var(--md3-border-radius-lg) 0 0;
+  animation: slideUp var(--md3-animation-normal) var(--md3-easing-ease);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
   to {
     opacity: 1;

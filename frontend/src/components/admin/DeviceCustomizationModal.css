@@ -1,0 +1,53 @@
+.device-customization-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--md3-color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.device-customization-modal {
+  min-width: 400px;
+  max-width: 500px;
+  padding: 24px;
+}
+
+.device-customization-modal h2 {
+  margin: 0 0 24px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.device-customization-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.device-customization-modal-error {
+  padding: 12px;
+  background-color: #fee;
+  color: #c33;
+  border-radius: var(--md3-border-radius-xs);
+  font-size: 0.875rem;
+}
+
+.device-customization-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .device-customization-modal {
+    min-width: auto;
+    width: calc(100% - 32px);
+    margin: 16px;
+  }
+}

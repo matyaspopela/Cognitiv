@@ -302,8 +302,65 @@ export const hasValidChartData = (chartData) => {
 
 /**
  * Common Chart.js options for modern Apple aesthetic
+ * @param {string} type - Chart type ('line', 'doughnut', etc.)
+ * @param {Object} options - Custom options to merge
+ * @param {boolean} options.useRealTimeScale - If true, use time scale; if false, use category scale (evenly spaced)
  */
 export const getChartOptions = (type = 'line', options = {}) => {
+  const useTimeScale = options.useRealTimeScale === true // Default to false (evenly spaced)
+  
+  const xAxisConfig = useTimeScale ? {
+    type: 'time',
+    time: {
+      displayFormats: {
+        hour: 'HH:mm',
+        day: 'MMM d',
+        week: 'MMM d',
+      }
+    },
+    grid: {
+      display: false,
+      color: appleModernColors.grid,
+    },
+    ticks: {
+      color: appleModernColors.textSecondary,
+      maxRotation: 0,
+      autoSkip: true,
+      maxTicksLimit: 8,
+    },
+    border: {
+      display: false,
+    }
+  } : {
+    type: 'category',
+    grid: {
+      display: false,
+      color: appleModernColors.grid,
+    },
+    ticks: {
+      color: appleModernColors.textSecondary,
+      maxRotation: 45,
+      autoSkip: true,
+      maxTicksLimit: 10,
+      callback: function(value, index) {
+        // Format category labels as time strings
+        const label = this.getLabelForValue(value)
+        if (label instanceof Date) {
+          return label.toLocaleString('en-GB', { 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })
+        }
+        return label
+      }
+    },
+    border: {
+      display: false,
+    }
+  }
+
   const baseOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -335,29 +392,7 @@ export const getChartOptions = (type = 'line', options = {}) => {
       }
     },
     scales: type !== 'doughnut' ? {
-      x: {
-        type: 'time',
-        time: {
-          displayFormats: {
-            hour: 'HH:mm',
-            day: 'MMM d',
-            week: 'MMM d',
-          }
-        },
-        grid: {
-          display: false,
-          color: appleModernColors.grid,
-        },
-        ticks: {
-          color: appleModernColors.textSecondary,
-          maxRotation: 0,
-          autoSkip: true,
-          maxTicksLimit: 8,
-        },
-        border: {
-          display: false,
-        }
-      },
+      x: xAxisConfig,
       y: {
         grid: {
           color: appleModernColors.grid,
@@ -373,12 +408,14 @@ export const getChartOptions = (type = 'line', options = {}) => {
     } : undefined
   }
 
-  // Merge with custom options
-  return { ...baseOptions, ...options }
+  // Merge with custom options (excluding useRealTimeScale which is internal)
+  const { useRealTimeScale: _, ...restOptions } = options
+  return { ...baseOptions, ...restOptions }
 }
 
 /**
  * Get climate chart options with dual Y axes
+ * @param {Object} options - Custom options including useRealTimeScale
  */
 export const getClimateChartOptions = (options = {}) => {
   const base = getChartOptions('line', options)
