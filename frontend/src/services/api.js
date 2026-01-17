@@ -122,17 +122,6 @@ export const historyAPI = {
   },
 }
 
-// Connect API
-export const connectAPI = {
-  uploadFirmware: async (boardName, ssid, password) => {
-    return apiClient.post('/connect/upload', {
-      boardName,
-      ssid,
-      password,
-    })
-  },
-}
-
 // Admin API
 export const adminAPI = {
   login: async (username, password) => {

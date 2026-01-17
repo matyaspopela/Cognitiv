@@ -23,16 +23,22 @@ services:
         sync: false  # Set this in Render dashboard
       - key: LOCAL_TIMEZONE
         value: Europe/Prague
-      # MQTT Configuration (for subscriber running in background)
+      # MQTT Broker (shared)
       - key: MQTT_BROKER_HOST
         value: fc716f4d434d4d7689ca16c9be2ebf2b.s1.eu.hivemq.cloud
       - key: MQTT_BROKER_PORT
         value: "8883"
+      - key: MQTT_TOPIC
+        value: sensors/esp_12s_school_1/data
+      # MQTT Subscribe credentials (for Django server to receive messages)
       - key: MQTT_USERNAME
         value: Mongo_puller
       - key: MQTT_PASSWORD
         sync: false  # Set this in Render dashboard
-      - key: MQTT_TOPIC
-        value: sensors/esp_12s_school_1/data
+      # MQTT Publish credentials (for OTA firmware upload feature)
+      - key: MQTT_PUBLISH_USERNAME
+        value: esp_12s_school_1
+      - key: MQTT_PUBLISH_PASSWORD
+        sync: false  # Set this in Render dashboard
 
 

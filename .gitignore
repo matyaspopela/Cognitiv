@@ -89,6 +89,7 @@ logs/
 # Environment variables
 .env
 .env.local
+set-env.ps1
 
 # Backup files
 *.bak

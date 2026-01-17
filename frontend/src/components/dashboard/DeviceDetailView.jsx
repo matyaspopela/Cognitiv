@@ -113,9 +113,9 @@ const NumericalValues = ({ deviceId, timeWindow }) => {
   return (
     <Card className="numerical-values">
       <div className="numerical-values__content">
-        <div className="numerical-values__item">
+        <div className="numerical-values__item numerical-values__item--co2">
           <span className="numerical-values__label">CO₂:</span>
-          <span className="numerical-values__value">
+          <span className="numerical-values__value numerical-values__value--co2">
             {values?.co2 !== null && values?.co2 !== undefined
               ? `${Math.round(values.co2)} ppm`
               : '--'}
@@ -367,10 +367,10 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
           
           if (total > 0) {
             setQualityData({
-              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good', color: '#10B981' },
-              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Good', color: '#F59E0B' },
-              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Poor', color: '#EF4444' },
-              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Very Poor', color: '#DC2626' }
+              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good (< 1000 ppm)', color: '#10B981' },
+              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Good (1000-1500 ppm)', color: '#F59E0B' },
+              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Poor (1500-2000 ppm)', color: '#EF4444' },
+              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Very Poor (2000+ ppm)', color: '#DC2626' }
             })
           } else {
             setQualityData(null)
@@ -514,6 +514,15 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
+        callbacks: {
+          label: (context) => {
+            const label = context.label || ''
+            const value = context.parsed || 0
+            const total = context.dataset.data.reduce((a, b) => a + b, 0)
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+            return `${label}: ${percentage}%`
+          }
+        }
       }
     }
   }

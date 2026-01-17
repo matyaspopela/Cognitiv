@@ -139,6 +139,12 @@ def start_mqtt_subscriber():
     """Start MQTT subscriber in background thread"""
     global _mqtt_thread
     
+    # Check if all required variables are set before starting
+    if _MISSING_VARS:
+        print(f'[SKIP] MQTT subscriber not started: missing variables {", ".join(_MISSING_VARS)}')
+        print('       Set these environment variables to enable MQTT subscriber.')
+        return
+    
     # Only start if not already running
     if _mqtt_thread is not None and _mqtt_thread.is_alive():
         print('MQTT subscriber already running')

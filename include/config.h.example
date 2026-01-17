@@ -1,14 +1,13 @@
 // Configuration file template
-// Copy this to config.h and fill in your values
+// All credentials are set via environment variables in .env file
+// PlatformIO reads them at build time - see platformio.ini
 // NEVER commit config.h to git!
 
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// WiFi Configuration
-// Set these as environment variables before building:
-//   Windows: set WIFI_SSID=YourNetworkName && set WIFI_PASSWORD=YourPassword
-//   Linux/Mac: export WIFI_SSID=YourNetworkName && export WIFI_PASSWORD=YourPassword
+// ===== WiFi Configuration =====
+// Set via environment variables: WIFI_SSID, WIFI_PASSWORD
 #ifndef WIFI_SSID
     #error "WIFI_SSID not defined! Set the WIFI_SSID environment variable before building."
 #endif
@@ -16,13 +15,23 @@
     #error "WIFI_PASSWORD not defined! Set the WIFI_PASSWORD environment variable before building."
 #endif
 
-// MQTT Configuration
-// Replace with your HiveMQ Cloud credentials
-#define MQTT_BROKER_HOST "your-broker-id.s1.eu.hivemq.cloud"
-#define MQTT_BROKER_PORT 8883  // TLS port
-#define MQTT_USERNAME "your_mqtt_username"
-#define MQTT_PASSWORD "your_mqtt_password"
-#define MQTT_TOPIC "sensors/your_device/data"
+// ===== MQTT Configuration =====
+// Set via environment variables: MQTT_BROKER_HOST, MQTT_PUBLISH_USERNAME, MQTT_PUBLISH_PASSWORD, MQTT_TOPIC
+// MQTT_BROKER_PORT is hardcoded to 8883 (TLS) in platformio.ini
+// Uses PUBLISH credentials (esp_12s_school_1) - the server uses SUBSCRIBE credentials (Mongo_puller)
+#ifndef MQTT_BROKER_HOST
+    #error "MQTT_BROKER_HOST not defined! Set the MQTT_BROKER_HOST environment variable before building."
+#endif
+// MQTT_BROKER_PORT is hardcoded to 8883 (TLS) in platformio.ini
+#ifndef MQTT_USERNAME
+    #error "MQTT_USERNAME not defined! Set the MQTT_PUBLISH_USERNAME environment variable before building."
+#endif
+#ifndef MQTT_PASSWORD
+    #error "MQTT_PASSWORD not defined! Set the MQTT_PUBLISH_PASSWORD environment variable before building."
+#endif
+#ifndef MQTT_TOPIC
+    #error "MQTT_TOPIC not defined! Set the MQTT_TOPIC environment variable before building."
+#endif
 
 // Device ID (unique name for this sensor)
 #define DEVICE_ID "ESP8266_YOUR_ID"

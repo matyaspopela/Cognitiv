@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { LayoutDashboard, Smartphone, Link2, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Smartphone, Settings, LogOut, Menu, X } from 'lucide-react'
 import './Sidebar.css'
 
 const Sidebar = () => {
@@ -23,8 +23,7 @@ const Sidebar = () => {
 
   // Admin-only navigation items
   const adminNavItems = [
-    { path: '/connect', label: 'Connect', icon: Link2 },
-    { path: '/admin', label: 'Settings', icon: Settings },
+    { path: '/admin', label: 'Management', icon: Settings },
   ]
 
   const isActive = (path) => {

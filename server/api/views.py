@@ -8,6 +8,7 @@ import json
 import csv
 import re
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote_plus, urlparse, urlunparse, parse_qs, urlencode
 from django.http import JsonResponse, HttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -29,10 +30,108 @@ from board_manager import (
     upload_firmware,
 )
 
-# Configuration
-MONGO_URI = os.getenv('MONGO_URI')
-MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'cognitiv')
-MONGO_COLLECTION_NAME = os.getenv('MONGO_COLLECTION', 'sensor_data')
+# Configuration - Use functions to read env vars lazily (after .env is loaded)
+def get_mongo_uri():
+    """Get MONGO_URI from environment, ensuring .env is loaded first and properly formatted"""
+    uri = os.getenv('MONGO_URI')
+    
+    # Always try to load .env from project root (in case it wasn't loaded in settings.py)
+    # Use override=True to ensure .env values take precedence for local development
+    try:
+        from dotenv import load_dotenv
+        from pathlib import Path
+        # Calculate path to root .env file: server/api/views.py -> root/.env
+        env_path = Path(__file__).resolve().parent.parent.parent / '.env'
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            # Re-read after loading
+            uri = os.getenv('MONGO_URI') or uri
+            print(f"[DEBUG] Loaded MONGO_URI from {env_path}")
+        else:
+            print(f"[DEBUG] .env file not found at {env_path}")
+    except ImportError:
+        pass
+    except Exception as e:
+        print(f"[WARN] Error loading .env file: {e}")
+    
+    if not uri:
+        return None
+    
+    # Clean up common issues with connection strings
+    uri = uri.strip()
+    # Remove trailing whitespace or newlines
+    uri = uri.rstrip('\n\r\t ')
+    
+    # Parse and reconstruct URI to ensure proper encoding
+    try:
+        # Handle credentials that might not be properly encoded
+        # MongoDB URI format: mongodb[+srv]://[username:password@]host[:port][/database][?options]
+        parsed = urlparse(uri)
+        
+        # If the URI has credentials, ensure they're properly encoded
+        if parsed.username or parsed.password:
+            # Username and password from urlparse are already URL-decoded
+            # Re-encode them properly using quote_plus to handle special characters
+            # This ensures passwords with special chars like @, #, /, etc. are correctly encoded
+            username_encoded = quote_plus(parsed.username) if parsed.username else ''
+            password_encoded = quote_plus(parsed.password) if parsed.password else ''
+            
+            # Reconstruct netloc with properly encoded credentials
+            if username_encoded:
+                netloc = f"{username_encoded}:{password_encoded}@{parsed.hostname}"
+            else:
+                netloc = parsed.hostname
+                
+            if parsed.port:
+                netloc += f":{parsed.port}"
+            
+            # Reconstruct URI with encoded credentials
+            uri = urlunparse((
+                parsed.scheme,
+                netloc,
+                parsed.path or '/',
+                parsed.params,
+                parsed.query,
+                parsed.fragment
+            ))
+        else:
+            # No credentials, just ensure netloc is correct
+            netloc = parsed.hostname or ''
+            if parsed.port:
+                netloc += f":{parsed.port}"
+            uri = urlunparse((
+                parsed.scheme,
+                netloc,
+                parsed.path or '/',
+                parsed.params,
+                parsed.query,
+                parsed.fragment
+            ))
+        
+        # Ensure it ends with / if it's a mongodb+srv:// connection and no path/query
+        if uri.startswith('mongodb+srv://'):
+            # Only add trailing slash if there's no path or path is just '/', and no query string
+            if not parsed.query:
+                if not parsed.path or parsed.path == '/':
+                    if not uri.endswith('/'):
+                        uri = uri.rstrip('/') + '/'
+        
+    except Exception as e:
+        # If parsing fails, use original URI with basic cleanup
+        # This might happen if the URI format is unusual
+        print(f"[WARN] Could not parse MongoDB URI: {e}")
+        print(f"[WARN] Using URI as-is with basic cleanup")
+        if uri.startswith('mongodb+srv://') and not uri.endswith('/') and '?' not in uri:
+            uri = uri + '/'
+    
+    return uri
+
+def get_mongo_db_name():
+    return os.getenv('MONGO_DB_NAME', 'cognitiv')
+
+def get_mongo_collection_name():
+    return os.getenv('MONGO_COLLECTION', 'sensor_data')
+
 LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
 
 CO2_GOOD_MAX = 1000
@@ -63,30 +162,110 @@ UTC = timezone.utc
 
 
 def init_mongo_client():
-    if not MONGO_URI:
+    mongo_uri = get_mongo_uri()
+    mongo_db_name = get_mongo_db_name()
+    mongo_collection_name = get_mongo_collection_name()
+    
+    if not mongo_uri:
         raise RuntimeError(
             "Proměnná prostředí MONGO_URI musí být nastavena. "
             "Zadejte platný připojovací řetězec MongoDB (např. v administraci Renderu)."
         )
+    
+    # Debug: Print connection info (mask password) and show source
+    uri_display = mongo_uri.split('@')[0] + '@***' if '@' in mongo_uri else mongo_uri[:50] + '...'
+    
+    # Check if MONGO_URI is from environment or .env
+    from pathlib import Path
+    env_path = Path(__file__).resolve().parent.parent.parent / '.env'
+    env_source = "environment variable"
+    if env_path.exists():
+        try:
+            from dotenv import dotenv_values
+            env_vars = dotenv_values(env_path)
+            if 'MONGO_URI' in env_vars:
+                env_source = f".env file at {env_path}"
+        except:
+            pass
+    
+    print(f"[DEBUG] MongoDB URI source: {env_source}")
+    print(f"[DEBUG] Connecting to MongoDB: {uri_display}")
+    print(f"[DEBUG] Database: {mongo_db_name}, Collection: {mongo_collection_name}")
+    
+    # Validate connection string format
+    if not mongo_uri.startswith(('mongodb://', 'mongodb+srv://')):
+        raise ValueError(
+            "MONGO_URI must start with 'mongodb://' or 'mongodb+srv://'\n"
+            f"Current format: {mongo_uri[:30]}..."
+        )
+    
+    # Extract cluster name for better error messages
+    cluster_name = None
+    if '@' in mongo_uri and '.mongodb.net' in mongo_uri:
+        try:
+            # Extract cluster name from connection string
+            # Format: mongodb+srv://user:pass@cluster-name.xxxxx.mongodb.net/
+            cluster_part = mongo_uri.split('@')[1].split('.mongodb.net')[0]
+            cluster_name = cluster_part.split('.')[0] if '.' in cluster_part else cluster_part
+        except:
+            pass
+    
     try:
+        # MongoDB Atlas connection strings should be in format: mongodb+srv://username:password@cluster.mongodb.net/
+        # Note: Passwords with special characters are now automatically URL-encoded in get_mongo_uri()
         client = MongoClient(
-            MONGO_URI,
-            serverSelectionTimeoutMS=5000,
+            mongo_uri,
+            serverSelectionTimeoutMS=10000,  # Increased timeout for debugging
             tlsCAFile=certifi.where(),
             tz_aware=True,
             tzinfo=UTC,
+            retryWrites=True,  # Enable retryable writes
+            retryReads=True,   # Enable retryable reads
         )
         # Trigger server selection to fail fast if misconfigured
+        # This will raise an exception if authentication fails
+        # Use a simple operation instead of ping to test auth
         client.admin.command('ping')
-        db = client[MONGO_DB_NAME]
-        collection = db[MONGO_COLLECTION_NAME]
+        db = client[mongo_db_name]
+        collection = db[mongo_collection_name]
         collection.create_index([('device_id', ASCENDING), ('timestamp', ASCENDING)])
         # Create sparse index for MAC address (only indexes documents with mac_address field)
         collection.create_index([('mac_address', ASCENDING), ('timestamp', ASCENDING)], sparse=True)
-        print(f"Připojeno k MongoDB. Databáze: {MONGO_DB_NAME}, kolekce: {MONGO_COLLECTION_NAME}")
+        print(f"Připojeno k MongoDB. Databáze: {mongo_db_name}, kolekce: {mongo_collection_name}")
         return collection
     except Exception as err:
+        error_msg = str(err)
         print(f"✗ Nepodařilo se inicializovat klienta MongoDB: {err}")
+        
+        # Provide helpful error messages for common issues
+        if 'authentication failed' in error_msg.lower() or 'bad auth' in error_msg.lower():
+            print("⚠️  MongoDB Authentication Error:")
+            print("   - Check that username and password in MONGO_URI are correct")
+            print("   - Verify the connection string matches exactly what's shown in MongoDB Atlas")
+            print("   - Make sure password is copied correctly (no extra spaces or characters)")
+            print("   - If password contains special characters, ensure they're properly URL-encoded")
+            print("   - Common encoding: @ = %40, # = %23, / = %2F, : = %3A, ? = %3F, & = %26")
+            print("   - Verify the database user exists and has proper permissions in MongoDB Atlas")
+            print("   - Try resetting the database password in MongoDB Atlas and updating MONGO_URI")
+        elif 'enotfound' in error_msg.lower() or 'querySrv' in error_msg.lower() or 'dns' in error_msg.lower():
+            print("⚠️  MongoDB DNS/SRV Lookup Error:")
+            print("   - The cluster name in MONGO_URI might be incorrect")
+            print("   - Verify the connection string from MongoDB Atlas:")
+            print("     1. Go to MongoDB Atlas → Connect → Drivers")
+            print("     2. Copy the connection string (should include cluster name)")
+            print("     3. Format: mongodb+srv://username:password@cluster-name.xxxxx.mongodb.net/")
+            if cluster_name:
+                print(f"   - Detected cluster name: {cluster_name}")
+                print(f"   - Verify this cluster exists in your MongoDB Atlas account")
+            print("   - Check network connectivity and DNS resolution")
+            print("   - If using mongodb+srv://, ensure SRV records are accessible")
+        elif 'server selection timeout' in error_msg.lower():
+            print("⚠️  MongoDB Connection Timeout:")
+            print("   - Check network connectivity")
+            print("   - Verify MONGO_URI points to correct cluster")
+            print("   - Check if IP address is whitelisted in MongoDB Atlas")
+            print("   - For local development, ensure '0.0.0.0/0' is whitelisted (or your IP)")
+        
         raise
 
 
@@ -113,15 +292,24 @@ def get_registry_collection():
     global _registry_collection
     if _registry_collection is None:
         try:
+            mongo_uri = get_mongo_uri()
+            mongo_db_name = get_mongo_db_name()
+            
+            if not mongo_uri:
+                print("✗ MONGO_URI not set, cannot initialize device registry")
+                return None
+                
             client = MongoClient(
-                MONGO_URI,
+                mongo_uri,
                 serverSelectionTimeoutMS=5000,
                 tlsCAFile=certifi.where(),
                 tz_aware=True,
                 tzinfo=UTC,
+                retryWrites=True,
+                retryReads=True,
             )
             client.admin.command('ping')
-            db = client[MONGO_DB_NAME]
+            db = client[mongo_db_name]
             _registry_collection = db['device_registry']
             
             # Create indexes
@@ -148,15 +336,24 @@ def get_settings_collection():
     global _settings_collection
     if _settings_collection is None:
         try:
+            mongo_uri = get_mongo_uri()
+            mongo_db_name = get_mongo_db_name()
+            
+            if not mongo_uri:
+                print("✗ MONGO_URI not set, cannot initialize settings collection")
+                raise RuntimeError("MONGO_URI must be set")
+                
             client = MongoClient(
-                MONGO_URI,
+                mongo_uri,
                 serverSelectionTimeoutMS=5000,
                 tlsCAFile=certifi.where(),
                 tz_aware=True,
                 tzinfo=UTC,
+                retryWrites=True,
+                retryReads=True,
             )
             client.admin.command('ping')
-            db = client[MONGO_DB_NAME]
+            db = client[mongo_db_name]
             _settings_collection = db['settings']
             
             # Create index on key field
@@ -1556,8 +1753,8 @@ def status_view(request):
             return JsonResponse({
                 'status': 'error',
                 'error': f'Nepodařilo se připojit k databázi: {str(e)}',
-                'database': MONGO_DB_NAME,
-                'collection': MONGO_COLLECTION_NAME,
+                'database': get_mongo_db_name(),
+                'collection': get_mongo_collection_name(),
                 'data_points': 0,
                 'latest_entry': None,
                 'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
@@ -1575,8 +1772,8 @@ def status_view(request):
 
         return JsonResponse({
             'status': 'online',
-            'database': MONGO_DB_NAME,
-            'collection': MONGO_COLLECTION_NAME,
+            'database': get_mongo_db_name(),
+            'collection': get_mongo_collection_name(),
             'data_points': total_documents,
             'latest_entry': latest_timestamp,
             'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
@@ -1587,8 +1784,8 @@ def status_view(request):
         return JsonResponse({
             'status': 'error',
             'error': f'Databázová chyba: {exc}',
-            'database': MONGO_DB_NAME,
-            'collection': MONGO_COLLECTION_NAME,
+            'database': get_mongo_db_name(),
+            'collection': get_mongo_collection_name(),
             'data_points': 0,
             'latest_entry': None,
             'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
@@ -1598,8 +1795,8 @@ def status_view(request):
         return JsonResponse({
             'status': 'error',
             'error': str(e),
-            'database': MONGO_DB_NAME,
-            'collection': MONGO_COLLECTION_NAME,
+            'database': get_mongo_db_name(),
+            'collection': get_mongo_collection_name(),
             'data_points': 0,
             'latest_entry': None,
             'server_time': datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')

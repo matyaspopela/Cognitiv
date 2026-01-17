@@ -160,10 +160,10 @@ def upload_firmware(
     device_id: str = None
 ) -> Tuple[int, str, str]:
     """
-    Pass WiFi credentials as environment variables and invoke PlatformIO upload.
+    Pass WiFi and MQTT credentials as environment variables and invoke PlatformIO upload.
     
-    WiFi credentials are passed via environment variables which PlatformIO's
-    build_flags will pick up via ${sysenv.WIFI_SSID} and ${sysenv.WIFI_PASSWORD}.
+    WiFi credentials are passed from the request, MQTT credentials from server environment.
+    PlatformIO's build_flags pick these up via ${sysenv.VARIABLE_NAME}.
     
     DEVICE_ID is still written to config.h since it's not configured as an env var.
 
@@ -173,11 +173,17 @@ def upload_firmware(
     if not ssid or not isinstance(ssid, str):
         raise ConfigWriteError("SSID is required for upload")
     
-    # Pass WiFi credentials as environment variables
-    # PlatformIO's ${sysenv.WIFI_SSID} and ${sysenv.WIFI_PASSWORD} will pick these up
+    # Pass credentials as environment variables for PlatformIO build
     extra_env = {
+        # WiFi credentials from request
         'WIFI_SSID': ssid,
         'WIFI_PASSWORD': password if password else '',
+        # MQTT credentials from server environment
+        'MQTT_BROKER_HOST': os.getenv('MQTT_BROKER_HOST', ''),
+        'MQTT_BROKER_PORT': os.getenv('MQTT_BROKER_PORT', '8883'),
+        'MQTT_PUBLISH_USERNAME': os.getenv('MQTT_PUBLISH_USERNAME', ''),
+        'MQTT_PUBLISH_PASSWORD': os.getenv('MQTT_PUBLISH_PASSWORD', ''),
+        'MQTT_TOPIC': os.getenv('MQTT_TOPIC', ''),
     }
     
     # If device_id is provided, update config.h for DEVICE_ID

@@ -7,3 +7,4 @@ whitenoise>=6.6.0
 platformio
 google-generativeai
 paho-mqtt>=1.6.0
+python-dotenv>=1.0.0

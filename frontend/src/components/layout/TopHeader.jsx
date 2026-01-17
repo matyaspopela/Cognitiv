@@ -26,14 +26,13 @@ const TopHeader = () => {
       
       // Map route names to display labels
       if (part === 'dashboard') label = 'Devices'
-      else if (part === 'admin') label = 'Settings'
-      else if (part === 'connect') label = 'Connect'
+      else if (part === 'admin') label = 'Management'
       
       // If there's a device ID in the path, extract it
       if (path.includes('device=') || /^[A-Z0-9]+$/.test(part)) {
         const params = new URLSearchParams(location.search)
         const deviceId = params.get('device') || part
-        if (deviceId && deviceId !== 'dashboard' && deviceId !== 'admin' && deviceId !== 'connect') {
+        if (deviceId && deviceId !== 'dashboard' && deviceId !== 'admin') {
           label = deviceId
         }
       }

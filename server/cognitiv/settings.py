@@ -9,6 +9,28 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env file from project root (parent of server directory) for local development
+# In production (Render), environment variables are set directly
+# Note: We load with override=True to ensure .env values take precedence for local development
+try:
+    from dotenv import load_dotenv
+    # Primary: Load from project root (parent of server directory)
+    env_path = BASE_DIR.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+        print(f"[OK] Loaded environment variables from {env_path} (root .env file)")
+    else:
+        # Fallback: Try loading from server directory (for flexibility)
+        env_path_server = BASE_DIR / '.env'
+        if env_path_server.exists():
+            load_dotenv(env_path_server, override=True)
+            print(f"[OK] Loaded environment variables from {env_path_server}")
+        else:
+            print(f"[INFO] No .env file found at {env_path} or {env_path_server}. Using system environment variables.")
+except ImportError:
+    # python-dotenv not installed - skip .env loading (production mode)
+    pass
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-#rpbd^n-j2y4ow1dy%uk=n_c6a5iti0y32sb47n1j%09y)y&3n')
 

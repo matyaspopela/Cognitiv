@@ -5,7 +5,6 @@ import { ThemeProvider, useTheme } from './theme/ThemeProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import Home from './pages/Home'
-import Connect from './pages/Connect'
 import Login from './pages/Login'
 import AdminPanel from './pages/AdminPanel'
 import Dashboard from './pages/Dashboard'
@@ -60,14 +59,6 @@ function App() {
                       <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/dashboard" element={<Dashboard />} />
-                        <Route
-                          path="/connect"
-                          element={
-                            <ProtectedRoute>
-                              <Connect />
-                            </ProtectedRoute>
-                          }
-                        />
                         <Route
                           path="/admin"
                           element={
