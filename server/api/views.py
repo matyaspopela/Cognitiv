@@ -2073,7 +2073,10 @@ def get_devices(request):
         # Get devices with MAC addresses from registry
         try:
             registry = get_registry_collection()
-            registry_entries = list(registry.find({}))
+            if registry is None:
+                registry_entries = []
+            else:
+                registry_entries = list(registry.find({}))
             
             for entry in registry_entries:
                 mac = entry['mac_address']
@@ -2249,7 +2252,10 @@ def admin_devices(request):
         # Get devices with MAC addresses (from registry)
         try:
             registry = get_registry_collection()
-            registry_entries = list(registry.find({}))
+            if registry is None:
+                registry_entries = []
+            else:
+                registry_entries = list(registry.find({}))
             mac_to_display = {entry['mac_address']: entry.get('display_name', entry['mac_address']) 
                               for entry in registry_entries}
         except Exception as e:
