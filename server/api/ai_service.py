@@ -66,7 +66,11 @@ def fetch_recent_data(hours: int = 24, device_id: Optional[str] = None) -> List[
         
         mongo_filter = {'timestamp': {'$gte': cutoff_time}}
         if device_id:
-            mongo_filter['device_id'] = device_id
+            # Timeseries format: use metadata.device_id, with backward compatibility
+            mongo_filter['$or'] = [
+                {'metadata.device_id': device_id},
+                {'device_id': device_id}  # Backward compatibility
+            ]
         
         cursor = collection.find(mongo_filter).sort('timestamp', -1).limit(100)
         documents = list(cursor)
@@ -77,9 +81,13 @@ def fetch_recent_data(hours: int = 24, device_id: Optional[str] = None) -> List[
             timestamp_local = to_local_datetime(doc.get('timestamp')) if doc.get('timestamp') else None
             timestamp_str = doc.get('timestamp_str') or (timestamp_local.strftime('%Y-%m-%d %H:%M:%S') if timestamp_local else None)
             
+            # Extract device_id with backward compatibility (support both old and new format)
+            metadata = doc.get('metadata', {})
+            device_id_from_doc = metadata.get('device_id') or doc.get('device_id')
+            
             data_points.append({
                 'timestamp': timestamp_str,
-                'device_id': doc.get('device_id'),
+                'device_id': device_id_from_doc,
                 'temperature': round_or_none(doc.get('temperature')),
                 'humidity': round_or_none(doc.get('humidity')),
                 'co2': doc.get('co2')

@@ -228,10 +228,36 @@ def init_mongo_client():
         client.admin.command('ping')
         db = client[mongo_db_name]
         collection = db[mongo_collection_name]
-        collection.create_index([('device_id', ASCENDING), ('timestamp', ASCENDING)])
-        # Create sparse index for MAC address (only indexes documents with mac_address field)
-        collection.create_index([('mac_address', ASCENDING), ('timestamp', ASCENDING)], sparse=True)
-        print(f"Připojeno k MongoDB. Databáze: {mongo_db_name}, kolekce: {mongo_collection_name}")
+        
+        # Check if this is a timeseries collection
+        collection_info = db.command('listCollections', filter={'name': mongo_collection_name})
+        is_timeseries = False
+        for info in collection_info['cursor']['firstBatch']:
+            if 'timeseries' in info.get('options', {}):
+                is_timeseries = True
+                break
+        
+        # Create indexes - timeseries collections don't support sparse indexes
+        # and we should index metadata fields, not top-level fields
+        try:
+            if is_timeseries:
+                # For timeseries: index metadata fields (no sparse indexes allowed)
+                collection.create_index([('metadata.device_id', ASCENDING)])
+                collection.create_index([('metadata.mac_address', ASCENDING)])
+            else:
+                # For regular collections: use original indexes with sparse support
+                collection.create_index([('device_id', ASCENDING), ('timestamp', ASCENDING)])
+                try:
+                    collection.create_index([('mac_address', ASCENDING), ('timestamp', ASCENDING)], sparse=True)
+                except Exception:
+                    # Sparse index might already exist, continue
+                    pass
+        except Exception as idx_err:
+            # Indexes might already exist, just log and continue
+            print(f"[INFO] Index creation note: {idx_err}")
+        
+        collection_type = "timeseries" if is_timeseries else "regular"
+        print(f"Připojeno k MongoDB. Databáze: {mongo_db_name}, kolekce: {mongo_collection_name} ({collection_type})")
         return collection
     except Exception as err:
         error_msg = str(err)
@@ -701,16 +727,26 @@ def build_history_filter(start_dt, end_dt, device_id=None):
         # Resolve device identifier (supports device_id, MAC address, or display_name)
         device_filter = resolve_device_identifier(device_id)
         if device_filter:
-            # If we have both mac_address and device_id, use $or to match either
+            # Timeseries format: use metadata.device_id and metadata.mac_address
+            # Also support old format for backward compatibility
             if 'mac_address' in device_filter and 'device_id' in device_filter:
                 query['$or'] = [
+                    {'metadata.mac_address': device_filter['mac_address']},
+                    {'metadata.device_id': device_filter['device_id']},
+                    # Backward compatibility with old format
                     {'mac_address': device_filter['mac_address']},
                     {'device_id': device_filter['device_id']}
                 ]
             elif 'mac_address' in device_filter:
-                query['mac_address'] = device_filter['mac_address']
+                query['$or'] = [
+                    {'metadata.mac_address': device_filter['mac_address']},
+                    {'mac_address': device_filter['mac_address']}  # Backward compatibility
+                ]
             elif 'device_id' in device_filter:
-                query['device_id'] = device_filter['device_id']
+                query['$or'] = [
+                    {'metadata.device_id': device_filter['device_id']},
+                    {'device_id': device_filter['device_id']}  # Backward compatibility
+                ]
     
     return query
 
@@ -956,26 +992,30 @@ def receive_data(request):
         humidity = float(normalized['humidity'])
         co2 = int(normalized['co2'])
 
+        # Timeseries document structure: metadata field for grouping, measurements at root
         document = {
-            'timestamp': timestamp_utc,
-            'timestamp_str': timestamp_str,
-            'device_id': normalized['device_id'],
+            'timestamp': timestamp_utc,  # timeField - must be at root level
+            'timestamp_str': timestamp_str,  # Human-readable format
+            # Measurements at root level
             'temperature': temperature,
             'humidity': humidity,
             'co2': co2,
-            'raw_payload': data
+            # Metadata for grouping (metaField in timeseries collection)
+            'metadata': {
+                'device_id': normalized['device_id']
+            }
         }
         
-        # Add voltage if available (at top level for easy querying)
+        # Add MAC address to metadata if available
+        if mac_address:
+            document['metadata']['mac_address'] = mac_address
+        
+        # Add voltage if available (measurement, so at root level)
         if 'voltage' in data and data['voltage'] is not None:
             try:
                 document['voltage'] = float(data['voltage'])
             except (ValueError, TypeError):
                 pass  # Skip if voltage can't be converted to float
-        
-        # Add MAC address if available
-        if mac_address:
-            document['mac_address'] = mac_address
 
         try:
             get_mongo_collection().insert_one(document)
@@ -1011,16 +1051,26 @@ def get_data(request):
             # Resolve device identifier (supports device_id, MAC address, or display_name)
             device_filter = resolve_device_identifier(device_id)
             if device_filter:
-                # If we have both mac_address and device_id, use $or to match either
+                # Timeseries format: use metadata.device_id and metadata.mac_address
+                # Also support old format for backward compatibility
                 if 'mac_address' in device_filter and 'device_id' in device_filter:
                     mongo_filter['$or'] = [
+                        {'metadata.mac_address': device_filter['mac_address']},
+                        {'metadata.device_id': device_filter['device_id']},
+                        # Backward compatibility with old format
                         {'mac_address': device_filter['mac_address']},
                         {'device_id': device_filter['device_id']}
                     ]
                 elif 'mac_address' in device_filter:
-                    mongo_filter['mac_address'] = device_filter['mac_address']
+                    mongo_filter['$or'] = [
+                        {'metadata.mac_address': device_filter['mac_address']},
+                        {'mac_address': device_filter['mac_address']}  # Backward compatibility
+                    ]
                 elif 'device_id' in device_filter:
-                    mongo_filter['device_id'] = device_filter['device_id']
+                    mongo_filter['$or'] = [
+                        {'metadata.device_id': device_filter['device_id']},
+                        {'device_id': device_filter['device_id']}  # Backward compatibility
+                    ]
 
         try:
             collection = get_mongo_collection()
@@ -1056,9 +1106,13 @@ def get_data(request):
                 if timestamp_utc.tzinfo is None:
                     timestamp_utc = timestamp_utc.replace(tzinfo=UTC)
                 
+                # Extract device_id for logging (with backward compatibility)
+                metadata = doc.get('metadata', {})
+                device_id_for_log = metadata.get('device_id') or doc.get('device_id')
+                
                 # CRITICAL: Skip documents with future timestamps (data corruption)
                 if timestamp_utc > max_future:
-                    print(f"⚠️  Skipping document with future timestamp: {timestamp_utc.isoformat()} (device: {doc.get('device_id')})")
+                    print(f"⚠️  Skipping document with future timestamp: {timestamp_utc.isoformat()} (device: {device_id_for_log})")
                     continue
                 
                 # Convert to ISO format in UTC - this is what frontend will parse
@@ -1076,19 +1130,27 @@ def get_data(request):
                         dt_local = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
                         dt_local = dt_local.replace(tzinfo=LOCAL_TZ)
                         timestamp_utc = dt_local.astimezone(UTC)
+                        # Extract device_id for logging (with backward compatibility)
+                        metadata = doc.get('metadata', {})
+                        device_id_for_log = metadata.get('device_id') or doc.get('device_id')
+                        
                         # Validate it's not in the future
                         if timestamp_utc > max_future:
-                            print(f"⚠️  Skipping document with future timestamp_str: {timestamp_str} (device: {doc.get('device_id')})")
+                            print(f"⚠️  Skipping document with future timestamp_str: {timestamp_str} (device: {device_id_for_log})")
                             continue
                         timestamp_iso = timestamp_utc.isoformat()
                     except Exception as e:
                         print(f"⚠️  Failed to parse timestamp_str '{timestamp_str}': {e}")
                         continue
 
+            # Extract device_id with backward compatibility (support both old and new format)
+            metadata = doc.get('metadata', {})
+            device_id_from_doc = metadata.get('device_id') or doc.get('device_id')
+            
             data_points.append({
                 'timestamp': timestamp_str,
                 'timestamp_iso': timestamp_iso,
-                'device_id': doc.get('device_id'),
+                'device_id': device_id_from_doc,
                 'temperature': temperature,
                 'humidity': humidity,
                 'co2': co2,
@@ -1192,7 +1254,9 @@ def history_series(request):
                     }
                 }
                 if not device_id:
-                    entry['device_id'] = doc.get('device_id')
+                    # Extract device_id with backward compatibility
+                    metadata = doc.get('metadata', {})
+                    entry['device_id'] = metadata.get('device_id') or doc.get('device_id')
                 series.append(entry)
         else:
             # Aggregated data
@@ -1244,7 +1308,7 @@ def history_series(request):
                         '$group': {
                             '_id': {
                                 'bucket': '$bucket',
-                                **({} if device_id else {'device_id': '$device_id'})
+                                **({} if device_id else {'device_id': {'$ifNull': ['$metadata.device_id', '$device_id']}})
                             },
                             'count': {'$sum': 1},
                             'temperature_avg': {'$avg': '$temperature'},
@@ -1278,7 +1342,8 @@ def history_series(request):
                     }
                 }
                 if not device_id:
-                    group_id['device_id'] = '$device_id'
+                    # Use metadata.device_id from timeseries, fallback to old format
+                    group_id['device_id'] = {'$ifNull': ['$metadata.device_id', '$device_id']}
 
                 pipeline = [
                     {'$match': mongo_filter},
@@ -1603,16 +1668,26 @@ def get_stats(request):
             # Resolve device identifier (supports device_id, MAC address, or display_name)
             device_filter = resolve_device_identifier(device_id)
             if device_filter:
-                # If we have both mac_address and device_id, use $or to match either
+                # Timeseries format: use metadata.device_id and metadata.mac_address
+                # Also support old format for backward compatibility
                 if 'mac_address' in device_filter and 'device_id' in device_filter:
                     mongo_filter['$or'] = [
+                        {'metadata.mac_address': device_filter['mac_address']},
+                        {'metadata.device_id': device_filter['device_id']},
+                        # Backward compatibility with old format
                         {'mac_address': device_filter['mac_address']},
                         {'device_id': device_filter['device_id']}
                     ]
                 elif 'mac_address' in device_filter:
-                    mongo_filter['mac_address'] = device_filter['mac_address']
+                    mongo_filter['$or'] = [
+                        {'metadata.mac_address': device_filter['mac_address']},
+                        {'mac_address': device_filter['mac_address']}  # Backward compatibility
+                    ]
                 elif 'device_id' in device_filter:
-                    mongo_filter['device_id'] = device_filter['device_id']
+                    mongo_filter['$or'] = [
+                        {'metadata.device_id': device_filter['device_id']},
+                        {'device_id': device_filter['device_id']}  # Backward compatibility
+                    ]
 
         try:
             collection = get_mongo_collection()
@@ -1992,8 +2067,13 @@ def get_devices(request):
                 mac = entry['mac_address']
                 processed_macs.add(mac)
                 
-                # Get sensor data for this MAC
-                mac_filter = {'mac_address': mac}
+                # Get sensor data for this MAC (timeseries format with backward compatibility)
+                mac_filter = {
+                    '$or': [
+                        {'metadata.mac_address': mac},
+                        {'mac_address': mac}  # Backward compatibility
+                    ]
+                }
                 total_count = collection.count_documents(mac_filter)
                 
                 status = 'offline'
@@ -2005,9 +2085,10 @@ def get_devices(request):
                     latest_doc = collection.find_one(mac_filter, sort=[('timestamp', -1)])
                     
                     if latest_doc:
-                        # Get device_id from latest doc if not in registry
+                        # Get device_id from latest doc if not in registry (with backward compatibility)
                         if not device_id:
-                            device_id = latest_doc.get('device_id')
+                            metadata = latest_doc.get('metadata', {})
+                            device_id = metadata.get('device_id') or latest_doc.get('device_id')
                         
                         last_seen_dt = latest_doc.get('timestamp')
                         if last_seen_dt:
@@ -2043,20 +2124,37 @@ def get_devices(request):
             print(f"⚠️  Warning: Could not access registry: {e}")
         
         # Get legacy devices (by device_id, excluding those with MAC)
-        all_device_ids = collection.distinct('device_id')
+        # Support both old and new formats
+        all_device_ids_old = collection.distinct('device_id')
+        all_device_ids_new = collection.distinct('metadata.device_id')
+        all_device_ids = list(set(all_device_ids_old + all_device_ids_new))
+        
         devices_with_mac = set()
-        for doc in collection.find({'mac_address': {'$exists': True, '$ne': None}}, {'device_id': 1}):
-            did = doc.get('device_id')
+        # Check for MAC addresses in both old and new formats
+        for doc in collection.find({
+            '$or': [
+                {'mac_address': {'$exists': True, '$ne': None}},
+                {'metadata.mac_address': {'$exists': True, '$ne': None}}
+            ]
+        }, {'device_id': 1, 'metadata': 1}):
+            metadata = doc.get('metadata', {})
+            did = metadata.get('device_id') or doc.get('device_id')
             if did:
                 devices_with_mac.add(did)
         
         legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac]
         
         for device_id in legacy_device_ids:
-            total_count = collection.count_documents({'device_id': device_id})
+            device_filter = {
+                '$or': [
+                    {'metadata.device_id': device_id},
+                    {'device_id': device_id}  # Backward compatibility
+                ]
+            }
+            total_count = collection.count_documents(device_filter)
             
             latest_doc = collection.find_one(
-                {'device_id': device_id},
+                device_filter,
                 sort=[('timestamp', -1)]
             )
             
