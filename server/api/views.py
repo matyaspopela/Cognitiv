@@ -35,24 +35,31 @@ def get_mongo_uri():
     """Get MONGO_URI from environment, ensuring .env is loaded first and properly formatted"""
     uri = os.getenv('MONGO_URI')
     
-    # Always try to load .env from project root (in case it wasn't loaded in settings.py)
-    # Use override=True to ensure .env values take precedence for local development
-    try:
-        from dotenv import load_dotenv
-        from pathlib import Path
-        # Calculate path to root .env file: server/api/views.py -> root/.env
-        env_path = Path(__file__).resolve().parent.parent.parent / '.env'
-        if env_path.exists():
-            load_dotenv(env_path, override=True)
-            # Re-read after loading
-            uri = os.getenv('MONGO_URI') or uri
-            print(f"[DEBUG] Loaded MONGO_URI from {env_path}")
-        else:
-            print(f"[DEBUG] .env file not found at {env_path}")
-    except ImportError:
-        pass
-    except Exception as e:
-        print(f"[WARN] Error loading .env file: {e}")
+    # Only load .env files in local development (NOT in production on Render)
+    # In production, use only environment variables set by Render
+    is_production = os.getenv('RENDER') is not None or os.getenv('RENDER_EXTERNAL_HOSTNAME') is not None
+    
+    if not is_production:
+        # Always try to load .env from project root (in case it wasn't loaded in settings.py)
+        # Use override=True to ensure .env values take precedence for local development
+        try:
+            from dotenv import load_dotenv
+            from pathlib import Path
+            # Calculate path to root .env file: server/api/views.py -> root/.env
+            env_path = Path(__file__).resolve().parent.parent.parent / '.env'
+            if env_path.exists():
+                load_dotenv(env_path, override=True)
+                # Re-read after loading
+                uri = os.getenv('MONGO_URI') or uri
+                print(f"[DEBUG] Loaded MONGO_URI from {env_path}")
+            else:
+                print(f"[DEBUG] .env file not found at {env_path}")
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"[WARN] Error loading .env file: {e}")
+    else:
+        print(f"[DEBUG] Production environment (Render). Using MONGO_URI from Render environment variables only.")
     
     if not uri:
         return None
@@ -175,18 +182,23 @@ def init_mongo_client():
     # Debug: Print connection info (mask password) and show source
     uri_display = mongo_uri.split('@')[0] + '@***' if '@' in mongo_uri else mongo_uri[:50] + '...'
     
-    # Check if MONGO_URI is from environment or .env
-    from pathlib import Path
-    env_path = Path(__file__).resolve().parent.parent.parent / '.env'
-    env_source = "environment variable"
-    if env_path.exists():
-        try:
-            from dotenv import dotenv_values
-            env_vars = dotenv_values(env_path)
-            if 'MONGO_URI' in env_vars:
-                env_source = f".env file at {env_path}"
-        except:
-            pass
+    # Check if MONGO_URI is from environment or .env (only in local dev)
+    is_production = os.getenv('RENDER') is not None or os.getenv('RENDER_EXTERNAL_HOSTNAME') is not None
+    
+    if is_production:
+        env_source = "Render environment variable (production)"
+    else:
+        from pathlib import Path
+        env_path = Path(__file__).resolve().parent.parent.parent / '.env'
+        env_source = "system environment variable"
+        if env_path.exists():
+            try:
+                from dotenv import dotenv_values
+                env_vars = dotenv_values(env_path)
+                if 'MONGO_URI' in env_vars:
+                    env_source = f".env file at {env_path}"
+            except:
+                pass
     
     print(f"[DEBUG] MongoDB URI source: {env_source}")
     print(f"[DEBUG] Connecting to MongoDB: {uri_display}")
