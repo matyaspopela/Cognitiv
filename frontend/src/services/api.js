@@ -1,7 +1,27 @@
 import axios from 'axios'
 
 // Base URL configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+// In development mode (npm run dev), always use relative path to leverage Vite proxy
+// This ensures local dev always connects to localhost:8000, not production server
+const getApiBaseUrl = () => {
+  // In development mode, ignore VITE_API_BASE_URL if it points to production
+  // Always use relative path to use Vite proxy configured in vite.config.js
+  if (import.meta.env.DEV) {
+    const envUrl = import.meta.env.VITE_API_BASE_URL
+    if (envUrl && (envUrl.includes('onrender.com') || envUrl.includes('://') && !envUrl.includes('localhost'))) {
+      console.warn(
+        `⚠️  VITE_API_BASE_URL is set to production URL (${envUrl}) but we're in development mode. ` +
+        `Ignoring it and using localhost proxy instead to prevent data duplication.`
+      )
+      return '/api'
+    }
+    return '/api'  // Use Vite proxy to localhost:8000
+  }
+  // In production build, use VITE_API_BASE_URL if set, otherwise default to '/api'
+  return import.meta.env.VITE_API_BASE_URL || '/api'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 // Create axios instance
 const apiClient = axios.create({

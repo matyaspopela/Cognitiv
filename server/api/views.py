@@ -134,7 +134,28 @@ def get_mongo_uri():
     return uri
 
 def get_mongo_db_name():
-    return os.getenv('MONGO_DB_NAME', 'cognitiv')
+    """Get MongoDB database name, automatically appending '_dev' in local development if using production MongoDB"""
+    base_db_name = os.getenv('MONGO_DB_NAME', 'cognitiv')
+    
+    # If in local development and connecting to production MongoDB, use dev database
+    is_production = os.getenv('RENDER') is not None or os.getenv('RENDER_EXTERNAL_HOSTNAME') is not None
+    if not is_production:
+        mongo_uri = get_mongo_uri()
+        if mongo_uri:
+            # Check if MongoDB URI points to production cluster (MongoDB Atlas)
+            is_production_mongo = '.mongodb.net' in mongo_uri or mongo_uri.startswith('mongodb+srv://')
+            is_local_mongo = mongo_uri.startswith('mongodb://localhost') or mongo_uri.startswith('mongodb://127.0.0.1')
+            
+            # If using production MongoDB in local dev, append '_dev' to database name
+            if is_production_mongo and not is_local_mongo:
+                if not base_db_name.endswith('_dev'):
+                    dev_db_name = base_db_name + '_dev'
+                    print(f"[INFO] Local development detected with production MongoDB.")
+                    print(f"[INFO] Using development database: {dev_db_name} (instead of {base_db_name})")
+                    print(f"[INFO] This prevents data duplication between local dev and production.")
+                    return dev_db_name
+    
+    return base_db_name
 
 def get_mongo_collection_name():
     return os.getenv('MONGO_COLLECTION', 'sensor_data')
@@ -203,6 +224,22 @@ def init_mongo_client():
     print(f"[DEBUG] MongoDB URI source: {env_source}")
     print(f"[DEBUG] Connecting to MongoDB: {uri_display}")
     print(f"[DEBUG] Database: {mongo_db_name}, Collection: {mongo_collection_name}")
+    
+    # Warn if local development is connecting to production MongoDB (could cause data duplication)
+    if not is_production:
+        # Check if MongoDB URI points to a remote/production cluster (MongoDB Atlas)
+        is_production_mongo = '.mongodb.net' in mongo_uri or mongo_uri.startswith('mongodb+srv://')
+        is_local_mongo = mongo_uri.startswith('mongodb://localhost') or mongo_uri.startswith('mongodb://127.0.0.1')
+        
+        if is_production_mongo and not is_local_mongo:
+            # Note: Data duplication is automatically prevented by using a different database name
+            # See get_mongo_db_name() which appends '_dev' to database name in local development
+            print(f"\n{'='*70}")
+            print(f"ℹ️  INFO: Local development server is connecting to production MongoDB cluster.")
+            print(f"   To prevent data duplication, using development database: '{mongo_db_name}_dev'")
+            print(f"   (instead of production database: '{mongo_db_name}')")
+            print(f"   MongoDB URI points to: {uri_display}")
+            print(f"{'='*70}\n")
     
     # Validate connection string format
     if not mongo_uri.startswith(('mongodb://', 'mongodb+srv://')):
@@ -472,6 +509,10 @@ def ensure_registry_entry(mac_address, device_id=None):
                 'updated_at': now
             }
         }
+        # Ensure display_name exists and is MAC-based
+        if not entry.get('display_name'):
+            update_data['$set'] = update_data['$set'].copy()
+            update_data['$set']['display_name'] = mac_normalized
         # Only set legacy_device_id if it's missing
         if device_id and 'legacy_device_id' not in entry:
             update_data['$set'] = update_data['$set'].copy()
@@ -489,7 +530,7 @@ def ensure_registry_entry(mac_address, device_id=None):
         entry = registry.find_one({'mac_address': mac_normalized})
     else:
         # Create new entry - new devices are NOT whitelisted by default when whitelist is enabled
-        default_name = device_id or mac_normalized
+        default_name = mac_normalized
         entry = {
             'mac_address': mac_normalized,
             'display_name': default_name,
@@ -2079,7 +2120,10 @@ def get_devices(request):
                 registry_entries = list(registry.find({}))
             
             for entry in registry_entries:
-                mac = entry['mac_address']
+                mac = entry.get('mac_address')
+                if not mac:
+                    print("⚠️  Skipping registry entry without mac_address")
+                    continue
                 processed_macs.add(mac)
                 
                 # Get sensor data for this MAC (timeseries format with backward compatibility)
@@ -2142,7 +2186,8 @@ def get_devices(request):
         # Support both old and new formats
         all_device_ids_old = collection.distinct('device_id')
         all_device_ids_new = collection.distinct('metadata.device_id')
-        all_device_ids = list(set(all_device_ids_old + all_device_ids_new))
+        # Filter out None/null values
+        all_device_ids = [did for did in set(all_device_ids_old + all_device_ids_new) if did is not None]
         
         devices_with_mac = set()
         # Check for MAC addresses in both old and new formats
@@ -2157,9 +2202,11 @@ def get_devices(request):
             if did:
                 devices_with_mac.add(did)
         
-        legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac]
+        legacy_device_ids = [did for did in all_device_ids if did not in devices_with_mac and did is not None]
         
         for device_id in legacy_device_ids:
+            if not device_id:  # Skip None, empty string, etc.
+                continue
             device_filter = {
                 '$or': [
                     {'metadata.device_id': device_id},
@@ -2199,18 +2246,20 @@ def get_devices(request):
                     'voltage': voltage
                 }
 
-            devices.append({
-                'mac_address': None,  # No MAC for legacy devices
-                'display_name': device_id,  # Use device_id as display name
-                'device_id': device_id,
-                'status': status,
-                'total_data_points': total_count,
-                'last_seen': last_seen,
-                'current_readings': current_readings
-            })
+            # Only add if device_id is valid
+            if device_id:
+                devices.append({
+                    'mac_address': None,  # No MAC for legacy devices
+                    'display_name': device_id,  # Use device_id as display name
+                    'device_id': device_id,
+                    'status': status,
+                    'total_data_points': total_count,
+                    'last_seen': last_seen,
+                    'current_readings': current_readings
+                })
         
-        # Sort by display_name or device_id
-        devices.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
+        # Sort by display_name or device_id (guard against None)
+        devices.sort(key=lambda x: x.get('display_name') or x.get('device_id') or '')
         
         return JsonResponse({
             'status': 'success',
@@ -2271,8 +2320,13 @@ def admin_devices(request):
             mac = entry['mac_address']
             processed_macs.add(mac)
             
-            # Get sensor data for this MAC
-            mac_filter = {'mac_address': mac}
+            # Get sensor data for this MAC (timeseries format with backward compatibility)
+            mac_filter = {
+                '$or': [
+                    {'metadata.mac_address': mac},
+                    {'mac_address': mac}  # Backward compatibility
+                ]
+            }
             total_count = collection.count_documents(mac_filter)
             
             if total_count > 0:
@@ -2304,10 +2358,16 @@ def admin_devices(request):
                             'voltage': voltage
                         }
                 
+                # Extract device_id from timeseries metadata or old format
+                device_id = None
+                if latest_doc:
+                    metadata = latest_doc.get('metadata', {})
+                    device_id = metadata.get('device_id') or latest_doc.get('device_id')
+                
                 devices.append({
                     'mac_address': mac,
                     'display_name': entry.get('display_name', mac),
-                    'device_id': latest_doc.get('device_id') if latest_doc else entry.get('legacy_device_id'),
+                    'device_id': device_id or entry.get('legacy_device_id'),
                     'class': entry.get('class', ''),
                     'school': entry.get('school', ''),
                     'status': status,
@@ -2319,8 +2379,8 @@ def admin_devices(request):
         # Only return MAC-tracked devices (legacy devices excluded)
         # This prevents duplicates and ensures all devices have MAC addresses for rename functionality
 
-        # Sort by display_name or device_id
-        devices.sort(key=lambda x: x.get('display_name') or x.get('device_id', ''))
+        # Sort by display_name or device_id (guard against None)
+        devices.sort(key=lambda x: x.get('display_name') or x.get('device_id') or '')
 
         return JsonResponse({
             'status': 'success',

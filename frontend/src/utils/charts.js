@@ -186,13 +186,13 @@ export const buildClimateChartData = (data, bucket = '10min') => {
       {
         label: 'Humidity (%)',
         data: humidityValues,
-        borderColor: appleModernColors.warning,
+        borderColor: appleModernColors.moderate,
         backgroundColor: 'rgba(245, 158, 11, 0.05)',
         fill: false,
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 6,
-        pointHoverBackgroundColor: appleModernColors.warning,
+        pointHoverBackgroundColor: appleModernColors.moderate,
         pointHoverBorderColor: '#fff',
         pointHoverBorderWidth: 2,
         yAxisID: 'y1',
@@ -450,13 +450,13 @@ export const getClimateChartOptions = (options = {}) => {
         title: {
           display: true,
           text: 'Humidity (%)',
-          color: appleModernColors.warning,
+          color: appleModernColors.moderate,
         },
         grid: {
           drawOnChartArea: false,
         },
         ticks: {
-          color: appleModernColors.warning,
+          color: appleModernColors.moderate,
         },
         border: {
           display: false,
