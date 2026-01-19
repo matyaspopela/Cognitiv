@@ -43,8 +43,17 @@ import Card from '../ui/Card'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import ProgressBar from '../ui/ProgressBar'
-import { Calendar, Clock, CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, Clock, CalendarRange, ChevronLeft, ChevronRight, BarChart2, BookOpen, TrendingUp } from 'lucide-react'
 import './BoardAnalysisView.css'
+
+// Import analytics components
+import {
+  LessonDistributionChart,
+  TeacherComparisonCard,
+  HourlyHeatmap,
+  StatsSummaryCards,
+  LessonPeriodChart,
+} from '../analytics'
 
 // Fixed times for school day
 const START_TIME_HOURS = 7
@@ -62,10 +71,10 @@ const END_TIME_MINUTES = 0
  */
 const filterSeriesInRange = (series, startISO, endISO) => {
   if (!series || !Array.isArray(series)) return []
-  
+
   const startTime = new Date(startISO).getTime()
   const endTime = new Date(endISO).getTime()
-  
+
   return series.filter(item => {
     if (!item.bucket_start) return false
     const pointTime = new Date(item.bucket_start).getTime()
@@ -84,10 +93,10 @@ const createDateWithTime = (date, hours, minutes) => {
 // Format date for display
 const formatDisplayDate = (date) => {
   if (!date) return ''
-  return date.toLocaleDateString('en-GB', { 
-    day: '2-digit', 
-    month: 'short', 
-    year: 'numeric' 
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
   })
 }
 
@@ -109,6 +118,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   const [endDate, setEndDate] = useState(null)
   const [deviceName, setDeviceName] = useState(deviceId)
   const [useRealTimeScale, setUseRealTimeScale] = useState(false) // Off by default
+  const [activeTab, setActiveTab] = useState('analysis') // 'analysis', 'lessons', 'trends'
 
   // Fetch device display name
   useEffect(() => {
@@ -119,9 +129,9 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         if (response.data && response.data.status === 'success' && response.data.devices) {
           // Prefer MAC address matching since that's now the primary identifier
           const device = response.data.devices.find(
-            (d) => d.mac_address === deviceId || 
-                   d.device_id === deviceId || 
-                   d.display_name === deviceId
+            (d) => d.mac_address === deviceId ||
+              d.device_id === deviceId ||
+              d.display_name === deviceId
           )
           if (device && device.display_name) {
             setDeviceName(device.display_name)
@@ -157,7 +167,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
   const applyPreset = (preset) => {
     setSelectedPreset(preset)
-    
+
     if (preset === 'custom') {
       // For custom, ensure dates are initialized if they're not set
       if (!startDate || !endDate) {
@@ -170,7 +180,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
     const now = new Date()
     let days = 30
-    
+
     switch (preset) {
       case '1d':
         days = 1
@@ -187,7 +197,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       default:
         days = 30
     }
-    
+
     setStartDate(new Date(now.getTime() - days * 24 * 60 * 60 * 1000))
     setEndDate(now)
   }
@@ -195,7 +205,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   // Initialize time range on mount (only if not already set)
   useEffect(() => {
     if (!deviceId) return
-    
+
     // Only initialize if dates are not already set (preserves custom dates)
     if (!startDate || !endDate) {
       const now = new Date()
@@ -209,7 +219,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       if (!deviceId) {
         return
       }
-      
+
       if (!startDate || !endDate) {
         return
       }
@@ -265,10 +275,10 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         // Try series with appropriate bucket based on time range
         // Calculate time difference in days
         const daysDiff = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60 * 24)
-        
+
         // Choose bucket: raw data for <= 30 days, hourly aggregation for > 30 days
         const bucket = daysDiff <= 30 ? 'raw' : 'hour'
-        
+
         let seriesLoaded = false
 
         try {
@@ -354,7 +364,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
           if (seriesData && (seriesData.status === 'success' || seriesData.series) && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
             // Filter series to only include data within the requested time range
             const filteredSeries = filterSeriesInRange(seriesData.series, startIso, endIso)
-            
+
             if (Array.isArray(filteredSeries) && filteredSeries.length > 0) {
               setSeries(filteredSeries)
               // Build charts with bucket info for gap detection
@@ -366,7 +376,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               } catch (co2Error) {
                 console.error('Error building CO2 chart data:', co2Error)
               }
-              
+
               try {
                 const climateChartData = buildClimateChartData(filteredSeries, bucket)
                 if (hasValidChartData(climateChartData)) {
@@ -426,19 +436,19 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       }
 
       const response = await historyAPI.exportCSV(startIso, endIso, deviceId)
-      
+
       // Create blob and download
       const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      
+
       // Generate filename with device name and date range
       const deviceNameSafe = (deviceName || deviceId).replace(/[^a-z0-9]/gi, '_').toLowerCase()
       const startStr = startDateTime.toISOString().split('T')[0]
       const endStr = endDateTime.toISOString().split('T')[0]
       link.download = `cognitiv_${deviceNameSafe}_${startStr}_to_${endStr}.csv`
-      
+
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -454,15 +464,15 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   return (
     <div className="board-analysis-view">
       <div className="board-analysis-view__divider"></div>
-      
+
       <div className="board-analysis-view__header">
         <div>
           <h2 className="board-analysis-view__title">{deviceName || deviceId}</h2>
         </div>
         <div className="board-analysis-view__header-actions">
-          <Button 
-            variant="filled" 
-            size="medium" 
+          <Button
+            variant="filled"
+            size="medium"
             onClick={handleExportCSV}
             disabled={!startDate || !endDate}
             title="Export data to CSV"
@@ -473,6 +483,31 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             Close
           </Button>
         </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="board-analysis-view__tabs">
+        <button
+          className={`board-analysis-view__tab ${activeTab === 'analysis' ? 'board-analysis-view__tab--active' : ''}`}
+          onClick={() => setActiveTab('analysis')}
+        >
+          <BarChart2 size={16} />
+          <span>Analysis</span>
+        </button>
+        <button
+          className={`board-analysis-view__tab ${activeTab === 'lessons' ? 'board-analysis-view__tab--active' : ''}`}
+          onClick={() => setActiveTab('lessons')}
+        >
+          <BookOpen size={16} />
+          <span>Lessons</span>
+        </button>
+        <button
+          className={`board-analysis-view__tab ${activeTab === 'trends' ? 'board-analysis-view__tab--active' : ''}`}
+          onClick={() => setActiveTab('trends')}
+        >
+          <TrendingUp size={16} />
+          <span>Trends</span>
+        </button>
       </div>
 
       {/* Time Range Selection */}
@@ -492,7 +527,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               </div>
             )}
           </div>
-          
+
           <div className="board-analysis-view__time-presets">
             {[
               { value: '1d', label: '1 Day', icon: Calendar },
@@ -505,9 +540,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               return (
                 <button
                   key={preset.value}
-                  className={`board-analysis-view__time-preset-button ${
-                    selectedPreset === preset.value ? 'board-analysis-view__time-preset-button--active' : ''
-                  }`}
+                  className={`board-analysis-view__time-preset-button ${selectedPreset === preset.value ? 'board-analysis-view__time-preset-button--active' : ''
+                    }`}
                   onClick={() => applyPreset(preset.value)}
                   aria-pressed={selectedPreset === preset.value}
                 >
@@ -517,7 +551,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               )
             })}
           </div>
-          
+
           {selectedPreset === 'custom' && (
             <div className="board-analysis-view__time-custom">
               <div className="board-analysis-view__time-custom-header">
@@ -573,11 +607,11 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                     )}
                   />
                 </div>
-                
+
                 <div className="board-analysis-view__date-picker-separator">
                   <span>→</span>
                 </div>
-                
+
                 <div className="board-analysis-view__date-picker-group">
                   <label className="board-analysis-view__date-picker-label">End Date</label>
                   <DatePicker
@@ -643,7 +677,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         </Card>
       )}
 
-      {!loading && !error && summary && (
+      {!loading && !error && activeTab === 'analysis' && summary && (
         <>
           {/* Summary Statistics */}
           <Card className="board-analysis-view__summary" elevation={2}>
@@ -693,8 +727,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                 Real time spacing
               </span>
               <span className="board-analysis-view__toggle-hint">
-                {useRealTimeScale 
-                  ? '(points are spaced according to actual time)' 
+                {useRealTimeScale
+                  ? '(points are spaced according to actual time)'
                   : '(points are evenly spaced)'}
               </span>
             </label>
@@ -708,8 +742,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               </div>
               <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
                 {co2Chart ? (
-                  <Line 
-                    data={co2Chart} 
+                  <Line
+                    data={co2Chart}
                     options={getChartOptions('line', {
                       useRealTimeScale,
                       plugins: {
@@ -719,7 +753,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                           }
                         }
                       }
-                    })} 
+                    })}
                   />
                 ) : (
                   <div className="board-analysis-view__empty">No data to display</div>
@@ -749,8 +783,8 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             <div className="board-analysis-view__distribution-content">
               <div className="board-analysis-view__distribution-chart" style={{ height: '400px' }}>
                 {qualityPieChart ? (
-                  <Doughnut 
-                    data={qualityPieChart} 
+                  <Doughnut
+                    data={qualityPieChart}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -842,6 +876,49 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
               </tbody>
             </table>
           </Card>
+        </>
+      )}
+
+      {/* Lessons Tab - Annotated Data Analytics */}
+      {!loading && !error && activeTab === 'lessons' && (
+        <>
+          <StatsSummaryCards
+            deviceId={deviceId}
+            startDate={getStartISO()}
+            endDate={getEndISO()}
+          />
+          <div className="board-analysis-view__charts" style={{ marginTop: '1.5rem' }}>
+            <LessonDistributionChart
+              deviceId={deviceId}
+              startDate={getStartISO()}
+              endDate={getEndISO()}
+            />
+            <TeacherComparisonCard
+              deviceId={deviceId}
+              startDate={getStartISO()}
+              endDate={getEndISO()}
+            />
+          </div>
+          <div style={{ marginTop: '1.5rem' }}>
+            <LessonPeriodChart
+              deviceId={deviceId}
+              startDate={getStartISO()}
+              endDate={getEndISO()}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Trends Tab - Heatmap Analysis */}
+      {!loading && !error && activeTab === 'trends' && (
+        <>
+          <HourlyHeatmap
+            deviceId={deviceId}
+            weeks={Math.ceil(
+              ((endDate?.getTime() || Date.now()) - (startDate?.getTime() || Date.now() - 30 * 24 * 60 * 60 * 1000))
+              / (7 * 24 * 60 * 60 * 1000)
+            ) || 4}
+          />
         </>
       )}
     </div>

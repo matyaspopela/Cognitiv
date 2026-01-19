@@ -35,6 +35,11 @@ urlpatterns = [
     path('admin/rooms', views.get_room_codes, name='get_room_codes'),
     path('annotation/status', views.annotation_status, name='annotation_status'),
     path('annotation/run', views.annotation_run, name='annotation_run'),
+    # Annotated data analytics API (Admin Panel)
+    path('annotated/series', views.annotated_series, name='annotated_series'),
+    path('annotated/summary', views.annotated_summary, name='annotated_summary'),
+    path('annotated/lessons', views.annotated_lessons, name='annotated_lessons'),
+    path('annotated/heatmap', views.annotated_heatmap, name='annotated_heatmap'),
     # Debug endpoint (remove in production if needed)
     path('debug/build-info', views.debug_build_info, name='debug_build_info'),
 ]

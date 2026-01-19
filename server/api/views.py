@@ -30,6 +30,14 @@ from board_manager import (
     upload_firmware,
 )
 
+# Import annotated data API views
+from .annotation.annotated_api import (
+    annotated_series,
+    annotated_summary,
+    annotated_lessons,
+    annotated_heatmap,
+)
+
 # Configuration - Use functions to read env vars lazily (after .env is loaded)
 def get_mongo_uri():
     """Get MONGO_URI from environment, ensuring .env is loaded first and properly formatted"""

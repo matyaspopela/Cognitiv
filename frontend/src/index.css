@@ -5,38 +5,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Legacy variable mappings for backward compatibility */
-:root {
-  --bg: var(--md3-color-background-default);
-  --surface: var(--md3-color-surface-default);
-  --surface-muted: rgba(255, 255, 255, 0.75);
-  --border: rgba(255, 255, 255, 0.18);
-  
-  --text: var(--md3-color-text-primary);
-  --text-secondary: var(--md3-color-text-secondary);
-  --muted: var(--md3-color-text-hint);
-  
-  --primary: var(--md3-color-primary-500);
-  --primary-light: var(--md3-color-primary-400);
-  --primary-dark: var(--md3-color-primary-700);
-  --primary-soft: var(--md3-color-primary-50);
-  
-  --secondary: var(--md3-color-secondary-500);
-  --secondary-light: var(--md3-color-secondary-300);
-  --secondary-dark: var(--md3-color-secondary-700);
-  
-  --accent: var(--md3-color-accent-500);
-  --accent-strong: var(--md3-color-accent-700);
-  
-  --success: var(--md3-color-success-500);
-  --warning: var(--md3-color-warning-500);
-  --danger: var(--md3-color-error-500);
-  
-  --shadow-soft: var(--md3-elevation-2);
-  --shadow-medium: var(--md3-elevation-4);
-}
 
-*, *::before, *::after {
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -59,8 +32,10 @@ body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: rgb(244, 244, 245); /* zinc-100 */
-  background: #08090A; /* zinc-950 */
+  color: rgb(244, 244, 245);
+  /* zinc-100 */
+  background: #08090A;
+  /* zinc-950 */
   min-height: 100vh;
   position: relative;
 }
@@ -102,12 +77,29 @@ a:hover {
 }
 
 /* Elevation utility classes */
-.md3-elevation-0 { box-shadow: var(--md3-elevation-0); }
-.md3-elevation-1 { box-shadow: var(--md3-elevation-1); }
-.md3-elevation-2 { box-shadow: var(--md3-elevation-2); }
-.md3-elevation-3 { box-shadow: var(--md3-elevation-3); }
-.md3-elevation-4 { box-shadow: var(--md3-elevation-4); }
-.md3-elevation-5 { box-shadow: var(--md3-elevation-5); }
+.md3-elevation-0 {
+  box-shadow: var(--md3-elevation-0);
+}
+
+.md3-elevation-1 {
+  box-shadow: var(--md3-elevation-1);
+}
+
+.md3-elevation-2 {
+  box-shadow: var(--md3-elevation-2);
+}
+
+.md3-elevation-3 {
+  box-shadow: var(--md3-elevation-3);
+}
+
+.md3-elevation-4 {
+  box-shadow: var(--md3-elevation-4);
+}
+
+.md3-elevation-5 {
+  box-shadow: var(--md3-elevation-5);
+}
 
 /* Focus styles - removed blue outline, using blur instead */
 *:focus-visible {
@@ -120,16 +112,27 @@ a:hover {
     letter-spacing: -0.02em;
     font-weight: 500;
   }
-  
+
   .text-kicker {
     font-size: 11px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: rgb(113, 113, 122); /* zinc-500 */
+    color: rgb(113, 113, 122);
+    /* zinc-500 */
   }
-}/* Circular progress indeterminate animation */
+}
+
+/* Circular progress indeterminate animation */
 @keyframes circular-progress-indeterminate {
-  0% { stroke-dashoffset: 40; }
-  50% { stroke-dashoffset: 10; }
-  100% { stroke-dashoffset: 40; }
+  0% {
+    stroke-dashoffset: 40;
+  }
+
+  50% {
+    stroke-dashoffset: 10;
+  }
+
+  100% {
+    stroke-dashoffset: 40;
+  }
 }

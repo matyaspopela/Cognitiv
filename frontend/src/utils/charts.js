@@ -3,72 +3,61 @@
  * Converts API data to Chart.js-compatible format
  */
 
+import { getCo2Color } from './colors'
+
 // Apple-modern color palette - Green to Red scale for danger communication
+// Kept for non-gradient fallbacks (like text)
 const appleModernColors = {
-  good: '#10B981',         // Emerald Green - Good air quality
-  moderate: '#F59E0B',     // Amber - Moderate (warning zone)
-  danger: '#EF4444',       // Red - Danger (>1500 ppm)
-  dangerDark: '#DC2626',   // Darker Red - Critical (>2000)
-  accent: '#14B8A6',       // Accent Teal (temperature)
-  grid: 'rgba(229, 231, 235, 0.5)',  // Softer grid lines
-  textSecondary: '#586169', // Secondary text
-  textPrimary: '#16181C',  // Primary text
+  good: getCo2Color(600),          // Representative Green
+  moderate: getCo2Color(1250),     // Representative Amber
+  danger: getCo2Color(1750),       // Representative Orange/Red
+  dangerDark: getCo2Color(2200),   // Representative Deep Red
+  accent: '#14B8A6',               // Accent Teal (temperature)
+  grid: 'rgba(229, 231, 235, 0.5)',
+  textSecondary: '#586169',
+  textPrimary: '#16181C',
 }
 
 /**
  * Get color based on CO2 value - Green to Red gradient
- * Green = Good, Yellow/Orange = Warning, Red = Danger
  */
 export const getColorForCO2 = (co2) => {
-  if (co2 < 1000) return appleModernColors.good      // Green: Excellent
-  if (co2 < 1500) return appleModernColors.moderate  // Amber: Moderate
-  return appleModernColors.danger                     // Red: Danger
+  return getCo2Color(co2)
 }
 
 /**
- * Get segment color for CO2 chart - implements red warning for >1500 ppm
- * This function colors each line segment based on CO2 values at both endpoints
+ * Get segment color for CO2 chart - implements smooth gradient
+ * This function colors each line segment based on the max value of the segment
  */
 export const getCO2SegmentColor = (context) => {
   // Safety checks
   if (!context || !context.dataset || !context.dataset.data) {
     return appleModernColors.good
   }
-  
+
   const p0Index = context.p0DataIndex
   const p1Index = context.p1DataIndex
   const data = context.dataset.data
-  
+
   // Check if indices are valid
-  if (p0Index === undefined || p1Index === undefined || 
-      p0Index < 0 || p1Index < 0 || 
-      p0Index >= data.length || p1Index >= data.length) {
+  if (p0Index === undefined || p1Index === undefined ||
+    p0Index < 0 || p1Index < 0 ||
+    p0Index >= data.length || p1Index >= data.length) {
     return appleModernColors.good
   }
-  
+
   const v0 = data[p0Index]
   const v1 = data[p1Index]
-  
+
   // Check for null/undefined values
   if (v0 === null || v0 === undefined || v1 === null || v1 === undefined) {
     return appleModernColors.good
   }
-  
+
   // Use the worse (higher) value to determine segment color
   const maxValue = Math.max(v0, v1)
-  
-  // Red for danger zone (>1500)
-  if (maxValue >= 1500) {
-    return appleModernColors.danger
-  }
-  
-  // Amber for moderate zone (1000-1500)
-  if (maxValue >= 1000) {
-    return appleModernColors.moderate
-  }
-  
-  // Green for good zone (<1000)
-  return appleModernColors.good
+
+  return getCo2Color(maxValue)
 }
 
 /**
@@ -87,6 +76,7 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
 
   const labels = []
   const values = []
+  // Colors array not strictly needed for line chart segments, but useful if we switched to bar
   const colors = []
 
   validData.forEach((item) => {
@@ -112,12 +102,13 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
       segment: {
         borderColor: (ctx) => getCO2SegmentColor(ctx),
       },
-      borderColor: appleModernColors.good, // Fallback color (green)
+      borderColor: appleModernColors.good, // Fallback
       borderWidth: 2,
       backgroundColor: (context) => {
         const chart = context.chart
         const { ctx, chartArea } = chart
         if (!chartArea) return 'rgba(16, 185, 129, 0.1)'
+        // Gradient fill for area under curve - subtle green
         const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
         gradient.addColorStop(0, 'rgba(16, 185, 129, 0)')
         gradient.addColorStop(1, 'rgba(16, 185, 129, 0.15)')
@@ -127,7 +118,11 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
       tension: 0.4,
       pointRadius: 0,
       pointHoverRadius: 6,
-      pointHoverBackgroundColor: appleModernColors.good,
+      pointHoverBackgroundColor: (ctx) => {
+        // Dynamic hover color
+        const val = ctx.raw
+        return getCo2Color(val)
+      },
       pointHoverBorderColor: '#fff',
       pointHoverBorderWidth: 2,
     }]
@@ -222,10 +217,10 @@ export const buildQualityChartData = (co2Quality) => {
     datasets: [{
       data: [good, moderate, high, critical],
       backgroundColor: [
-        appleModernColors.good,        // #10B981 - green for <1000
-        appleModernColors.moderate,    // #F59E0B - amber for 1000-1500
-        appleModernColors.danger,      // #EF4444 - red for 1500-2000
-        appleModernColors.dangerDark,  // #DC2626 - dark red for 2000+
+        getCo2Color(700),     // Representative Good
+        getCo2Color(1250),    // Representative Moderate
+        getCo2Color(1750),    // Representative High
+        getCo2Color(2200),    // Representative Critical
       ],
       borderColor: 'transparent',
       borderWidth: 0,
@@ -308,7 +303,7 @@ export const hasValidChartData = (chartData) => {
  */
 export const getChartOptions = (type = 'line', options = {}) => {
   const useTimeScale = options.useRealTimeScale === true // Default to false (evenly spaced)
-  
+
   const xAxisConfig = useTimeScale ? {
     type: 'time',
     time: {
@@ -342,15 +337,15 @@ export const getChartOptions = (type = 'line', options = {}) => {
       maxRotation: 45,
       autoSkip: true,
       maxTicksLimit: 10,
-      callback: function(value, index) {
+      callback: function (value, index) {
         // Format category labels as time strings
         const label = this.getLabelForValue(value)
         if (label instanceof Date) {
-          return label.toLocaleString('en-GB', { 
-            month: 'short', 
+          return label.toLocaleString('en-GB', {
+            month: 'short',
             day: 'numeric',
-            hour: '2-digit', 
-            minute: '2-digit' 
+            hour: '2-digit',
+            minute: '2-digit'
           })
         }
         return label

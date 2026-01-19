@@ -180,4 +180,80 @@ export const aiAPI = {
   },
 }
 
+// Annotated Data API (Admin Panel Analytics)
+export const annotatedAPI = {
+  /**
+   * Get time-bucketed annotated readings for charts
+   * @param {string} start - ISO datetime
+   * @param {string} end - ISO datetime
+   * @param {string} deviceId - Device MAC/name filter (optional)
+   * @param {string} bucket - 'hour', 'day', or 'week' (default: 'hour')
+   */
+  getSeries: async (start, end, deviceId = null, bucket = 'hour') => {
+    const params = new URLSearchParams()
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    if (deviceId) params.append('device_id', deviceId)
+    params.append('bucket', bucket)
+    try {
+      return await apiClient.get(`/annotated/series?${params.toString()}`)
+    } catch (error) {
+      return { data: { status: 'error', error: error.message } }
+    }
+  },
+
+  /**
+   * Get statistical summary including subject breakdown
+   * @param {string} start - ISO datetime (optional)
+   * @param {string} end - ISO datetime (optional)
+   * @param {string} deviceId - Device filter (optional)
+   */
+  getSummary: async (start = null, end = null, deviceId = null) => {
+    const params = new URLSearchParams()
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    if (deviceId) params.append('device_id', deviceId)
+    try {
+      return await apiClient.get(`/annotated/summary?${params.toString()}`)
+    } catch (error) {
+      return { data: { status: 'error', error: error.message } }
+    }
+  },
+
+  /**
+   * Get lesson-based analysis (by teacher, by period)
+   * @param {string} start - ISO datetime (optional)
+   * @param {string} end - ISO datetime (optional)
+   * @param {string} deviceId - Device filter (optional)
+   */
+  getLessons: async (start = null, end = null, deviceId = null) => {
+    const params = new URLSearchParams()
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    if (deviceId) params.append('device_id', deviceId)
+    try {
+      return await apiClient.get(`/annotated/lessons?${params.toString()}`)
+    } catch (error) {
+      return { data: { status: 'error', error: error.message } }
+    }
+  },
+
+  /**
+   * Get hour × weekday heatmap data
+   * @param {string} deviceId - Device filter (optional)
+   * @param {number} weeks - Number of weeks to include (default: 4)
+   */
+  getHeatmap: async (deviceId = null, weeks = 4) => {
+    const params = new URLSearchParams()
+    if (deviceId) params.append('device_id', deviceId)
+    params.append('weeks', weeks.toString())
+    try {
+      return await apiClient.get(`/annotated/heatmap?${params.toString()}`)
+    } catch (error) {
+      return { data: { status: 'error', error: error.message } }
+    }
+  },
+}
+
 export default apiClient
+
