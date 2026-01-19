@@ -8,11 +8,13 @@ import DeviceActionsMenu from '../components/admin/DeviceActionsMenu'
 import BoardAnalysisView from '../components/admin/BoardAnalysisView'
 import DeviceRenameModal from '../components/admin/DeviceRenameModal'
 import DeviceCustomizationModal from '../components/admin/DeviceCustomizationModal'
+import DeviceDetailsModal from '../components/admin/DeviceDetailsModal'
 
 const AdminPanel = () => {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedBoard, setSelectedBoard] = useState(null)
+  const [detailsDevice, setDetailsDevice] = useState(null)
   const [renameDevice, setRenameDevice] = useState(null)
   const [customizeDevice, setCustomizeDevice] = useState(null)
   const [error, setError] = useState('')
@@ -28,11 +30,11 @@ const AdminPanel = () => {
       const response = await adminAPI.getDevices()
       if (response.data.status === 'success') {
         const devicesList = response.data.devices || []
-        
+
         const isDeviceOnline = (device) => {
           if (!device) return false
           if (device.status === 'offline') return false
-          
+
           if (device.last_seen) {
             try {
               const lastSeenDate = new Date(device.last_seen)
@@ -47,15 +49,15 @@ const AdminPanel = () => {
               // Fallback to status
             }
           }
-          
+
           return device.status === 'online'
         }
-        
+
         const devicesWithStatus = devicesList.map(device => ({
           ...device,
           status: isDeviceOnline(device) ? 'online' : 'offline'
         }))
-        
+
         const sortedDevices = [...devicesWithStatus].sort((a, b) => {
           const aOnline = a.status === 'online' ? 1 : 0
           const bOnline = b.status === 'online' ? 1 : 0
@@ -74,11 +76,21 @@ const AdminPanel = () => {
   }
 
   const handleDetailsClick = (deviceId) => {
+    // Opens the BoardAnalysisView data viewing section
     setSelectedBoard(deviceId)
   }
 
   const handleCloseAnalysis = () => {
     setSelectedBoard(null)
+  }
+
+  const handleViewDeviceDetails = (device) => {
+    // Opens the DeviceDetailsModal popup
+    setDetailsDevice(device)
+  }
+
+  const handleCloseDetails = () => {
+    setDetailsDevice(null)
   }
 
   const handleRenameClick = (device) => {
@@ -120,16 +132,16 @@ const AdminPanel = () => {
       const endIso = now.toISOString()
 
       const response = await historyAPI.exportCSV(startIso, endIso, device.device_id)
-      
+
       const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      
+
       const deviceNameSafe = (device.display_name || device.device_id || 'device').replace(/[^a-z0-9]/gi, '_').toLowerCase()
       const dateStr = now.toISOString().split('T')[0]
       link.download = `cognitiv_${deviceNameSafe}_${dateStr}.csv`
-      
+
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -179,13 +191,13 @@ const AdminPanel = () => {
   // Format voltage helper function
   const formatVoltage = (voltage) => {
     if (voltage == null) return '—'
-    
-    const voltageNum = typeof voltage === 'string' 
-      ? parseFloat(voltage) 
-      : typeof voltage === 'number' 
-        ? voltage 
+
+    const voltageNum = typeof voltage === 'string'
+      ? parseFloat(voltage)
+      : typeof voltage === 'number'
+        ? voltage
         : null
-    
+
     if (voltageNum != null && !isNaN(voltageNum) && isFinite(voltageNum)) {
       return `${voltageNum.toFixed(2)}V`
     }
@@ -220,17 +232,17 @@ const AdminPanel = () => {
                   Manage and view all devices in the system
                 </p>
               </div>
-              <Button 
-                variant="filled" 
-                size="medium" 
-                onClick={loadDevices} 
+              <Button
+                variant="filled"
+                size="medium"
+                onClick={loadDevices}
                 disabled={loading}
                 className="flex items-center gap-2"
               >
-                <RefreshCw 
-                  size={18} 
-                  strokeWidth={2} 
-                  className={loading ? 'animate-spin' : ''} 
+                <RefreshCw
+                  size={18}
+                  strokeWidth={2}
+                  className={loading ? 'animate-spin' : ''}
                 />
                 Refresh
               </Button>
@@ -252,7 +264,7 @@ const AdminPanel = () => {
               <h2 className="text-lg font-semibold text-zinc-100 tracking-tight mb-4">
                 Device List
               </h2>
-              
+
               {loading ? (
                 <div className="flex flex-col gap-4 p-12 bg-zinc-900/50 border border-white/10 rounded-lg">
                   {/* Skeleton table rows */}
@@ -299,6 +311,13 @@ const AdminPanel = () => {
             <BoardAnalysisView deviceId={selectedBoard} onClose={handleCloseAnalysis} />
           )}
         </div>
+
+        {detailsDevice && (
+          <DeviceDetailsModal
+            device={detailsDevice}
+            onClose={handleCloseDetails}
+          />
+        )}
 
         {renameDevice && (
           <DeviceRenameModal

@@ -8,3 +8,5 @@ platformio
 google-generativeai
 paho-mqtt>=1.6.0
 python-dotenv>=1.0.0
+bakalapi
+APScheduler>=3.10.0

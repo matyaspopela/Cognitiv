@@ -12,36 +12,43 @@
 }
 
 .device-customization-modal {
-  min-width: 400px;
-  max-width: 500px;
-  padding: 24px;
+  min-width: 450px;
+  max-width: 520px;
+  padding: 32px;
 }
 
-.device-customization-modal h2 {
-  margin: 0 0 24px 0;
-  font-size: 1.5rem;
+.device-customization-modal .modal-title {
+  margin: 0 0 28px 0;
+  font-size: 1.75rem;
   font-weight: 600;
+  color: var(--md3-color-on-surface);
 }
 
-.device-customization-modal form {
+.device-customization-modal .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+}
+
+.device-customization-modal .form-field {
+  margin: 0;
 }
 
 .device-customization-modal-error {
-  padding: 12px;
-  background-color: #fee;
-  color: #c33;
-  border-radius: var(--md3-border-radius-xs);
-  font-size: 0.875rem;
+  padding: 14px 16px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .device-customization-modal-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 @media (max-width: 600px) {
@@ -49,5 +56,6 @@
     min-width: auto;
     width: calc(100% - 32px);
     margin: 16px;
+    padding: 24px;
   }
 }

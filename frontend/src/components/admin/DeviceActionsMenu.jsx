@@ -11,7 +11,7 @@ const DeviceActionsMenu = ({ device, onRename, onExport, onDetails, onCustomize 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target) &&
-          dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false)
       }
     }
@@ -87,8 +87,8 @@ const DeviceActionsMenu = ({ device, onRename, onExport, onDetails, onCustomize 
   }
 
   const dropdown = isOpen ? (
-    <div 
-      ref={dropdownRef} 
+    <div
+      ref={dropdownRef}
       className="device-actions-menu__dropdown device-actions-menu__dropdown--portal"
       style={dropdownStyle}
     >
@@ -98,11 +98,6 @@ const DeviceActionsMenu = ({ device, onRename, onExport, onDetails, onCustomize 
       {device.mac_address && onCustomize && (
         <button className="device-actions-menu__item" onClick={handleCustomize}>
           <span>Customize</span>
-        </button>
-      )}
-      {device.mac_address && (
-        <button className="device-actions-menu__item" onClick={handleRename}>
-          <span>Rename</span>
         </button>
       )}
       <button className="device-actions-menu__item" onClick={handleExport}>

@@ -31,6 +31,10 @@ urlpatterns = [
     path('admin/whitelist/add', views.admin_whitelist_add_mac, name='admin_whitelist_add_mac'),
     # AI Assistant endpoint
     path('ai/chat', views.ai_chat, name='ai_chat'),
+    # Annotation endpoints
+    path('admin/rooms', views.get_room_codes, name='get_room_codes'),
+    path('annotation/status', views.annotation_status, name='annotation_status'),
+    path('annotation/run', views.annotation_run, name='annotation_run'),
     # Debug endpoint (remove in production if needed)
     path('debug/build-info', views.debug_build_info, name='debug_build_info'),
 ]

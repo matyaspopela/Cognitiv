@@ -25,3 +25,11 @@ class ApiConfig(AppConfig):
         except Exception as e:
             # Don't fail startup if MQTT fails
             print(f'Warning: Could not start MQTT subscriber: {e}')
+        
+        # Start annotation scheduler
+        try:
+            from api.annotation.scheduler import start_scheduler
+            start_scheduler()
+        except Exception as e:
+            # Don't fail startup if scheduler fails
+            print(f'Warning: Could not start annotation scheduler: {e}')

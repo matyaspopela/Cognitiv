@@ -138,7 +138,11 @@ def get_mongo_db_name():
     base_db_name = os.getenv('MONGO_DB_NAME', 'cognitiv')
     
     # If in local development and connecting to production MongoDB, use dev database
+    # If in local development and connecting to production MongoDB, use dev database
     is_production = os.getenv('RENDER') is not None or os.getenv('RENDER_EXTERNAL_HOSTNAME') is not None
+    
+    # USER REQUEST: Allow dev server to access production DB
+    # Auto-appending _dev is disabled to allow viewing production data
     if not is_production:
         mongo_uri = get_mongo_uri()
         if mongo_uri:
@@ -146,19 +150,15 @@ def get_mongo_db_name():
             is_production_mongo = '.mongodb.net' in mongo_uri or mongo_uri.startswith('mongodb+srv://')
             is_local_mongo = mongo_uri.startswith('mongodb://localhost') or mongo_uri.startswith('mongodb://127.0.0.1')
             
-            # If using production MongoDB in local dev, append '_dev' to database name
             if is_production_mongo and not is_local_mongo:
-                if not base_db_name.endswith('_dev'):
-                    dev_db_name = base_db_name + '_dev'
-                    print(f"[INFO] Local development detected with production MongoDB.")
-                    print(f"[INFO] Using development database: {dev_db_name} (instead of {base_db_name})")
-                    print(f"[INFO] This prevents data duplication between local dev and production.")
-                    return dev_db_name
-    
+                 print(f"[INFO] Local development detected with production MongoDB.")
+                 print(f"[INFO] Using database: {base_db_name}")
+                 print(f"[WARN] CAUTION: You are connected to the PRODUCTION database!")
+
     return base_db_name
 
 def get_mongo_collection_name():
-    return os.getenv('MONGO_COLLECTION', 'sensor_data')
+    return os.getenv('MONGO_COLLECTION', 'sensor_data_')
 
 LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
 
@@ -232,12 +232,11 @@ def init_mongo_client():
         is_local_mongo = mongo_uri.startswith('mongodb://localhost') or mongo_uri.startswith('mongodb://127.0.0.1')
         
         if is_production_mongo and not is_local_mongo:
-            # Note: Data duplication is automatically prevented by using a different database name
-            # See get_mongo_db_name() which appends '_dev' to database name in local development
+            # Note: Production database access enabled as per user request
             print(f"\n{'='*70}")
-            print(f"ℹ️  INFO: Local development server is connecting to production MongoDB cluster.")
-            print(f"   To prevent data duplication, using development database: '{mongo_db_name}_dev'")
-            print(f"   (instead of production database: '{mongo_db_name}')")
+            print(f"⚠️  WARNING: Local development server is connecting to PRODUCTION MongoDB cluster.")
+            print(f"   Using database: '{mongo_db_name}'")
+            print(f"   Writing to this database WILL affect production data!")
             print(f"   MongoDB URI points to: {uri_display}")
             print(f"{'='*70}\n")
     
@@ -1497,27 +1496,19 @@ def history_export(request):
             return JsonResponse({'error': 'Počáteční datum nesmí být pozdější než koncové.'}, status=400)
 
         device_id = request.GET.get('device_id')
-        mongo_filter = build_history_filter(start_dt, end_dt, device_id)
-
-        # Fetch raw data (not aggregated) for export
-        cursor = get_mongo_collection().find(mongo_filter).sort('timestamp', 1)
         
-        # Generate CSV
-        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        # Use the centralized export logic
+        from .annotation.export import export_raw_csv, sanitize_filename
         
-        # Create filename with date range (sanitize for filesystem)
-        def sanitize_filename(s):
-            """Remove or replace characters that are invalid in filenames"""
-            if not s:
-                return ''
-            # Replace spaces, colons, and other problematic chars
-            s = s.replace(' ', '_').replace(':', '-').replace('/', '-')
-            # Remove any remaining problematic characters
-            s = re.sub(r'[<>"|?*]', '', s)
-            return s
+        # Generate CSV content
+        csv_content = export_raw_csv(start_dt, end_dt, device_id)
         
-        start_str = sanitize_filename(to_readable_timestamp(start_dt)) if start_dt else 'start'
-        end_str = sanitize_filename(to_readable_timestamp(end_dt)) if end_dt else 'end'
+        # Prepare response
+        response = HttpResponse(csv_content, content_type='text/csv; charset=utf-8')
+        
+        # Create filename
+        start_str = sanitize_filename(start_dt.strftime('%Y-%m-%d_%H-%M-%S')) if start_dt else 'start'
+        end_str = sanitize_filename(end_dt.strftime('%Y-%m-%d_%H-%M-%S')) if end_dt else 'end'
         device_safe = sanitize_filename(device_id) if device_id else ''
         
         if device_safe:
@@ -1527,38 +1518,19 @@ def history_export(request):
         
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
-        # Write BOM for Excel compatibility
-        response.write('\ufeff')
+        # Add BOM for Excel compatibility (if not already handled by export logic string generation - 
+        # export.py returns string via getValue(), so we prepend it here or ensure export.py doesn't duplicate)
+        # Note: export_raw_csv returns just the content string. 
+        # We should modify csv_content to allow BOM prefixing if needed, 
+        # but StringIO.getvalue() returns a string. 
+        # Best way is to write BOM to response first, then content.
+        # But we already passed `csv_content` to HttpResponse constructor.
+        # Let's rebuild response to strictly match previous behavior including BOM.
         
-        writer = csv.writer(response)
-        
-        # Write header
-        writer.writerow([
-            'Časové razítko',
-            'Zařízení',
-            'Teplota (°C)',
-            'Vlhkost (%)',
-            'CO₂ (ppm)'
-        ])
-        
-        # Write data rows
-        count = 0
-        for doc in cursor:
-            timestamp_local = to_local_datetime(doc.get('timestamp'))
-            timestamp_str = timestamp_local.strftime('%Y-%m-%d %H:%M:%S') if timestamp_local else ''
-            
-            writer.writerow([
-                timestamp_str,
-                doc.get('device_id', ''),
-                doc.get('temperature', ''),
-                doc.get('humidity', ''),
-                doc.get('co2', '')
-            ])
-            count += 1
-        
-        if count == 0:
-            # If no data, still return a valid CSV with a message row
-            writer.writerow(['Žádná data v zadaném období', '', '', '', ''])
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff') # BOM
+        response.write(csv_content)
         
         return response
 
@@ -2370,6 +2342,7 @@ def admin_devices(request):
                     'device_id': device_id or entry.get('legacy_device_id'),
                     'class': entry.get('class', ''),
                     'school': entry.get('school', ''),
+                    'room_code': entry.get('room_code', ''),
                     'status': status,
                     'total_data_points': total_count,
                     'last_seen': last_seen,
@@ -2465,7 +2438,7 @@ def admin_rename_device(request, mac_address):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_customize_device(request, mac_address):
-    """Customize device by MAC address - update name, class, and school"""
+    """Customize device by MAC address - update name, class, school, and room_code"""
     if not check_admin_auth(request):
         return JsonResponse({
             'status': 'error',
@@ -2473,10 +2446,14 @@ def admin_customize_device(request, mac_address):
         }, status=401)
     
     try:
+        # Import room codes for validation
+        from api.annotation.room_config import VALID_ROOM_CODES
+        
         data = json.loads(request.body) if request.body else {}
         display_name = (data.get('display_name') or '').strip()
         class_name = (data.get('class') or '').strip()
         school = (data.get('school') or '').strip()
+        room_code = (data.get('room_code') or '').strip()
         
         if not display_name:
             return JsonResponse({
@@ -2500,6 +2477,13 @@ def admin_customize_device(request, mac_address):
             return JsonResponse({
                 'status': 'error',
                 'message': 'School must not exceed 100 characters'
+            }, status=400)
+        
+        # Validate room_code if provided
+        if room_code and room_code not in VALID_ROOM_CODES:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Invalid room code: {room_code}. Valid codes are: {", ".join(VALID_ROOM_CODES[:10])}...'
             }, status=400)
         
         mac_normalized = normalize_mac_address(mac_address)
@@ -2528,6 +2512,14 @@ def admin_customize_device(request, mac_address):
                 update_data['$unset'] = {}
             update_data['$unset']['school'] = ''
         
+        # Add room_code if provided, otherwise unset it
+        if room_code:
+            update_data['$set']['room_code'] = room_code
+        else:
+            if '$unset' not in update_data:
+                update_data['$unset'] = {}
+            update_data['$unset']['room_code'] = ''
+        
         result = registry.update_one(
             {'mac_address': mac_normalized},
             update_data
@@ -2548,7 +2540,8 @@ def admin_customize_device(request, mac_address):
             'mac_address': mac_normalized,
             'display_name': display_name,
             'class': updated_entry.get('class', ''),
-            'school': updated_entry.get('school', '')
+            'school': updated_entry.get('school', ''),
+            'room_code': updated_entry.get('room_code', '')
         }, status=200)
     except ValueError as e:
         return JsonResponse({
@@ -3226,4 +3219,91 @@ def admin_whitelist_add_mac(request):
         return JsonResponse({
             'status': 'error',
             'message': f'Chyba: {str(e)}'
+        }, status=500)
+
+
+# ==================== Annotation System Endpoints ====================
+
+@require_http_methods(["GET"])
+def get_room_codes(request):
+    """Get list of valid room codes for BakalAPI annotation"""
+    try:
+        from api.annotation.room_config import get_room_options, VALID_ROOM_CODES
+        
+        return JsonResponse({
+            'status': 'success',
+            'room_codes': VALID_ROOM_CODES,
+            'room_options': get_room_options(),
+            'total': len(VALID_ROOM_CODES)
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def annotation_status(request):
+    """Get the status of the annotation system and scheduler"""
+    try:
+        from api.annotation.scheduler import get_scheduler_status
+        from api.annotation.annotator import get_annotation_status
+        
+        scheduler_status = get_scheduler_status()
+        annotation_status = get_annotation_status()
+        
+        return JsonResponse({
+            'status': 'success',
+            'scheduler': scheduler_status,
+            'annotation': annotation_status
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def annotation_run(request):
+    """Manually trigger annotation for a specific date"""
+    if not check_admin_auth(request):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Neautorizovaný přístup'
+        }, status=401)
+    
+    try:
+        from api.annotation.scheduler import trigger_annotation_now
+        from datetime import date as dt_date
+        
+        data = json.loads(request.body) if request.body else {}
+        date_str = data.get('date')
+        
+        target_date = None
+        if date_str:
+            try:
+                target_date = dt_date.fromisoformat(date_str)
+            except ValueError:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Invalid date format: {date_str}. Use YYYY-MM-DD'
+                }, status=400)
+        
+        result = trigger_annotation_now(target_date)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Annotation completed for {result.get("date")}',
+            'result': {
+                'date': result.get('date'),
+                'summary': result.get('summary')
+            }
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
         }, status=500)
