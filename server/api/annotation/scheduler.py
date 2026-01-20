@@ -1,6 +1,6 @@
 """
 Scheduler for automatic daily annotation.
-Uses APScheduler to run annotation job every morning at 6:00 AM.
+Uses APScheduler to run annotation job every morning at 17:00 PM.
 """
 
 import os
@@ -95,7 +95,7 @@ def start_scheduler():
     # Runs at 6:00 AM local time (Europe/Prague)
     scheduler.add_job(
         annotate_yesterday_job,
-        trigger=CronTrigger(hour=6, minute=0),
+        trigger=CronTrigger(hour=17, minute=0),
         id='daily_annotation',
         name='Daily Sensor Annotation',
         replace_existing=True
