@@ -24,19 +24,23 @@ _scheduler = None
 _scheduler_started = False
 
 
-def annotate_yesterday_job():
+def annotate_today_job():
     """
-    Job function to annotate yesterday's sensor data.
-    Called automatically by the scheduler.
+    Job function to annotate today's sensor data.
+    Called automatically by the scheduler at end of day.
+    
+    Uses annotate_today() instead of annotate_yesterday() because the
+    BakalAPI only returns the current week's timetable. Running at 23:00
+    ensures timetable entries are still available for accurate matching.
     """
-    from .annotator import annotate_yesterday
+    from .annotator import annotate_today
     
     print("\n" + "="*60)
     print("🕕 Running scheduled annotation job...")
     print("="*60)
     
     try:
-        result = annotate_yesterday()
+        result = annotate_today()
         summary = result.get('summary', {})
         print(f"✓ Scheduled annotation complete:")
         print(f"   Date: {result.get('date')}")
@@ -92,9 +96,10 @@ def start_scheduler():
         return False
     
     # Add the daily annotation job
-    # Runs at 6:00 AM local time (Europe/Prague)
+    # Runs at 17:00 local time (Europe/Prague) to annotate today's data
+    # after readings end at 16:00
     scheduler.add_job(
-        annotate_yesterday_job,
+        annotate_today_job,
         trigger=CronTrigger(hour=17, minute=0),
         id='daily_annotation',
         name='Daily Sensor Annotation',
@@ -109,7 +114,7 @@ def start_scheduler():
         # Register shutdown handler
         atexit.register(stop_scheduler)
         
-        print("📅 Annotation scheduler started (daily at 6:00 AM)")
+        print("📅 Annotation scheduler started (daily at 17:00)")
         return True
     except Exception as e:
         print(f"✗ Failed to start scheduler: {e}")

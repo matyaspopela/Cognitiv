@@ -86,17 +86,16 @@ def run_platformio_upload(extra_env: dict | None = None) -> Tuple[int, str, str]
         env.update(extra_env)
 
     # Try both 'pio' and 'platformio' commands (pio is the newer CLI)
-    import sys
-    is_windows = sys.platform.startswith('win')
+    import shutil
     
     # Try pio first (newer CLI), then platformio
     for cmd_name in ['pio', 'platformio']:
-        if is_windows:
-            # On Windows with shell=True, use string format
-            cmd = f'{cmd_name} run -t upload'
-        else:
-            # On Unix-like systems, use list format
-            cmd = [cmd_name, "run", "-t", "upload"]
+        # Find the executable path to avoid shell=True security risk
+        cmd_path = shutil.which(cmd_name)
+        if not cmd_path:
+            continue
+            
+        cmd = [cmd_path, "run", "-t", "upload"]
         
         try:
             completed = subprocess.run(
@@ -106,7 +105,7 @@ def run_platformio_upload(extra_env: dict | None = None) -> Tuple[int, str, str]
                 text=True,
                 env=env,
                 check=False,
-                shell=is_windows,  # Use shell on Windows for better PATH resolution
+                shell=False,  # Avoid shell=True for security
             )
             # If command was found and executed (even if failed), return the result
             return completed.returncode, completed.stdout, completed.stderr

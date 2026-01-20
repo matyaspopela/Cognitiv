@@ -18,13 +18,20 @@ from django.test import RequestFactory
 import paho.mqtt.client as mqtt
 from api.views import receive_data
 
-# MQTT Configuration
+# MQTT Configuration - all values from environment variables (no hardcoded fallbacks)
 # Note: Server uses different credentials than ESP8266 publisher
-MQTT_BROKER_HOST = os.getenv('MQTT_BROKER_HOST', 'fc716f4d434d4d7689ca16c9be2ebf2b.s1.eu.hivemq.cloud')
+MQTT_BROKER_HOST = os.getenv('MQTT_BROKER_HOST')
 MQTT_BROKER_PORT = int(os.getenv('MQTT_BROKER_PORT', '8883'))
-MQTT_USERNAME = os.getenv('MQTT_USERNAME', 'Mongo_puller')  # Server subscriber credentials
-MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', 'espASS12')
-MQTT_TOPIC = os.getenv('MQTT_TOPIC', 'sensors/esp_12s_school_1/data')
+MQTT_USERNAME = os.getenv('MQTT_USERNAME')
+MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
+MQTT_TOPIC = os.getenv('MQTT_TOPIC')
+
+# Validate required environment variables
+_REQUIRED_MQTT_VARS = ['MQTT_BROKER_HOST', 'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_TOPIC']
+_missing_vars = [var for var in _REQUIRED_MQTT_VARS if not os.getenv(var)]
+if _missing_vars:
+    import warnings
+    warnings.warn(f"Missing MQTT environment variables: {', '.join(_missing_vars)}. MQTT subscriber may fail.")
 
 
 class Command(BaseCommand):

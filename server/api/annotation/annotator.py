@@ -376,13 +376,32 @@ def annotate_day(target_date: date) -> Dict:
 def annotate_yesterday() -> Dict:
     """
     Convenience function to annotate yesterday's data.
-    Called by the scheduler.
+    
+    WARNING: This may not work correctly if called the next day,
+    as the BakalAPI only returns the current week's timetable.
+    Use annotate_today() for reliable same-day annotation.
     
     Returns:
         Summary dict with annotation results
     """
     yesterday = date.today() - timedelta(days=1)
     return annotate_day(yesterday)
+
+
+def annotate_today() -> Dict:
+    """
+    Annotate today's sensor data with the current timetable.
+    
+    This is the recommended function for scheduled annotation because
+    the BakalAPI returns the current week's timetable. Running this
+    at the end of each day (e.g., 23:00) ensures timetable entries
+    are still available for matching.
+    
+    Returns:
+        Summary dict with annotation results
+    """
+    today = date.today()
+    return annotate_day(today)
 
 
 def get_annotation_status() -> Dict:

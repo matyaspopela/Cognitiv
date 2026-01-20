@@ -37,12 +37,25 @@ else:
     print(f"[INFO] Production environment detected (Render). Using Render environment variables only.")
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-#rpbd^n-j2y4ow1dy%uk=n_c6a5iti0y32sb47n1j%09y)y&3n')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if os.getenv('RENDER'):
+        raise ValueError("DJANGO_SECRET_KEY must be set in production")
+    # Allow insecure key ONLY for local development
+    SECRET_KEY = 'django-insecure-dev-only-replace-in-production'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']  # Configure appropriately for production
+# Restrict allowed hosts - add your domains here
+ALLOWED_HOSTS = [
+    'cognitiv.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
+# Allow any host in debug mode for local development
+if DEBUG:
+    ALLOWED_HOSTS.append('*')
 
 # Application definition
 INSTALLED_APPS = [
@@ -70,14 +83,21 @@ except ImportError:
     # WhiteNoise not installed - will use Django's static file serving in development
     pass
 
-# CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Configure appropriately for production
+# CORS settings - restrict to known origins in production
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all origins in debug mode
+CORS_ALLOWED_ORIGINS = [
+    'https://cognitiv.onrender.com',
+    'http://localhost:5173',
+    'http://localhost:8000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8000',
+]
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies for session-based auth
 
 # CSRF settings for API endpoints (IoT devices don't send CSRF tokens or Referer headers)
 CSRF_TRUSTED_ORIGINS = ['https://cognitiv.onrender.com', 'http://localhost:8000']
-# Allow requests without Referer header for API endpoints (needed for IoT devices)
-CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+# Secure cookies in production (HTTPS required)
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
 
@@ -143,4 +163,4 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_SECURE = not DEBUG  # Secure cookies in production

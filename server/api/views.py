@@ -1995,19 +1995,15 @@ def connect_upload(request):
     }, status=200)
 
 
-# Admin API endpoints
-ADMIN_USERNAME = 'gymzr_admin'
-ADMIN_PASSWORD = '8266brainguard'
+# Admin API endpoints - credentials from environment variables
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
 
 def check_admin_auth(request):
-    """Check if request has valid admin authentication"""
-    # Check session-based authentication
-    if request.session.get('admin_authenticated', False):
-        return True
-    # Also check header for API calls (for development/testing)
-    username = request.headers.get('X-Admin-User')
-    return username == ADMIN_USERNAME
+    """Check if request has valid admin authentication via session only"""
+    # Session-based authentication only - no insecure header bypass
+    return request.session.get('admin_authenticated', False)
 
 
 @csrf_exempt
@@ -2018,6 +2014,13 @@ def admin_login(request):
         data = json.loads(request.body)
         username = data.get('username', '').strip()
         password = data.get('password', '')
+
+        # Require credentials to be configured
+        if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Admin credentials not configured on server'
+            }, status=500)
 
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             request.session['admin_authenticated'] = True
