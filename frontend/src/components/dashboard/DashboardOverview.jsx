@@ -39,8 +39,8 @@ const DashboardOverview = () => {
         if (!devicesResponse.error && devicesResponse.data) {
           const devices = devicesResponse.data?.devices || devicesResponse.data || []
           totalDevices = Array.isArray(devices) ? devices.length : 0
-          onlineDevices = Array.isArray(devices) 
-            ? devices.filter(d => d.status === 'online' || (d.last_seen && (new Date() - new Date(d.last_seen)) < 5 * 60 * 1000)).length 
+          onlineDevices = Array.isArray(devices)
+            ? devices.filter(d => d.status === 'online' || (d.last_seen && (new Date() - new Date(d.last_seen)) < 5 * 60 * 1000)).length
             : 0
         }
 
@@ -72,7 +72,7 @@ const DashboardOverview = () => {
         })
       } catch (err) {
         console.error('Error loading overview statistics:', err)
-        setError('Nepodařilo se načíst přehledové statistiky')
+        setError('Failed to load overview statistics')
       } finally {
         setLoading(false)
       }
@@ -86,7 +86,7 @@ const DashboardOverview = () => {
     return (
       <div className="dashboard-overview-loading">
         <ProgressBar indeterminate />
-        <p>Načítám přehledové statistiky...</p>
+        <p>Loading overview statistics...</p>
       </div>
     )
   }
@@ -113,21 +113,6 @@ const DashboardOverview = () => {
           direction: stats.onlineDevices === stats.totalDevices ? 'up' : 'neutral',
           icon: stats.onlineDevices === stats.totalDevices ? <CheckCircle size={14} strokeWidth={2} /> : <Circle size={14} strokeWidth={2} />,
           value: `${Math.round((stats.onlineDevices / stats.totalDevices) * 100)}%`
-        } : null}
-      />
-      <MetricCard
-        label="Average CO₂"
-        value={stats.averageCo2 !== null && stats.averageCo2 !== undefined
-          ? `${Math.round(stats.averageCo2)} ppm`
-          : '--'}
-        trend={stats.averageCo2 !== null && stats.averageCo2 < 1500 ? {
-          direction: 'up',
-          icon: <TrendingDown size={14} strokeWidth={2} />,
-          value: 'Good'
-        } : stats.averageCo2 !== null ? {
-          direction: 'down',
-          icon: <TrendingUp size={14} strokeWidth={2} />,
-          value: 'High'
         } : null}
       />
       <MetricCard

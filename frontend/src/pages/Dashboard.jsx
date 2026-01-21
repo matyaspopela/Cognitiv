@@ -5,7 +5,6 @@ import Card from '../components/ui/Card'
 import DashboardBox from '../components/dashboard/DashboardBox'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import DeviceDetailView from '../components/dashboard/DeviceDetailView'
-import ActivityFeed from '../components/dashboard/ActivityFeed'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import './Dashboard.css'
 
@@ -34,8 +33,8 @@ const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   return (
     <div className="dashboard-box-grid">
       {devices.map((device) => {
-        const deviceKey = typeof device === 'string' 
-          ? device 
+        const deviceKey = typeof device === 'string'
+          ? device
           : device?.mac_address || device?.device_id || device?.display_name || 'unknown'
         return (
           <DashboardBox
@@ -120,19 +119,12 @@ const Dashboard = () => {
             </div>
           )}
           <DashboardOverview />
-          
-          <div className="dashboard-main-grid">
-            <div className="dashboard-grid__devices">
-              <DashboardBoxGrid
-                devices={devices}
-                onDeviceSelect={handleDeviceSelect}
-                loading={loading}
-              />
-            </div>
-            <div className="dashboard-grid__activity">
-              <ActivityFeed />
-            </div>
-          </div>
+
+          <DashboardBoxGrid
+            devices={devices}
+            onDeviceSelect={handleDeviceSelect}
+            loading={loading}
+          />
         </>
       )}
     </div>

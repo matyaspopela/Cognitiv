@@ -7,15 +7,15 @@ import './TimeWindowSelector.css'
  */
 const TimeWindowSelector = ({ value, onChange }) => {
   const options = [
-    { value: '1h', label: '1 hodina' },
-    { value: '24h', label: '24 hodin' },
-    { value: '7d', label: '7 dní' },
-    { value: '30d', label: '30 dní' }
+    { value: '1h', label: '1 Hour' },
+    { value: '24h', label: '24 Hours' },
+    { value: '7d', label: '7 Days' },
+    { value: '30d', label: '30 Days' }
   ]
 
   return (
     <div className="time-window-selector">
-      <div className="time-window-selector__label">Časové okno:</div>
+      <div className="time-window-selector__label">Time Period:</div>
       <div className="time-window-selector__buttons">
         {options.map((option) => (
           <Button
@@ -23,9 +23,8 @@ const TimeWindowSelector = ({ value, onChange }) => {
             variant={value === option.value ? 'filled' : 'outlined'}
             size="medium"
             onClick={() => onChange(option.value)}
-            className={`time-window-selector__button ${
-              value === option.value ? 'time-window-selector__button--active' : ''
-            }`}
+            className={`time-window-selector__button ${value === option.value ? 'time-window-selector__button--active' : ''
+              }`}
             aria-pressed={value === option.value}
           >
             {option.label}

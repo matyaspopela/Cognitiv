@@ -4,6 +4,9 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: var(--md3-spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-spacing-8); /* 32px between sections */
 }
 
 /* Quality Distribution Boxes */

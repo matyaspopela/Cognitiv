@@ -16,9 +16,9 @@ import {
 import { Line, Doughnut } from 'react-chartjs-2'
 import 'chartjs-adapter-date-fns'
 import { dataAPI, historyAPI } from '../../services/api'
-import { 
-  buildCo2ChartData, 
-  buildClimateChartData, 
+import {
+  buildCo2ChartData,
+  buildClimateChartData,
   buildQualityChartData,
   hasValidChartData,
   getChartOptions,
@@ -28,6 +28,8 @@ import { getTimeWindowRange, getBucketSize, getHoursForStats } from '../../utils
 import Card from '../ui/Card'
 import TimeWindowSelector from './TimeWindowSelector'
 import ProgressBar from '../ui/ProgressBar'
+import KeyMetricsGrid from './KeyMetricsGrid'
+import AirQualityGauge from './AirQualityGauge'
 import './DeviceDetailView.css'
 
 // Register Chart.js components
@@ -49,10 +51,10 @@ ChartJS.register(
  */
 const filterSeriesInRange = (series, startISO, endISO) => {
   if (!series || !Array.isArray(series)) return []
-  
+
   const startTime = new Date(startISO).getTime()
   const endTime = new Date(endISO).getTime()
-  
+
   return series.filter(item => {
     if (!item.bucket_start) return false
     const pointTime = new Date(item.bucket_start).getTime()
@@ -174,7 +176,7 @@ const Co2Graph = ({ deviceId, timeWindow }) => {
         const bucket = getBucketSize(timeWindow)
 
         const response = await historyAPI.getSeries(start, end, bucket, deviceId)
-        
+
         if (response?.response?.status >= 400 || response?.status >= 400) {
           setError('Failed to load data')
           return
@@ -184,7 +186,7 @@ const Co2Graph = ({ deviceId, timeWindow }) => {
 
         if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
           const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
-          
+
           if (filteredSeries.length > 0) {
             const data = buildCo2ChartData(filteredSeries, bucket)
             if (hasValidChartData(data)) {
@@ -266,7 +268,7 @@ const ClimateGraph = ({ deviceId, timeWindow }) => {
         const bucket = getBucketSize(timeWindow)
 
         const response = await historyAPI.getSeries(start, end, bucket, deviceId)
-        
+
         if (response?.response?.status >= 400 || response?.status >= 400) {
           setError('Failed to load data')
           return
@@ -276,7 +278,7 @@ const ClimateGraph = ({ deviceId, timeWindow }) => {
 
         if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
           const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
-          
+
           if (filteredSeries.length > 0) {
             const data = buildClimateChartData(filteredSeries, bucket)
             if (hasValidChartData(data)) {
@@ -348,7 +350,7 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
         const { start, end } = getTimeWindowRange(timeWindow)
 
         const response = await historyAPI.getSummary(start, end, deviceId)
-        
+
         if (response?.response?.status >= 400 || response?.status >= 400) {
           setError('Failed to load data')
           return
@@ -362,9 +364,9 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
           const moderate = typeof co2Quality.moderate === 'number' ? co2Quality.moderate : 0
           const high = typeof co2Quality.high === 'number' ? co2Quality.high : 0
           const critical = typeof co2Quality.critical === 'number' ? co2Quality.critical : 0
-          
+
           const total = good + moderate + high + critical
-          
+
           if (total > 0) {
             setQualityData({
               good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good (< 1000 ppm)', color: '#10B981' },
@@ -413,28 +415,28 @@ const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
     <Card className="quality-distribution-boxes" elevation={2}>
       <h3 className="quality-distribution-boxes__title">Air Quality Distribution</h3>
       <div className="quality-distribution-boxes__content">
-        <div 
+        <div
           className="quality-distribution-boxes__box"
           style={{ backgroundColor: qualityData.good.color }}
         >
           <span className="quality-distribution-boxes__label">{qualityData.good.label}:</span>
           <span className="quality-distribution-boxes__value">{qualityData.good.percent}%</span>
         </div>
-        <div 
+        <div
           className="quality-distribution-boxes__box"
           style={{ backgroundColor: qualityData.moderate.color }}
         >
           <span className="quality-distribution-boxes__label">{qualityData.moderate.label}:</span>
           <span className="quality-distribution-boxes__value">{qualityData.moderate.percent}%</span>
         </div>
-        <div 
+        <div
           className="quality-distribution-boxes__box"
           style={{ backgroundColor: qualityData.high.color }}
         >
           <span className="quality-distribution-boxes__label">{qualityData.high.label}:</span>
           <span className="quality-distribution-boxes__value">{qualityData.high.percent}%</span>
         </div>
-        <div 
+        <div
           className="quality-distribution-boxes__box"
           style={{ backgroundColor: qualityData.critical.color }}
         >
@@ -465,7 +467,7 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
         const { start, end } = getTimeWindowRange(timeWindow)
 
         const response = await historyAPI.getSummary(start, end, deviceId)
-        
+
         if (response?.response?.status >= 400 || response?.status >= 400) {
           setError('Failed to load data')
           return
@@ -565,9 +567,9 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         const response = await dataAPI.getDevices()
         if (response.data && response.data.devices) {
           const device = response.data.devices.find(
-            (d) => d.device_id === deviceId || 
-                   d.mac_address === deviceId || 
-                   d.display_name === deviceId
+            (d) => d.device_id === deviceId ||
+              d.mac_address === deviceId ||
+              d.display_name === deviceId
           )
           if (device && device.display_name) {
             setDeviceName(device.display_name)
@@ -594,11 +596,11 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         </Link>
       </div>
 
-      <QualityDistributionBoxes deviceId={deviceId} timeWindow={timeWindow} />
+      <AirQualityGauge deviceId={deviceId} timeWindow={timeWindow} />
 
       <TimeWindowSelector value={timeWindow} onChange={onTimeWindowChange} />
 
-      <NumericalValues deviceId={deviceId} timeWindow={timeWindow} />
+      <KeyMetricsGrid deviceId={deviceId} timeWindow={timeWindow} />
 
       <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
 
