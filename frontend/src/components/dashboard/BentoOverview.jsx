@@ -27,16 +27,25 @@ const BentoCard = ({ children, className = '', onClick, span = '' }) => {
     )
 }
 
+// Staleness threshold: 5 minutes
+const STALE_THRESHOLD_MS = 5 * 60 * 1000
+
 // Box A: Hero - System Health
-const HeroCard = ({ averageCo2, loading }) => {
+const HeroCard = ({ averageCo2, loading, isStale }) => {
     const isHealthy = averageCo2 === null || averageCo2 < 1000
-    const accentColor = isHealthy ? 'text-emerald-400' : 'text-red-400'
-    const glowColor = isHealthy ? 'shadow-emerald-500/20' : 'shadow-red-500/20'
+
+    // When stale, use gray styling; otherwise use normal color logic
+    const accentColor = isStale
+        ? 'text-zinc-500'
+        : (isHealthy ? 'text-emerald-400' : 'text-red-400')
+    const glowColor = isStale
+        ? 'shadow-zinc-500/10'
+        : (isHealthy ? 'shadow-emerald-500/20' : 'shadow-red-500/20')
 
     return (
         <BentoCard
             span="col-span-1 md:col-span-2 row-span-2"
-            className={`flex flex-col justify-between min-h-[320px] shadow-lg ${glowColor}`}
+            className={`flex flex-col justify-between min-h-[320px] shadow-lg ${glowColor} ${isStale ? 'opacity-60' : ''}`}
         >
             <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -46,7 +55,7 @@ const HeroCard = ({ averageCo2, loading }) => {
                     </span>
                 </div>
 
-                {!isHealthy && (
+                {!isStale && !isHealthy && (
                     <div className="flex items-center gap-2 mb-4 text-red-400">
                         <AlertTriangle className="w-4 h-4" />
                         <span className="text-sm">CO₂ levels elevated</span>
@@ -59,6 +68,15 @@ const HeroCard = ({ averageCo2, loading }) => {
                     <div className="animate-pulse">
                         <div className="w-32 h-20 bg-zinc-700 rounded-lg" />
                     </div>
+                ) : isStale ? (
+                    <>
+                        <span className="text-7xl md:text-8xl font-bold tracking-tight text-zinc-600">
+                            --
+                        </span>
+                        <span className="text-lg text-zinc-500 mt-2">
+                            No recent data
+                        </span>
+                    </>
                 ) : (
                     <>
                         <span className={`text-7xl md:text-8xl font-bold tracking-tight ${accentColor}`}>
@@ -113,73 +131,79 @@ const MetricBox = ({ icon: Icon, label, value, loading }) => (
 )
 
 // Box E: Chart Card
-const ChartCard = ({ data }) => (
-    <BentoCard span="col-span-1 md:col-span-2" className="min-h-[200px]">
-        <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-5 h-5 text-zinc-400" />
-            <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
-                Last 24 Hours
-            </span>
-        </div>
-        <div className="h-[140px] w-full relative">
-            {(!data || data.length === 0) ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <svg className="w-full h-16 opacity-20" viewBox="0 0 400 60" preserveAspectRatio="none">
-                        <path
-                            d="M0,30 Q50,15 100,28 T200,25 T300,35 T400,28"
-                            fill="none"
-                            stroke="#52525b"
-                            strokeWidth="2"
-                            strokeDasharray="4,4"
-                        />
-                    </svg>
-                    <span className="text-sm text-zinc-500 mt-2">No data in the last 24 hours</span>
-                </div>
-            ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="co2Gradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <XAxis
-                            dataKey="time"
-                            stroke="#52525b"
-                            fontSize={10}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <YAxis
-                            stroke="#52525b"
-                            fontSize={10}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: '#18181b',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '8px',
-                                fontSize: '12px'
-                            }}
-                            labelStyle={{ color: '#a1a1aa' }}
-                            itemStyle={{ color: '#34d399' }}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="co2"
-                            stroke="#34d399"
-                            strokeWidth={2}
-                            fill="url(#co2Gradient)"
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
-            )}
-        </div>
-    </BentoCard>
-)
+const ChartCard = ({ data, isStale }) => {
+    // Show ghost placeholder if stale OR no data
+    const showGhost = isStale || !data || data.length === 0
+    const ghostMessage = isStale ? 'No recent data' : 'No data in the last 24 hours'
+
+    return (
+        <BentoCard span="col-span-1 md:col-span-2" className={`min-h-[200px] ${isStale ? 'opacity-60' : ''}`}>
+            <div className="flex items-center gap-2 mb-4">
+                <Activity className="w-5 h-5 text-zinc-400" />
+                <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+                    Last 24 Hours
+                </span>
+            </div>
+            <div className="h-[140px] w-full relative">
+                {showGhost ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <svg className="w-full h-16 opacity-20" viewBox="0 0 400 60" preserveAspectRatio="none">
+                            <path
+                                d="M0,30 Q50,15 100,28 T200,25 T300,35 T400,28"
+                                fill="none"
+                                stroke="#52525b"
+                                strokeWidth="2"
+                                strokeDasharray="4,4"
+                            />
+                        </svg>
+                        <span className="text-sm text-zinc-500 mt-2">{ghostMessage}</span>
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="co2Gradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <XAxis
+                                dataKey="time"
+                                stroke="#52525b"
+                                fontSize={10}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                stroke="#52525b"
+                                fontSize={10}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#18181b',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    fontSize: '12px'
+                                }}
+                                labelStyle={{ color: '#a1a1aa' }}
+                                itemStyle={{ color: '#34d399' }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="co2"
+                                stroke="#34d399"
+                                strokeWidth={2}
+                                fill="url(#co2Gradient)"
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                )}
+            </div>
+        </BentoCard>
+    )
+}
 
 // Box F & G: Action Cards
 const ActionCard = ({ icon: Icon, label, to, disabled = false }) => {
@@ -211,6 +235,7 @@ const BentoOverview = () => {
     })
     const [chartData, setChartData] = useState([])
     const [loading, setLoading] = useState(true)
+    const [isStale, setIsStale] = useState(false)
 
     useEffect(() => {
         const loadData = async () => {
@@ -254,8 +279,19 @@ const BentoOverview = () => {
                 // Fetch real chart data from API
                 const historyRes = await dataAPI.getData(24, 500).catch(() => null)
                 if (historyRes?.data?.readings && Array.isArray(historyRes.data.readings)) {
+                    const readings = historyRes.data.readings
+
+                    // Check staleness: is the most recent reading older than 5 minutes?
+                    if (readings.length > 0 && readings[0].timestamp) {
+                        const latestTimestamp = new Date(readings[0].timestamp).getTime()
+                        const now = Date.now()
+                        setIsStale((now - latestTimestamp) > STALE_THRESHOLD_MS)
+                    } else {
+                        setIsStale(true) // No timestamps = stale
+                    }
+
                     // Transform readings to chart format
-                    const chartPoints = historyRes.data.readings
+                    const chartPoints = readings
                         .filter(r => r.co2 !== undefined && r.timestamp)
                         .map(r => ({
                             time: new Date(r.timestamp).toLocaleTimeString('en-US', {
@@ -268,6 +304,7 @@ const BentoOverview = () => {
                     setChartData(chartPoints)
                 } else {
                     setChartData([]) // No data available
+                    setIsStale(true) // No data = stale
                 }
             } catch (err) {
                 console.error('Error loading overview data:', err)
@@ -290,7 +327,7 @@ const BentoOverview = () => {
             {/* Bento Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
                 {/* Row 1-2: Hero (A) + Welcome (B) + Metrics (C, D) */}
-                <HeroCard averageCo2={stats.averageCo2} loading={loading} />
+                <HeroCard averageCo2={stats.averageCo2} loading={loading} isStale={isStale} />
 
                 <WelcomeCard />
 
@@ -309,7 +346,7 @@ const BentoOverview = () => {
                 />
 
                 {/* Row 3: Chart (E) + Actions (F, G) */}
-                <ChartCard data={chartData} />
+                <ChartCard data={chartData} isStale={isStale} />
 
                 <ActionCard
                     icon={Cpu}
