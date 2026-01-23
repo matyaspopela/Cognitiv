@@ -594,7 +594,6 @@ def normalize_sensor_data(data):
     """Mapování příchozího JSONu na standardizované klíče."""
     normalized = {}
     try:
-    try:
         normalized['timestamp'] = data['timestamp']
     except KeyError as exc:
         raise KeyError(f"Chybí povinné pole: {exc.args[0]}")
