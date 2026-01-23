@@ -50,9 +50,16 @@ DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 # Restrict allowed hosts - add your domains here
 ALLOWED_HOSTS = [
     'cognitiv.onrender.com',
+    'cognitiv-testing.onrender.com',  # Explicitly add testing domain
     'localhost',
     '127.0.0.1',
 ]
+
+# Add Render external hostname if available (auto-configuration for PR previews/testing)
+RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
 # Allow any host in debug mode for local development
 if DEBUG:
     ALLOWED_HOSTS.append('*')
@@ -87,15 +94,30 @@ except ImportError:
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all origins in debug mode
 CORS_ALLOWED_ORIGINS = [
     'https://cognitiv.onrender.com',
+    'https://cognitiv-testing.onrender.com',  # Explicitly add testing domain
     'http://localhost:5173',
     'http://localhost:8000',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:8000',
 ]
+
+# Add Render external hostname to CORS and CSRF settings
+if RENDER_EXTERNAL_HOSTNAME:
+    origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+    if origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(origin)
+
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies for session-based auth
 
 # CSRF settings for API endpoints (IoT devices don't send CSRF tokens or Referer headers)
-CSRF_TRUSTED_ORIGINS = ['https://cognitiv.onrender.com', 'http://localhost:8000']
+CSRF_TRUSTED_ORIGINS = ['https://cognitiv.onrender.com', 'https://cognitiv-testing.onrender.com', 'http://localhost:8000']
+
+# Add Render external hostname to CSRF trusted origins
+if RENDER_EXTERNAL_HOSTNAME:
+    origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+    if origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
+
 # Secure cookies in production (HTTPS required)
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_USE_SESSIONS = False
