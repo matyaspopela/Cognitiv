@@ -1022,11 +1022,13 @@ void enterQuietHoursSleep() {
   WiFi.mode(WIFI_OFF);
   
   // Small delay to ensure all operations complete
-  delay(100);
+  delay(150);
   
   // Enter deep sleep with adaptive duration
   // WAKE_RF_DISABLED = WiFi will be off when waking up (we'll reconnect manually)
-  ESP.deepSleep(sleepDurationUs, WAKE_RF_DISABLED);
+  // WAKE_RF_DEFAULT enables WiFi with cached RF calibration (more reliable wakeup)
+  // Previously WAKE_RF_DISABLED which can cause issues on some boards
+  ESP.deepSleep(sleepDurationUs, WAKE_RF_DEFAULT);
   
   // Code below this point will never execute during deep sleep
   // ESP8266 resets after deep sleep wake-up (runs setup() again)
