@@ -55,7 +55,6 @@ def _replace_define(content: str, key: str, value: str, is_string: bool = True) 
 def apply_wifi_credentials(
     ssid: str, 
     password: str, 
-    device_id: str = None
 ) -> Path:
     if not ssid or not isinstance(ssid, str):
         raise ConfigWriteError("SSID is required to update config.h")
@@ -66,10 +65,7 @@ def apply_wifi_credentials(
     password_value = password if password is not None else ""
     updated_content = _replace_define(updated_content, "WIFI_PASSWORD", password_value)
 
-    if device_id:
-        if not isinstance(device_id, str):
-            raise ConfigWriteError("device_id must be a string")
-        updated_content = _replace_define(updated_content, "DEVICE_ID", device_id)
+    updated_content = _replace_define(updated_content, "WIFI_PASSWORD", password_value)
 
     try:
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -155,8 +151,7 @@ def _update_device_id_in_config(device_id: str) -> Path:
 
 def upload_firmware(
     ssid: str, 
-    password: str, 
-    device_id: str = None
+    password: str
 ) -> Tuple[int, str, str]:
     """
     Pass WiFi and MQTT credentials as environment variables and invoke PlatformIO upload.
@@ -187,10 +182,11 @@ def upload_firmware(
     
     # If device_id is provided, update config.h for DEVICE_ID
     # (DEVICE_ID isn't configured as an env variable in platformio.ini)
-    if device_id:
-        config_path = _update_device_id_in_config(device_id)
-        if not config_path.exists():
-            raise ConfigWriteError("Failed to prepare config.h for upload.")
+    # If device_id is provided, update config.h for DEVICE_ID - Removed as part of refactor
+    # if device_id:
+    #     config_path = _update_device_id_in_config(device_id)
+    #     if not config_path.exists():
+    #         raise ConfigWriteError("Failed to prepare config.h for upload.")
 
     return run_platformio_upload(extra_env=extra_env)
 

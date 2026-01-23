@@ -602,10 +602,18 @@ def normalize_sensor_data(data):
     """Mapování příchozího JSONu na standardizované klíče."""
     normalized = {}
     try:
+    try:
         normalized['timestamp'] = data['timestamp']
-        normalized['device_id'] = data['device_id']
     except KeyError as exc:
         raise KeyError(f"Chybí povinné pole: {exc.args[0]}")
+    
+    # Optional device_id (legacy)
+    if 'device_id' in data:
+        normalized['device_id'] = data['device_id']
+
+    # Required mac_address (new standard)
+    if 'mac_address' in data:
+        normalized['mac_address'] = data['mac_address']
 
     # Extract temperature (support both 'temperature' and legacy 'temp_scd41' keys)
     temperature = data.get('temperature') or data.get('temp_scd41')
@@ -629,7 +637,7 @@ def normalize_sensor_data(data):
 
 def validate_sensor_data(data):
     """Validace příchozích měření"""
-    required_fields = ['timestamp', 'device_id', 'temperature', 'humidity', 'co2']
+    required_fields = ['timestamp', 'mac_address', 'temperature', 'humidity', 'co2']
     
     # Check required fields
     for field in required_fields:
@@ -1032,7 +1040,8 @@ def receive_data(request):
             print(f"⚠️  Chyba validace: {message}")
             return JsonResponse({'error': message}, status=400)
         
-        # Extract and normalize MAC address (if present)
+        # Extract and normalize MAC address
+        mac_address_raw = normalized.get('mac_address')
         mac_address = None
         if mac_address_raw:
             try:
@@ -1040,8 +1049,16 @@ def receive_data(request):
                 # Ensure registry entry exists
                 ensure_registry_entry(mac_address, normalized.get('device_id'))
             except ValueError as e:
-                print(f"⚠️  Neplatná MAC adresa: {e}, pokračuji bez ní")
-                # Continue without MAC address (backward compatibility)
+                print(f"⚠️  Neplatná MAC adresa: {e}")
+                return JsonResponse({'error': f"Neplatná MAC adresa: {e}"}, status=400)
+        else:
+             # Should be caught by validate_sensor_data, but double check
+             return JsonResponse({'error': "MAC adresa je povinná"}, status=400)
+
+        # Determine device_id to use in database (metadata.device_id)
+        # 1. Use provided device_id if available (legacy)
+        # 2. Fallback to mac_address (new standard)
+        db_device_id = normalized.get('device_id') or mac_address
 
         # Format timestamp
         timestamp_utc = datetime.fromtimestamp(float(normalized['timestamp']), tz=UTC)
@@ -1062,7 +1079,7 @@ def receive_data(request):
             'co2': co2,
             # Metadata for grouping (metaField in timeseries collection)
             'metadata': {
-                'device_id': normalized['device_id']
+                'device_id': db_device_id
             }
         }
         

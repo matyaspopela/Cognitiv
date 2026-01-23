@@ -33,8 +33,7 @@
     #error "MQTT_TOPIC not defined! Set the MQTT_TOPIC environment variable before building."
 #endif
 
-// Device ID (unique name for this sensor)
-#define DEVICE_ID "ESP8266_YOUR_ID"
+
 
 // Timezone (in seconds from UTC)
 // Examples: EST = -18000, CET = 3600, UTC = 0

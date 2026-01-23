@@ -59,7 +59,7 @@ def on_message(client, userdata, msg):
         
         _message_count += 1
         print(f'\n[MQTT] Message #{_message_count} received')
-        print(f'  Device: {payload.get("device_id", "unknown")}')
+        print(f'  Device: {payload.get("mac_address", "unknown")}')
         
         # Create a mock HTTP request to reuse existing receive_data() logic
         request = _factory.post(

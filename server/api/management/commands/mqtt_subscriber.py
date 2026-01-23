@@ -76,7 +76,7 @@ class Command(BaseCommand):
                 self.style.SUCCESS(f'\n📨 Message #{self.message_count} received')
             )
             self.stdout.write(f'  Topic: {msg.topic}')
-            self.stdout.write(f'  Device: {payload.get("device_id", "unknown")}')
+            self.stdout.write(f'  Device: {payload.get("mac_address", "unknown")}')
             
             # Create a mock HTTP request to reuse existing receive_data() logic
             # This allows us to use the same validation, normalization, and storage code

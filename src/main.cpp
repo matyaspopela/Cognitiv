@@ -791,11 +791,12 @@ bool sendSingleReading(SensorData data) {
   // Create JSON payload (single object, not array)
   StaticJsonDocument<300> doc;  // Increased from 256 to accommodate voltage field
   doc["timestamp"] = data.timestamp;
-  doc["device_id"] = DEVICE_ID;  // Keep for backward compatibility
-  
   // Add MAC address if available
   if (deviceMacAddress.length() > 0) {
     doc["mac_address"] = deviceMacAddress;
+  } else {
+    // Fallback: This should ideally not happen if WiFi is connected
+     doc["mac_address"] = "unknown";
   }
   
   doc["temperature"] = round(data.temperature * 100) / 100.0;
