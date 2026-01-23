@@ -142,28 +142,20 @@ def get_mongo_uri():
     return uri
 
 def get_mongo_db_name():
-    """Get MongoDB database name, automatically appending '_dev' in local development if using production MongoDB"""
-    base_db_name = os.getenv('MONGO_DB_NAME', 'cognitiv')
+    """Get MongoDB database name based on DEVELOPMENT_DB environment variable."""
+    # Check DEVELOPMENT_DB environment variable
+    # true -> cognitiv_dev
+    # false -> cognitiv (default)
+    is_dev_db = os.getenv('DEVELOPMENT_DB', 'false').lower() == 'true'
     
-    # If in local development and connecting to production MongoDB, use dev database
-    # If in local development and connecting to production MongoDB, use dev database
-    is_production = os.getenv('RENDER') is not None or os.getenv('RENDER_EXTERNAL_HOSTNAME') is not None
-    
-    # USER REQUEST: Allow dev server to access production DB
-    # Auto-appending _dev is disabled to allow viewing production data
-    if not is_production:
-        mongo_uri = get_mongo_uri()
-        if mongo_uri:
-            # Check if MongoDB URI points to production cluster (MongoDB Atlas)
-            is_production_mongo = '.mongodb.net' in mongo_uri or mongo_uri.startswith('mongodb+srv://')
-            is_local_mongo = mongo_uri.startswith('mongodb://localhost') or mongo_uri.startswith('mongodb://127.0.0.1')
-            
-            if is_production_mongo and not is_local_mongo:
-                 print(f"[INFO] Local development detected with production MongoDB.")
-                 print(f"[INFO] Using database: {base_db_name}")
-                 print(f"[WARN] CAUTION: You are connected to the PRODUCTION database!")
-
-    return base_db_name
+    if is_dev_db:
+        db_name = 'cognitiv_dev'
+        print(f"[INFO] Using DEVELOPMENT database: {db_name}")
+    else:
+        db_name = 'cognitiv'
+        print(f"[INFO] Using PRODUCTION database: {db_name}")
+        
+    return db_name
 
 def get_mongo_collection_name():
     return os.getenv('MONGO_COLLECTION', 'sensor_data_')
