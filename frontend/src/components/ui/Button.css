@@ -19,7 +19,7 @@
 
 .md3-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3); /* blue-400/30 ring */
+  box-shadow: 0 0 0 3px rgba(161, 161, 170, 0.3); /* zinc-400/30 ring */
 }
 
 /* Variants - Dark mode Linear style */

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { historyAPI } from '../../services/api'
 import { getTimeWindowRange } from '../../utils/timeWindow'
-import { getCo2Color } from '../../utils/colors'
 import Card from '../ui/Card'
 import ProgressBar from '../ui/ProgressBar'
+import { theme } from '../../design/theme'
 
 /**
  * AirQualityGauge Component
@@ -44,12 +44,12 @@ const AirQualityGauge = ({ deviceId, timeWindow }) => {
                     const total = good + moderate + high + critical
 
                     if (total > 0) {
-                        // High-contrast colors for maximum visibility
+                        // Monochrome Palette (Zinc)
                         setQualityData({
-                            good: { count: good, percent: (good / total) * 100, label: 'Good', threshold: '< 1000 ppm', color: '#22C55E' },       // Bright green
-                            moderate: { count: moderate, percent: (moderate / total) * 100, label: 'Moderate', threshold: '1000-1500', color: '#FACC15' }, // Vivid yellow
-                            high: { count: high, percent: (high / total) * 100, label: 'Poor', threshold: '1500-2000', color: '#F97316' },        // Bright orange
-                            critical: { count: critical, percent: (critical / total) * 100, label: 'Critical', threshold: '> 2000 ppm', color: '#EF4444' } // Bright red
+                            good: { count: good, percent: (good / total) * 100, label: 'Good', threshold: '< 1000 ppm', color: '#52525b', textColor: '#f4f4f5' },       // Zinc 600
+                            moderate: { count: moderate, percent: (moderate / total) * 100, label: 'Moderate', threshold: '1000-1500', color: '#71717a', textColor: '#f4f4f5' }, // Zinc 500
+                            high: { count: high, percent: (high / total) * 100, label: 'Poor', threshold: '1500-2000', color: '#a1a1aa', textColor: '#18181b' },        // Zinc 400
+                            critical: { count: critical, percent: (critical / total) * 100, label: 'Critical', threshold: '> 2000 ppm', color: '#ffffff', textColor: '#000000' } // White
                         })
                     } else {
                         setQualityData(null)
@@ -95,11 +95,11 @@ const AirQualityGauge = ({ deviceId, timeWindow }) => {
                 {segments.map((seg, i) => (
                     <div
                         key={i}
-                        className="rounded-xl p-4 text-center shadow-lg"
+                        className="rounded-xl p-4 text-center shadow-lg transition-colors"
                         style={{ backgroundColor: seg.color }}
                     >
-                        <div className="text-sm text-white/90 font-medium mb-1">{seg.label} ({seg.threshold}):</div>
-                        <div className="text-2xl font-bold text-white">{seg.percent.toFixed(1)}%</div>
+                        <div className="text-sm font-medium mb-1" style={{ color: seg.textColor, opacity: 0.9 }}>{seg.label} ({seg.threshold}):</div>
+                        <div className="text-2xl font-bold" style={{ color: seg.textColor }}>{seg.percent.toFixed(1)}%</div>
                     </div>
                 ))}
             </div>

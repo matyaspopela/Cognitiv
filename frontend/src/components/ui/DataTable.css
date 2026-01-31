@@ -30,7 +30,7 @@
 }
 
 .data-table__row {
-  height: 48px; /* h-12 equivalent */
+  height: 56px; /* Increased from 48px for relaxed density */
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   transition: background-color 150ms ease;
   cursor: pointer;
@@ -46,15 +46,18 @@
 }
 
 .data-table__cell {
-  padding: 12px 16px;
+  padding: 16px 24px; /* Increased padding-y for relaxed density */
   color: rgb(244, 244, 245); /* zinc-100 */
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
 .data-table__cell--status {
   width: 60px;
-  padding-left: 20px;
+  padding: 0;
+  text-align: center;
+  display: table-cell;
+  vertical-align: middle;
 }
 
 .data-table__cell--actions {

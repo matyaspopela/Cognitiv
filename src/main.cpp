@@ -49,10 +49,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 // Apply configuration
 const char* NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
-const uint16_t WARNING_CO2_THRESHOLD = 2000;
-
-// LED Configurations
-const float LED_WARNING_INTERVAL_SEC = .5;  // Blink every 1 second when CO2 >= 2000 ppm
 
 // Ticker for hardware-timed LED blinking (runs in interrupt, independent of main loop)
 Ticker ledTicker;
@@ -791,12 +787,20 @@ bool sendSingleReading(SensorData data) {
   // Create JSON payload (single object, not array)
   StaticJsonDocument<300> doc;  // Increased from 256 to accommodate voltage field
   doc["timestamp"] = data.timestamp;
+  
+  // Generate/derive device_id for backward compatibility
+  String deviceId = "ESP8266_";
+  if (deviceMacAddress.length() > 0) {
+    deviceId += deviceMacAddress;
+    deviceId.replace(":", "");
+  } else {
+    deviceId += "unknown";
+  }
+  doc["device_id"] = deviceId;
+  
   // Add MAC address if available
   if (deviceMacAddress.length() > 0) {
     doc["mac_address"] = deviceMacAddress;
-  } else {
-    // Fallback: This should ideally not happen if WiFi is connected
-     doc["mac_address"] = "unknown";
   }
   
   doc["temperature"] = round(data.temperature * 100) / 100.0;
@@ -1023,13 +1027,11 @@ void enterQuietHoursSleep() {
   WiFi.mode(WIFI_OFF);
   
   // Small delay to ensure all operations complete
-  delay(150);
+  delay(100);
   
   // Enter deep sleep with adaptive duration
   // WAKE_RF_DISABLED = WiFi will be off when waking up (we'll reconnect manually)
-  // WAKE_RF_DEFAULT enables WiFi with cached RF calibration (more reliable wakeup)
-  // Previously WAKE_RF_DISABLED which can cause issues on some boards
-  ESP.deepSleep(sleepDurationUs, WAKE_RF_DEFAULT);
+  ESP.deepSleep(sleepDurationUs, WAKE_RF_DISABLED);
   
   // Code below this point will never execute during deep sleep
   // ESP8266 resets after deep sleep wake-up (runs setup() again)
@@ -1047,4 +1049,3 @@ void checkQuietHours() {
 }
 
 #endif  // QUIET_HOURS_ENABLED
-

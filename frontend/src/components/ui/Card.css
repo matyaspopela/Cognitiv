@@ -43,7 +43,7 @@
   background: rgba(24, 24, 27, 0.6);
   transform: none; /* No transform for Linear style */
   /* Optional subtle glow for active states */
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 20px rgba(113, 113, 122, 0.15);
 }
 
 .md3-card--clickable:active {

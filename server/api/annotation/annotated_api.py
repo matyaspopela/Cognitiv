@@ -420,21 +420,34 @@ def annotated_lessons(request):
 @require_http_methods(["GET"])
 def annotated_heatmap(request):
     """
-    Get hour × weekday heatmap data.
+    Get heatmap data.
     
     Query params:
+        start: ISO datetime (optional)
+        end: ISO datetime (optional)
+        mode: 'hourly' (default) or 'daily'
         device_id: Device filter (optional)
-        weeks: Number of weeks to include (default: 4)
+        weeks: (Deprecated) Number of weeks to include (default: 4)
     
     Returns:
-        JSON with heatmap grid data (7 days × 24 hours)
+        JSON with heatmap data
     """
     try:
         device_id = request.GET.get('device_id')
-        weeks = int(request.GET.get('weeks', 4))
+        mode = request.GET.get('mode', 'hourly')
         
-        end_dt = datetime.now(UTC)
-        start_dt = end_dt - timedelta(weeks=weeks)
+        # Date logic
+        start_str = request.GET.get('start')
+        end_str = request.GET.get('end')
+        
+        if start_str and end_str:
+            start_dt = _parse_datetime(start_str)
+            end_dt = _parse_datetime(end_str)
+        else:
+            # Fallback to weeks logic
+            weeks = int(request.GET.get('weeks', 4))
+            end_dt = datetime.now(UTC)
+            start_dt = end_dt - timedelta(weeks=weeks)
         
         collection = _get_annotated_collection()
         
@@ -448,48 +461,92 @@ def annotated_heatmap(request):
                 {'device_name': device_id},
                 {'room_id': device_id}
             ]
-        
-        # Group by weekday (1=Sun, 7=Sat in MongoDB) and hour
-        pipeline = [
-            {'$match': match_filter},
-            {'$group': {
-                '_id': {
-                    'dayOfWeek': {'$dayOfWeek': '$bucket_start'},
-                    'hour': {'$hour': '$bucket_start'}
-                },
-                'avg_co2': {'$avg': '$stats.avg_co2'},
-                'reading_count': {'$sum': '$stats.reading_count'}
-            }},
-            {'$project': {
-                '_id': 0,
-                'dayOfWeek': '$_id.dayOfWeek',
-                'hour': '$_id.hour',
-                'avg_co2': {'$round': ['$avg_co2', 0]},
-                'reading_count': 1
-            }}
-        ]
-        
-        results = list(collection.aggregate(pipeline))
-        
-        # Build heatmap grid (7 days × 24 hours)
-        # Convert MongoDB dayOfWeek (1=Sun) to ISO weekday (1=Mon)
-        heatmap = {}
-        for item in results:
-            mongo_day = item['dayOfWeek']
-            # MongoDB: 1=Sun,2=Mon,3=Tue,4=Wed,5=Thu,6=Fri,7=Sat
-            # ISO: 1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat,7=Sun
-            iso_day = (mongo_day + 5) % 7 + 1
-            hour = item['hour']
-            key = f"{iso_day}_{hour}"
-            heatmap[key] = {
-                'avg_co2': item['avg_co2'],
-                'reading_count': item['reading_count']
-            }
-        
+            
+        if mode == 'daily':
+            pipeline = [
+                {'$match': match_filter},
+                {'$group': {
+                    '_id': {
+                        'year': {'$year': '$bucket_start'},
+                        'month': {'$month': '$bucket_start'},
+                        'day': {'$dayOfMonth': '$bucket_start'}
+                    },
+                    'bucket_start': {'$min': '$bucket_start'},
+                    'avg_co2': {'$avg': '$stats.avg_co2'},
+                    'reading_count': {'$sum': '$stats.reading_count'}
+                }},
+                {'$sort': {'bucket_start': 1}},
+                {'$project': {
+                    '_id': 0,
+                    'bucket_start': 1,
+                    'avg_co2': {'$round': ['$avg_co2', 0]},
+                    'reading_count': 1
+                }}
+            ]
+            
+            results = list(collection.aggregate(pipeline))
+            
+            # Format for daily view (list of days)
+            heatmap = []
+            for item in results:
+                heatmap.append({
+                    'date': item['bucket_start'].isoformat() if item.get('bucket_start') else None,
+                    'avg_co2': item.get('avg_co2'),
+                    'reading_count': item.get('reading_count', 0)
+                })
+                
+        else:
+            # Hourly mode - Filter for school hours (07:00 - 16:00) using configured timezone
+            tz_name = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+            
+            pipeline = [
+                {'$match': match_filter},
+                {'$project': {
+                    'bucket_start': 1,
+                    'stats': 1,
+                    'hour': {'$hour': {'date': '$bucket_start', 'timezone': tz_name}}
+                }},
+                {'$match': {
+                    'hour': {'$gte': 7, '$lte': 16}
+                }},
+                {'$group': {
+                    '_id': {
+                        'dayOfWeek': {'$dayOfWeek': {'date': '$bucket_start', 'timezone': tz_name}},
+                        'hour': '$hour'
+                    },
+                    'avg_co2': {'$avg': '$stats.avg_co2'},
+                    'reading_count': {'$sum': '$stats.reading_count'}
+                }},
+                {'$project': {
+                    '_id': 0,
+                    'dayOfWeek': '$_id.dayOfWeek',
+                    'hour': '$_id.hour',
+                    'avg_co2': {'$round': ['$avg_co2', 0]},
+                    'reading_count': 1
+                }}
+            ]
+            
+            results = list(collection.aggregate(pipeline))
+            
+            # Build heatmap grid (7 days × 24 hours)
+            heatmap = {}
+            for item in results:
+                mongo_day = item['dayOfWeek']
+                # MongoDB: 1=Sun, 2=Mon...
+                iso_day = (mongo_day + 5) % 7 + 1
+                hour = item['hour']
+                key = f"{iso_day}_{hour}"
+                heatmap[key] = {
+                    'avg_co2': item['avg_co2'],
+                    'reading_count': item['reading_count']
+                }
+
         return JsonResponse({
             'status': 'success',
             'heatmap': heatmap,
-            'weeks': weeks
+            'mode': mode,
+            'start': start_dt.isoformat(),
+            'end': end_dt.isoformat()
         })
         
     except Exception as e:

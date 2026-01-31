@@ -85,8 +85,8 @@
 }
 
 .top-header__search--focused {
-  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); /* blue-500/30 ring */
+  border-color: rgba(161, 161, 170, 0.3); /* zinc-400/30 */
+  box-shadow: 0 0 0 3px rgba(161, 161, 170, 0.1); /* zinc-500/30 ring */
 }
 
 .top-header__search-input {

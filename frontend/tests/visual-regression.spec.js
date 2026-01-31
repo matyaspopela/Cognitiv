@@ -38,7 +38,7 @@ test.describe('Visual Regression Tests', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     
-    const sidebar = page.locator('.sidebar').first()
+    const sidebar = page.locator('aside').first()
     await expect(sidebar).toHaveScreenshot('component-sidebar.png', {
       maxDiffPixels: 50,
     })
@@ -76,7 +76,7 @@ test.describe('Visual Regression Tests', () => {
     })
     
     // Verify dark background
-    expect(bgColor).toContain('rgb(8, 9, 10)')
+    expect(bgColor).toContain('rgb(9, 9, 11)')
     
     // Take screenshot for dark mode verification
     await expect(page).toHaveScreenshot('dark-mode-verification.png', {

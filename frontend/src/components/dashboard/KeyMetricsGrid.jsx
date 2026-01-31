@@ -62,45 +62,65 @@ const KeyMetricsGrid = ({ deviceId, timeWindow }) => {
     const co2Value = values?.co2
     const co2Color = co2Value != null ? getCo2Color(co2Value) : null
 
+    // Helper for secondary metrics
+    const MetricItem = ({ label, value, icon: Icon, colorClass = "text-zinc-400" }) => (
+        <div className="flex flex-col items-start justify-center h-full px-6 border-l border-white/5 first:border-l-0">
+            <div className="flex items-center gap-2 mb-1">
+                <Icon size={14} strokeWidth={2} className={colorClass} />
+                <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">{label}</span>
+            </div>
+            <span className="text-xl font-semibold text-zinc-200 tracking-tight">{value}</span>
+        </div>
+    )
+
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard
-                label="CO₂"
-                value={co2Value != null ? `${Math.round(co2Value)} ppm` : '--'}
-                trend={co2Color ? {
-                    direction: co2Value < 1000 ? 'up' : co2Value < 1500 ? 'neutral' : 'down',
-                    icon: <Wind size={14} strokeWidth={2} style={{ color: co2Color }} />,
-                    value: co2Value < 1000 ? 'Good' : co2Value < 1500 ? 'Moderate' : 'High'
-                } : null}
-                className="border border-white/10"
-            />
-            <MetricCard
-                label="Temperature"
-                value={values?.temperature != null ? `${values.temperature.toFixed(1)}°C` : '--'}
-                trend={{
-                    direction: 'neutral',
-                    icon: <Thermometer size={14} strokeWidth={2} className="text-teal-400" />,
-                }}
-                className="border border-white/10"
-            />
-            <MetricCard
-                label="Humidity"
-                value={values?.humidity != null ? `${Math.round(values.humidity)}%` : '--'}
-                trend={{
-                    direction: 'neutral',
-                    icon: <Droplets size={14} strokeWidth={2} className="text-blue-400" />,
-                }}
-                className="border border-white/10"
-            />
-            <MetricCard
-                label="Readings"
-                value={values?.readings != null ? values.readings.toLocaleString('en-US') : '--'}
-                trend={{
-                    direction: 'neutral',
-                    icon: <BarChart3 size={14} strokeWidth={2} className="text-purple-400" />,
-                }}
-                className="border border-white/10"
-            />
+        <div className="w-full bg-zinc-900/50 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden flex flex-col md:flex-row h-auto md:h-32 mb-6">
+
+            {/* Hero Section: CO2 (40% width) */}
+            <div className="flex-1 md:flex-[0.4] p-6 flex flex-col justify-center bg-zinc-900/80 md:border-r border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                    <Wind size={18} strokeWidth={2} className="text-zinc-400" />
+                    <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">Current CO₂</span>
+                </div>
+
+                <div className="flex items-baseline gap-3 mt-1">
+                    <span
+                        className="text-5xl font-bold tracking-tight"
+                        style={{ color: co2Color || '#e4e4e7' }}
+                    >
+                        {co2Value != null ? Math.round(co2Value) : '--'}
+                    </span>
+                    <span className="text-lg text-zinc-500 font-medium">ppm</span>
+                </div>
+
+                {co2Color && (
+                    <div className="flex items-center gap-2 mt-3">
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: co2Color }} />
+                        <span className="text-sm font-medium" style={{ color: co2Color }}>
+                            {co2Value < 1000 ? 'Good Air Quality' : co2Value < 1500 ? 'Moderate' : 'High CO₂ Levels'}
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            {/* Secondary Metrics (60% width, divided equally) */}
+            <div className="flex-1 md:flex-[0.6] grid grid-cols-3">
+                <MetricItem
+                    label="Temperature"
+                    value={values?.temperature != null ? `${values.temperature.toFixed(1)}°C` : '--'}
+                    icon={Thermometer}
+                />
+                <MetricItem
+                    label="Humidity"
+                    value={values?.humidity != null ? `${Math.round(values.humidity)}%` : '--'}
+                    icon={Droplets}
+                />
+                <MetricItem
+                    label="Readings"
+                    value={values?.readings != null ? values.readings.toLocaleString('en-US') : '--'}
+                    icon={BarChart3}
+                />
+            </div>
         </div>
     )
 }

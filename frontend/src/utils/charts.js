@@ -4,57 +4,51 @@
  */
 
 import { getCo2Color } from './colors'
+import { theme } from '../design/theme'
 
-// Apple-modern color palette - Green to Red scale for danger communication
-// Kept for non-gradient fallbacks (like text)
-const appleModernColors = {
-  good: getCo2Color(600),          // Representative Green
-  moderate: getCo2Color(1250),     // Representative Amber
-  danger: getCo2Color(1750),       // Representative Orange/Red
-  dangerDark: getCo2Color(2200),   // Representative Deep Red
-  accent: '#14B8A6',               // Accent Teal (temperature)
-  grid: 'rgba(229, 231, 235, 0.5)',
-  textSecondary: '#586169',
-  textPrimary: '#16181C',
+// Monochrome chart palette
+const monochromeColors = {
+  good: theme.colors.safe,       
+  moderate: theme.colors.warning,
+  danger: theme.colors.danger,
+  accent: theme.colors.warning,    // Temperature uses "warning" color (Zinc 400) or maybe Safe? Let's use Zinc 400
+  grid: theme.colors.grid,
+  textSecondary: theme.colors.text,
+  textPrimary: theme.text.primary,
 }
 
 /**
- * Get color based on CO2 value - Green to Red gradient
+ * Get color based on CO2 value
  */
 export const getColorForCO2 = (co2) => {
   return getCo2Color(co2)
 }
 
 /**
- * Get segment color for CO2 chart - implements smooth gradient
- * This function colors each line segment based on the max value of the segment
+ * Get segment color for CO2 chart
  */
 export const getCO2SegmentColor = (context) => {
-  // Safety checks
   if (!context || !context.dataset || !context.dataset.data) {
-    return appleModernColors.good
+    return monochromeColors.good
   }
 
   const p0Index = context.p0DataIndex
   const p1Index = context.p1DataIndex
   const data = context.dataset.data
 
-  // Check if indices are valid
   if (p0Index === undefined || p1Index === undefined ||
     p0Index < 0 || p1Index < 0 ||
     p0Index >= data.length || p1Index >= data.length) {
-    return appleModernColors.good
+    return monochromeColors.good
   }
 
   const v0 = data[p0Index]
   const v1 = data[p1Index]
 
-  // Check for null/undefined values
   if (v0 === null || v0 === undefined || v1 === null || v1 === undefined) {
-    return appleModernColors.good
+    return monochromeColors.good
   }
 
-  // Use the worse (higher) value to determine segment color
   const maxValue = Math.max(v0, v1)
 
   return getCo2Color(maxValue)
@@ -62,9 +56,6 @@ export const getCO2SegmentColor = (context) => {
 
 /**
  * Build CO2 chart data for Chart.js
- * @param {Array} data - Series data from historyAPI.getSeries()
- * @param {string} bucket - Bucket size ('raw', '10min', 'hour', 'day')
- * @returns {Object} Chart.js-compatible data object
  */
 export const buildCo2ChartData = (data, bucket = '10min') => {
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -76,8 +67,6 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
 
   const labels = []
   const values = []
-  // Colors array not strictly needed for line chart segments, but useful if we switched to bar
-  const colors = []
 
   validData.forEach((item) => {
     const timestamp = new Date(item.bucket_start)
@@ -88,7 +77,6 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
 
     labels.push(timestamp)
     values.push(Number(co2Value))
-    colors.push(getColorForCO2(co2Value))
   })
 
   if (values.length === 0) return null
@@ -98,20 +86,19 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
     datasets: [{
       label: 'CO₂ (ppm)',
       data: values,
-      // Segment-based coloring: changes color based on CO2 levels
       segment: {
         borderColor: (ctx) => getCO2SegmentColor(ctx),
       },
-      borderColor: appleModernColors.good, // Fallback
+      borderColor: monochromeColors.good,
       borderWidth: 2,
       backgroundColor: (context) => {
         const chart = context.chart
         const { ctx, chartArea } = chart
-        if (!chartArea) return 'rgba(16, 185, 129, 0.1)'
-        // Gradient fill for area under curve - subtle green
+        if (!chartArea) return 'rgba(212, 212, 216, 0.1)' // Zinc 300 with alpha
+        
         const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0)')
-        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.15)')
+        gradient.addColorStop(0, 'rgba(212, 212, 216, 0)')
+        gradient.addColorStop(1, 'rgba(212, 212, 216, 0.15)')
         return gradient
       },
       fill: true,
@@ -119,11 +106,10 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
       pointRadius: 0,
       pointHoverRadius: 6,
       pointHoverBackgroundColor: (ctx) => {
-        // Dynamic hover color
         const val = ctx.raw
         return getCo2Color(val)
       },
-      pointHoverBorderColor: '#fff',
+      pointHoverBorderColor: '#18181b', // Zinc 900
       pointHoverBorderWidth: 2,
     }]
   }
@@ -131,9 +117,6 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
 
 /**
  * Build climate (Temperature & Humidity) chart data for Chart.js
- * @param {Array} data - Series data from historyAPI.getSeries()
- * @param {string} bucket - Bucket size ('raw', '10min', 'hour', 'day')
- * @returns {Object} Chart.js-compatible data object
  */
 export const buildClimateChartData = (data, bucket = '10min') => {
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -167,30 +150,31 @@ export const buildClimateChartData = (data, bucket = '10min') => {
       {
         label: 'Temperature (°C)',
         data: tempValues,
-        borderColor: appleModernColors.accent,
-        backgroundColor: 'rgba(20, 184, 166, 0.05)',
+        borderColor: monochromeColors.accent, // Zinc 400
+        backgroundColor: 'transparent',
         fill: false,
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 6,
-        pointHoverBackgroundColor: appleModernColors.accent,
-        pointHoverBorderColor: '#fff',
+        pointHoverBackgroundColor: monochromeColors.accent,
+        pointHoverBorderColor: '#18181b',
         pointHoverBorderWidth: 2,
         yAxisID: 'y',
       },
       {
         label: 'Humidity (%)',
         data: humidityValues,
-        borderColor: appleModernColors.moderate,
-        backgroundColor: 'rgba(245, 158, 11, 0.05)',
+        borderColor: monochromeColors.good, // Zinc 300
+        backgroundColor: 'transparent',
         fill: false,
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 6,
-        pointHoverBackgroundColor: appleModernColors.moderate,
-        pointHoverBorderColor: '#fff',
+        pointHoverBackgroundColor: monochromeColors.good,
+        pointHoverBorderColor: '#18181b',
         pointHoverBorderWidth: 2,
         yAxisID: 'y1',
+        borderDash: [5, 5], // Dashed line for humidity to distinguish
       }
     ]
   }
@@ -198,8 +182,6 @@ export const buildClimateChartData = (data, bucket = '10min') => {
 
 /**
  * Build CO2 quality distribution data for Chart.js Doughnut
- * @param {Object} co2Quality - Quality distribution object from historyAPI.getSummary()
- * @returns {Object|null} Chart.js-compatible data object or null if no data
  */
 export const buildQualityChartData = (co2Quality) => {
   if (!co2Quality) return null
@@ -217,21 +199,41 @@ export const buildQualityChartData = (co2Quality) => {
     datasets: [{
       data: [good, moderate, high, critical],
       backgroundColor: [
-        getCo2Color(700),     // Representative Good
-        getCo2Color(1250),    // Representative Moderate
-        getCo2Color(1750),    // Representative High
-        getCo2Color(2200),    // Representative Critical
+        theme.colors.safe,     // Zinc 300
+        theme.colors.warning,  // Zinc 400
+        '#d1d5db',             // Zinc 300 (variant) - Need distinct but monochrome?
+        theme.colors.danger,   // White
       ],
-      borderColor: 'transparent',
-      borderWidth: 0,
+      // Wait, let's use the palette properly.
+      // Good: Safe (Zinc 300)
+      // Moderate: Warning (Zinc 400)
+      // High: Zinc 500?
+      // Critical: Danger (White)
+      // Or:
+      // Good: Zinc 800
+      // Moderate: Zinc 600
+      // High: Zinc 400
+      // Critical: Zinc 200/White
+      
+      // Let's use:
+      // Good: #52525b (Zinc 600)
+      // Moderate: #71717a (Zinc 500)
+      // High: #a1a1aa (Zinc 400)
+      // Critical: #ffffff (White)
+      backgroundColor: [
+        '#52525b',
+        '#71717a',
+        '#a1a1aa',
+        '#ffffff'
+      ],
+      borderColor: theme.background.center, // Match bg to create gaps
+      borderWidth: 2,
     }]
   }
 }
 
 /**
- * Build mini CO2 chart data for Chart.js (used in cards)
- * @param {Array} data - Series data from historyAPI.getSeries()
- * @returns {Object} Chart.js-compatible data object
+ * Build mini CO2 chart data for Chart.js
  */
 export const buildMiniCo2ChartData = (data) => {
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -265,7 +267,6 @@ export const buildMiniCo2ChartData = (data) => {
     labels,
     datasets: [{
       data: values,
-      // Use segment coloring for mini charts with green-to-red gradient
       segment: {
         borderColor: (ctx) => getCO2SegmentColor(ctx),
       },
@@ -281,8 +282,6 @@ export const buildMiniCo2ChartData = (data) => {
 
 /**
  * Check if chart data has valid displayable points
- * @param {Object|null} chartData - Chart.js data object or null
- * @returns {boolean} True if there are valid data points to display
  */
 export const hasValidChartData = (chartData) => {
   if (!chartData || !chartData.datasets || !Array.isArray(chartData.datasets)) {
@@ -296,13 +295,10 @@ export const hasValidChartData = (chartData) => {
 }
 
 /**
- * Common Chart.js options for modern Apple aesthetic
- * @param {string} type - Chart type ('line', 'doughnut', etc.)
- * @param {Object} options - Custom options to merge
- * @param {boolean} options.useRealTimeScale - If true, use time scale; if false, use category scale (evenly spaced)
+ * Common Chart.js options
  */
 export const getChartOptions = (type = 'line', options = {}) => {
-  const useTimeScale = options.useRealTimeScale === true // Default to false (evenly spaced)
+  const useTimeScale = options.useRealTimeScale === true
 
   const xAxisConfig = useTimeScale ? {
     type: 'time',
@@ -315,10 +311,10 @@ export const getChartOptions = (type = 'line', options = {}) => {
     },
     grid: {
       display: false,
-      color: appleModernColors.grid,
+      color: monochromeColors.grid,
     },
     ticks: {
-      color: appleModernColors.textSecondary,
+      color: monochromeColors.textSecondary,
       maxRotation: 0,
       autoSkip: true,
       maxTicksLimit: 8,
@@ -330,15 +326,14 @@ export const getChartOptions = (type = 'line', options = {}) => {
     type: 'category',
     grid: {
       display: false,
-      color: appleModernColors.grid,
+      color: monochromeColors.grid,
     },
     ticks: {
-      color: appleModernColors.textSecondary,
+      color: monochromeColors.textSecondary,
       maxRotation: 45,
       autoSkip: true,
       maxTicksLimit: 10,
       callback: function (value, index) {
-        // Format category labels as time strings
         const label = this.getLabelForValue(value)
         if (label instanceof Date) {
           return label.toLocaleString('en-GB', {
@@ -368,7 +363,7 @@ export const getChartOptions = (type = 'line', options = {}) => {
         display: options.showLegend !== false,
         position: 'top',
         labels: {
-          color: appleModernColors.textSecondary,
+          color: monochromeColors.textSecondary,
           usePointStyle: true,
           padding: 20,
           font: { size: 12 }
@@ -376,10 +371,10 @@ export const getChartOptions = (type = 'line', options = {}) => {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(255, 255, 255, 0.96)',
-        titleColor: appleModernColors.textPrimary,
-        bodyColor: appleModernColors.textSecondary,
-        borderColor: appleModernColors.grid,
+        backgroundColor: theme.colors.tooltipBg,
+        titleColor: theme.text.primary,
+        bodyColor: theme.text.secondary,
+        borderColor: theme.colors.grid,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -390,11 +385,11 @@ export const getChartOptions = (type = 'line', options = {}) => {
       x: xAxisConfig,
       y: {
         grid: {
-          color: appleModernColors.grid,
+          color: monochromeColors.grid,
           drawBorder: false,
         },
         ticks: {
-          color: appleModernColors.textSecondary,
+          color: monochromeColors.textSecondary,
         },
         border: {
           display: false,
@@ -403,14 +398,12 @@ export const getChartOptions = (type = 'line', options = {}) => {
     } : undefined
   }
 
-  // Merge with custom options (excluding useRealTimeScale which is internal)
   const { useRealTimeScale: _, ...restOptions } = options
   return { ...baseOptions, ...restOptions }
 }
 
 /**
  * Get climate chart options with dual Y axes
- * @param {Object} options - Custom options including useRealTimeScale
  */
 export const getClimateChartOptions = (options = {}) => {
   const base = getChartOptions('line', options)
@@ -425,14 +418,14 @@ export const getClimateChartOptions = (options = {}) => {
         title: {
           display: true,
           text: 'Temperature (°C)',
-          color: appleModernColors.accent,
+          color: monochromeColors.accent,
         },
         grid: {
-          color: appleModernColors.grid,
+          color: monochromeColors.grid,
           drawBorder: false,
         },
         ticks: {
-          color: appleModernColors.accent,
+          color: monochromeColors.accent,
         },
         border: {
           display: false,
@@ -445,13 +438,13 @@ export const getClimateChartOptions = (options = {}) => {
         title: {
           display: true,
           text: 'Humidity (%)',
-          color: appleModernColors.moderate,
+          color: monochromeColors.good,
         },
         grid: {
           drawOnChartArea: false,
         },
         ticks: {
-          color: appleModernColors.moderate,
+          color: monochromeColors.good,
         },
         border: {
           display: false,
@@ -480,7 +473,6 @@ export const getMiniChartOptions = () => ({
   }
 })
 
-// Legacy exports for backward compatibility
 export const buildTremorCo2Data = buildCo2ChartData
 export const buildTremorClimateData = buildClimateChartData
 export const buildTremorQualityData = buildQualityChartData

@@ -1,31 +1,25 @@
 /**
  * Shared color utilities for the application.
- * Defines the unified Green-Red gradient palette for CO2 visualization.
+ * Defines the unified Monochrome palette for CO2 visualization.
  */
 
-// Core gradient configuration
-const CO2_MIN = 400
-const CO2_MAX = 2000
-const HUE_START = 140 // Deep Green
-const HUE_END = 0     // Red
+import { theme } from '../design/theme'
 
 /**
- * Get color based on CO2 value using Green-Red gradient interpolation.
+ * Get color based on CO2 value using Monochrome thresholds.
  * @param {number|null} co2 - CO2 value in ppm
  * @param {number} alpha - Opacity (0-1)
- * @returns {string} HSLA color string
+ * @returns {string} Hex or RGBA color string
  */
 export const getCo2Color = (co2, alpha = 1) => {
     if (co2 == null) return `rgba(39, 39, 42, ${alpha})` // zinc-800
 
-    // Clamp CO2 between min and max
-    const normalized = Math.max(0, Math.min(1, (co2 - CO2_MIN) / (CO2_MAX - CO2_MIN)))
+    const color = theme.getColorForCO2(co2)
+    
+    if (alpha === 1) return color
 
-    // Interpolate Hue
-    const hue = HUE_START * (1 - normalized)
-
-    // Saturation 70%, Lightness 45% (matches the dark theme nicely)
-    return `hsla(${hue}, 70%, 45%, ${alpha})`
+    // Convert hex to rgba for alpha support
+    return hexToRgba(color, alpha)
 }
 
 /**
@@ -34,16 +28,18 @@ export const getCo2Color = (co2, alpha = 1) => {
  * @returns {string} Hex color string
  */
 export const getCo2ContrastingTextColor = (co2) => {
-    if (co2 == null) return '#a1a1aa'
+    if (co2 == null) return theme.text.secondary
 
-    // Once we get into the red zone, white looks weird if the red is too bright?
-    // Actually, with L=45%, white text is always good.
-    // But let's check normalized value.
-    const normalized = Math.max(0, Math.min(1, (co2 - CO2_MIN) / (CO2_MAX - CO2_MIN)))
-
-    // For very light colors (yellows/greens at high lightness), we might want dark text?
-    // But we fixed lightness at 45%, so white is safe.
-    return '#ffffff'
+    const color = theme.getColorForCO2(co2)
+    
+    // For white/light backgrounds (danger/safe), we need dark text? 
+    // Wait, theme colors are: Safe (Zinc 300 #d4d4d8), Warning (Zinc 400 #a1a1aa), Danger (White #ffffff).
+    // The background of the app is Dark (Zinc 900/950).
+    // These colors are meant to be FOREGROUND colors (charts, text).
+    // If used as BACKGROUND for a badge, they are light.
+    // So text on top of them should be dark.
+    
+    return '#18181b' // Zinc 900
 }
 
 /**
@@ -57,7 +53,18 @@ export const getCo2Style = (co2, alpha = 0.85) => {
     return {
         backgroundColor: bg,
         color: getCo2ContrastingTextColor(co2),
-        // Helper specifically for text-only usage (using the color as text color)
-        textColor: `hsla(${HUE_START * (1 - Math.max(0, Math.min(1, (co2 - CO2_MIN) / (CO2_MAX - CO2_MIN))))}, 70%, 55%, 1)`
+        textColor: getCo2Color(co2, 1) // For when color is used as text
     }
+}
+
+// Helper to convert hex to rgba
+function hexToRgba(hex, alpha) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return hex
+    
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

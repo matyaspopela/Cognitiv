@@ -239,14 +239,18 @@ export const annotatedAPI = {
   },
 
   /**
-   * Get hour × weekday heatmap data
-   * @param {string} deviceId - Device filter (optional)
-   * @param {number} weeks - Number of weeks to include (default: 4)
+   * Get heatmap data
+   * @param {string} deviceId - Device filter
+   * @param {string} start - ISO datetime (optional)
+   * @param {string} end - ISO datetime (optional)
+   * @param {string} mode - 'hourly' or 'daily'
    */
-  getHeatmap: async (deviceId = null, weeks = 4) => {
+  getHeatmap: async (deviceId, start = null, end = null, mode = 'hourly') => {
     const params = new URLSearchParams()
     if (deviceId) params.append('device_id', deviceId)
-    params.append('weeks', weeks.toString())
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    params.append('mode', mode)
     try {
       return await apiClient.get(`/annotated/heatmap?${params.toString()}`)
     } catch (error) {

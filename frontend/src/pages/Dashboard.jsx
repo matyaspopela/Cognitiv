@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { dataAPI } from '../services/api'
 import Card from '../components/ui/Card'
 import DashboardBox from '../components/dashboard/DashboardBox'
-import DashboardOverview from '../components/dashboard/DashboardOverview'
+import BentoOverview from '../components/dashboard/BentoOverview'
 import DeviceDetailView from '../components/dashboard/DeviceDetailView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import './Dashboard.css'
@@ -109,17 +109,17 @@ const Dashboard = () => {
         />
       ) : (
         <>
-          <div className="dashboard-page__header">
-            <h1>Dashboard</h1>
-            <p>IoT monitoring overview</p>
-          </div>
           {error && (
             <div className="dashboard-error">
               <p>{error}</p>
             </div>
           )}
-          <DashboardOverview />
 
+          <BentoOverview />
+
+          <h2 className="text-xl font-semibold text-zinc-100 mt-12 mb-6 px-1">
+            All Devices
+          </h2>
           <DashboardBoxGrid
             devices={devices}
             onDeviceSelect={handleDeviceSelect}

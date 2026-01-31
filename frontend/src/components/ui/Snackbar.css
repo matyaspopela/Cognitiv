@@ -44,7 +44,7 @@
 .md3-snackbar__action {
   background: transparent;
   border: none;
-  color: #60a5fa; /* blue-400 */
+  color: #a1a1aa; /* zinc-400 */
   font-family: var(--md3-font-family-primary);
   font-size: var(--md3-font-size-label-medium);
   font-weight: var(--md3-font-weight-semiBold);

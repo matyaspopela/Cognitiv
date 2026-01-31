@@ -16,7 +16,7 @@ const ProgressBar = ({
   const percentage = indeterminate ? undefined : Math.min(100, Math.max(0, (value / max) * 100))
 
   const colorClasses = {
-    primary: 'bg-blue-400',
+    primary: 'bg-zinc-100',
     success: 'bg-emerald-500',
     warning: 'bg-amber-400',
     error: 'bg-red-500'
@@ -37,8 +37,8 @@ const ProgressBar = ({
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#60a5fa" />
-              <stop offset="100%" stopColor="#3b82f6" />
+              <stop offset="0%" stopColor="#f4f4f5" /> {/* zinc-100 */}
+              <stop offset="100%" stopColor="#a1a1aa" /> {/* zinc-400 */}
             </linearGradient>
           </defs>
           <circle
@@ -56,14 +56,14 @@ const ProgressBar = ({
             r={radius}
             fill="none"
             strokeWidth="4"
-            stroke={indeterminate ? `url(#${gradientId})` : colorClasses[color]}
+            stroke={indeterminate ? `url(#${gradientId})` : (color === 'primary' ? '#f4f4f5' : undefined)}
+            className={color !== 'primary' && !indeterminate ? colorClasses[color].replace('bg-', 'stroke-') : ''}
             strokeLinecap="round"
             strokeDasharray={indeterminate ? '40' : circumference}
             strokeDashoffset={strokeDashoffset}
             style={indeterminate ? {
               animation: 'circular-progress-indeterminate 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite'
             } : {}}
-            className={indeterminate ? '' : 'transition-all duration-300 ease-out'}
           />
         </svg>
       </div>
@@ -77,7 +77,7 @@ const ProgressBar = ({
         {indeterminate ? (
           // Indeterminate: skeleton shimmer effect
           <div className="absolute inset-0">
-            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-blue-400/30 to-transparent" 
+            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-zinc-400/30 to-transparent" 
               style={{ width: '40%' }} />
           </div>
         ) : (

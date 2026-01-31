@@ -9,7 +9,7 @@
   background: var(--md3-color-primary-50);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: var(--md3-color-primary-600, #1E88E5);
+  color: var(--md3-color-primary-600, #52525b); /* zinc-600 */
   border: 1px solid var(--md3-color-primary-200);
   cursor: pointer;
   box-shadow: var(--md3-elevation-3);
@@ -294,4 +294,3 @@
     height: 48px;
   }
 }
-

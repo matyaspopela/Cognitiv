@@ -1246,6 +1246,33 @@ def get_data(request):
         }, status=500)
 
 
+
+def round_or_none(value, decimals=2):
+    """Bezpečné zaokrouhlení, vrátí None pro None/NaN."""
+    if value is None:
+        return None
+    try:
+        val = float(value)
+        if val != val:  # NaN check
+            return None
+        return round(val, decimals)
+    except (ValueError, TypeError):
+        return None
+
+
+def to_readable_timestamp(value):
+    """Konvertuje datetime nebo timestamp na čitelný string."""
+    if not value:
+        return None
+    try:
+        if isinstance(value, datetime):
+            return to_local_datetime(value).strftime('%Y-%m-%d %H:%M:%S')
+        return format_timestamp(value)
+    except Exception:
+        return None
+
+
+
 @require_http_methods(["GET"])
 def history_series(request):
     """Vrací agregované historické časové řady pro analýzu trendů."""
@@ -1303,7 +1330,7 @@ def history_series(request):
             for doc in cursor:
                 timestamp_local = to_local_datetime(doc.get('timestamp'))
                 entry = {
-                    'bucket_start': to_readable_timestamp(doc.get('timestamp')),
+                    'bucket_start': timestamp_local.strftime('%Y-%m-%d %H:%M:%S'),
                     'count': 1,
                     'temperature': {
                         'avg': round_or_none(doc.get('temperature')),
@@ -1489,8 +1516,15 @@ def history_series(request):
             'error': f'Databázová chyba: {exc}'
         }, status=500)
     except Exception as exc:
-        print(f"✗ Neočekávaná chyba v history_series: {exc}")
         import traceback
+        print(f"✗ Neočekávaná chyba v history_series: {exc}")
+        # Try to debug specifics
+        debug_info = ""
+        try:
+            if 'doc' in locals():
+                debug_info = f" doc_ts_type={type(doc.get('timestamp'))} val={doc.get('timestamp')}"
+        except: pass
+        
         traceback.print_exc()
         return JsonResponse({
             'status': 'error',
@@ -1693,7 +1727,8 @@ def history_summary(request):
     except PyMongoError as exc:
         return JsonResponse({'error': f'Databázová chyba: {exc}'}, status=500)
     except Exception as exc:
-        return JsonResponse({'error': str(exc)}, status=500)
+        import traceback
+        return JsonResponse({'error': str(exc), 'traceback': traceback.format_exc()}, status=500)
 
 
 @require_http_methods(["GET"])

@@ -6,6 +6,7 @@ from . import views
 
 urlpatterns = [
     # API endpoints
+    # Force reload 2
     path('data', views.data_endpoint, name='data_endpoint'),  # GET and POST
     path('stats', views.get_stats, name='get_stats'),
     path('status', views.status_view, name='status'),

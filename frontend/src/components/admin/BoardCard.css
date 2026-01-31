@@ -24,14 +24,14 @@
 }
 
 .board-card:focus-visible {
-  outline: 2px solid rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  outline: 2px solid rgba(161, 161, 170, 0.3); /* zinc-400/30 */
   outline-offset: 2px;
-  border-color: rgba(96, 165, 250, 0.3); /* blue-400/30 */
+  border-color: rgba(161, 161, 170, 0.3); /* zinc-400/30 */
 }
 
 .board-card--selected {
-  border: 1px solid rgba(96, 165, 250, 0.3); /* blue-400/30 */
-  background: rgba(96, 165, 250, 0.1); /* blue-400/10 */
+  border: 1px solid rgba(161, 161, 170, 0.3); /* zinc-400/30 */
+  background: rgba(161, 161, 170, 0.1); /* zinc-400/10 */
 }
 
 .board-card__header {

@@ -1,102 +1,102 @@
 /**
- * Modern Glassmorphism Design Tokens - CSS Variables
- * Blue/Teal/Purple Color Scheme
+ * Monochrome (Zinc) Design Tokens - CSS Variables
+ * Strict No-Color Policy (Zinc/Slate Only)
  */
 
 :root {
-  /* Primary - Muted Blue for Linear dark mode */
-  --md3-color-primary-50: rgba(96, 165, 250, 0.1); /* blue-400/10 */
-  --md3-color-primary-100: rgba(96, 165, 250, 0.15); /* blue-400/15 */
-  --md3-color-primary-200: rgba(96, 165, 250, 0.2); /* blue-400/20 */
-  --md3-color-primary-300: rgba(96, 165, 250, 0.3); /* blue-400/30 */
-  --md3-color-primary-400: #60a5fa; /* blue-400 - muted electric blue */
-  --md3-color-primary-500: #60a5fa; /* blue-400 - main primary */
-  --md3-color-primary-600: #3b82f6; /* blue-500 */
-  --md3-color-primary-700: #2563eb; /* blue-600 */
-  --md3-color-primary-800: #1d4ed8; /* blue-700 */
-  --md3-color-primary-900: #1e40af; /* blue-800 */
+  /* Primary - Zinc */
+  --md3-color-primary-50: #fafafa;
+  --md3-color-primary-100: #f4f4f5;
+  --md3-color-primary-200: #e4e4e7;
+  --md3-color-primary-300: #d4d4d8;
+  --md3-color-primary-400: #a1a1aa;
+  --md3-color-primary-500: #71717a; /* Main Primary */
+  --md3-color-primary-600: #52525b;
+  --md3-color-primary-700: #3f3f46;
+  --md3-color-primary-800: #27272a;
+  --md3-color-primary-900: #18181b;
 
-  /* Secondary - Teal */
-  --md3-color-secondary-50: #E0F2F1;
-  --md3-color-secondary-100: #B2DFDB;
-  --md3-color-secondary-200: #80CBC4;
-  --md3-color-secondary-300: #4DB6AC;
-  --md3-color-secondary-400: #26A69A;
-  --md3-color-secondary-500: #009688;
-  --md3-color-secondary-600: #00897B;
-  --md3-color-secondary-700: #00796B;
-  --md3-color-secondary-800: #00695C;
-  --md3-color-secondary-900: #004D40;
+  /* Secondary - Mapped to Zinc (Same as Primary for strict monochrome) */
+  --md3-color-secondary-50: #fafafa;
+  --md3-color-secondary-100: #f4f4f5;
+  --md3-color-secondary-200: #e4e4e7;
+  --md3-color-secondary-300: #d4d4d8;
+  --md3-color-secondary-400: #a1a1aa;
+  --md3-color-secondary-500: #71717a;
+  --md3-color-secondary-600: #52525b;
+  --md3-color-secondary-700: #3f3f46;
+  --md3-color-secondary-800: #27272a;
+  --md3-color-secondary-900: #18181b;
 
-  /* Accent - Purple */
-  --md3-color-accent-50: #F3E5F5;
-  --md3-color-accent-100: #E1BEE7;
-  --md3-color-accent-200: #CE93D8;
-  --md3-color-accent-300: #BA68C8;
-  --md3-color-accent-400: #AB47BC;
-  --md3-color-accent-500: #9C27B0;
-  --md3-color-accent-600: #8E24AA;
-  --md3-color-accent-700: #7B1FA2;
-  --md3-color-accent-800: #6A1B9A;
-  --md3-color-accent-900: #4A148C;
+  /* Accent - Mapped to Zinc (Same as Primary) */
+  --md3-color-accent-50: #fafafa;
+  --md3-color-accent-100: #f4f4f5;
+  --md3-color-accent-200: #e4e4e7;
+  --md3-color-accent-300: #d4d4d8;
+  --md3-color-accent-400: #a1a1aa;
+  --md3-color-accent-500: #71717a;
+  --md3-color-accent-600: #52525b;
+  --md3-color-accent-700: #3f3f46;
+  --md3-color-accent-800: #27272a;
+  --md3-color-accent-900: #18181b;
 
-  /* Surface colors with transparency */
-  --md3-color-surface-default: rgba(255, 255, 255, 0.7);
-  --md3-color-surface-variant: rgba(255, 255, 255, 0.5);
-  --md3-color-surface-dim: rgba(255, 255, 255, 0.3);
-  --md3-color-surface-dark: rgba(0, 0, 0, 0.2);
+  /* Surface colors */
+  --md3-color-surface-default: #18181b; /* Zinc 900 */
+  --md3-color-surface-variant: #27272a; /* Zinc 800 */
+  --md3-color-surface-dim: #09090b;     /* Zinc 950 */
+  --md3-color-surface-dark: #000000;
 
-  /* Background */
-  --md3-color-background-default: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --md3-color-background-variant: linear-gradient(135deg, #2196F3 0%, #009688 50%, #9C27B0 100%);
-  --md3-color-background-paper: rgba(255, 255, 255, 0.9);
+  /* Background - Flat Dark */
+  --md3-color-background-default: #09090b; /* Zinc 950 */
+  --md3-color-background-variant: #18181b; /* Zinc 900 */
+  --md3-color-background-paper: #18181b;
 
-  /* Text colors - Dark mode */
-  --md3-color-text-primary: rgb(244, 244, 245); /* zinc-100 */
-  --md3-color-text-secondary: rgb(113, 113, 122); /* zinc-500 */
-  --md3-color-text-disabled: rgb(82, 82, 91); /* zinc-600 */
-  --md3-color-text-hint: rgb(113, 113, 122); /* zinc-500 */
-  --md3-color-text-onDark: #FFFFFF;
+  /* Text colors */
+  --md3-color-text-primary: #f4f4f5;   /* Zinc 100 */
+  --md3-color-text-secondary: #a1a1aa; /* Zinc 400 */
+  --md3-color-text-disabled: #52525b;  /* Zinc 600 */
+  --md3-color-text-hint: #52525b;      /* Zinc 600 */
+  --md3-color-text-onDark: #ffffff;
 
-  /* Status colors */
-  --md3-color-error-50: #FFEBEE;
-  --md3-color-error-100: #FFCDD2;
-  --md3-color-error-500: #F44336;
-  --md3-color-error-700: #D32F2F;
+  /* Status colors - Can keep semantic colors but muted? Or strict monochrome? 
+     Plan says: "Keep Semantic Red/Yellow/Green ONLY for critical gauges if necessary"
+     But "Strict Rule: No blue, cyan, teal, or purple".
+     I will keep standard semantic colors for Error/Success/Warning but ensure they aren't "Neon".
+  */
+  --md3-color-error-50: #fef2f2;
+  --md3-color-error-100: #fee2e2;
+  --md3-color-error-500: #ef4444;
+  --md3-color-error-700: #b91c1c;
 
-  --md3-color-success-50: #E8F5E9;
-  --md3-color-success-100: #C8E6C9;
-  --md3-color-success-500: #4CAF50;
-  --md3-color-success-700: #388E3C;
+  --md3-color-success-50: #f0fdf4;
+  --md3-color-success-100: #dcfce7;
+  --md3-color-success-500: #22c55e;
+  --md3-color-success-700: #15803d;
 
-  --md3-color-warning-50: #FFF3E0;
-  --md3-color-warning-100: #FFE0B2;
-  --md3-color-warning-500: #FF9800;
-  --md3-color-warning-700: #F57C00;
+  --md3-color-warning-50: #fffbeb;
+  --md3-color-warning-100: #fef3c7;
+  --md3-color-warning-500: #f59e0b;
+  --md3-color-warning-700: #b45309;
 
-  --md3-color-info-50: #E3F2FD;
-  --md3-color-info-100: #BBDEFB;
-  --md3-color-info-500: #2196F3;
-  --md3-color-info-700: #1976D2;
+  --md3-color-info-50: #f8fafc;
+  --md3-color-info-100: #f1f5f9;
+  --md3-color-info-500: #64748b; /* Slate instead of Blue for Info */
+  --md3-color-info-700: #334155;
 
   /* Elevation - Subtle shadows */
   --md3-elevation-0: none;
-  --md3-elevation-1: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --md3-elevation-2: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --md3-elevation-3: 0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --md3-elevation-4: 0px 25px 50px -12px rgba(0, 0, 0, 0.25);
-  --md3-elevation-5: 0px 30px 60px -12px rgba(0, 0, 0, 0.3);
+  --md3-elevation-1: 0px 1px 3px 0px rgba(0, 0, 0, 0.5);
+  --md3-elevation-2: 0px 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --md3-elevation-3: 0px 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --md3-elevation-4: 0px 20px 25px -5px rgba(0, 0, 0, 0.5);
+  --md3-elevation-5: 0px 25px 50px -12px rgba(0, 0, 0, 0.5);
 
-  /* Glassmorphism blur */
-  --md3-glass-light: blur(10px);
-  --md3-glass-medium: blur(16px);
-  --md3-glass-strong: blur(24px);
-
-  /* Typography - Geometric */
-  --md3-font-family-primary: 'Space Grotesk', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --md3-font-family-display: 'Montserrat', 'Space Grotesk', sans-serif;
+  /* Typography - Inter Only */
+  --md3-font-family-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  --md3-font-family-display: 'Inter', system-ui, -apple-system, sans-serif;
   --md3-font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
+  /* Sizes */
   --md3-font-size-display-large: 57px;
   --md3-font-size-display-medium: 45px;
   --md3-font-size-display-small: 36px;
@@ -122,7 +122,7 @@
   --md3-line-height-normal: 1.5;
   --md3-line-height-relaxed: 1.75;
 
-  /* Spacing - Balanced */
+  /* Spacing */
   --md3-spacing-0: 0px;
   --md3-spacing-1: 4px;
   --md3-spacing-2: 8px;
@@ -137,14 +137,14 @@
   --md3-spacing-20: 80px;
   --md3-spacing-24: 96px;
 
-  /* Border radius - Rounded */
+  /* Border radius */
   --md3-border-radius-none: 0px;
-  --md3-border-radius-xs: 6px;
-  --md3-border-radius-sm: 10px;
-  --md3-border-radius-md: 16px;
-  --md3-border-radius-lg: 20px;
-  --md3-border-radius-xl: 24px;
-  --md3-border-radius-2xl: 32px;
+  --md3-border-radius-xs: 4px;
+  --md3-border-radius-sm: 6px;
+  --md3-border-radius-md: 8px;
+  --md3-border-radius-lg: 12px;
+  --md3-border-radius-xl: 16px;
+  --md3-border-radius-2xl: 24px;
   --md3-border-radius-full: 9999px;
 
   /* Animation */

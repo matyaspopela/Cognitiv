@@ -24,7 +24,7 @@ html {
 /* Force dark mode by default */
 html,
 html.dark {
-  @apply bg-[#08090A];
+  background-color: var(--md3-color-background-default);
 }
 
 body {
@@ -34,7 +34,7 @@ body {
   line-height: 1.5;
   color: rgb(244, 244, 245);
   /* zinc-100 */
-  background: #08090A;
+  background: var(--md3-color-background-default);
   /* zinc-950 */
   min-height: 100vh;
   position: relative;

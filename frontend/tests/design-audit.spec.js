@@ -13,8 +13,8 @@ test.describe('Design Consistency Audit', () => {
       return window.getComputedStyle(el).backgroundColor
     })
     
-    // Should be dark background (zinc-950: rgb(8, 9, 10))
-    expect(bgColor).toContain('rgb(8, 9, 10)')
+    // Should be dark background (zinc-950: rgb(9, 9, 11))
+    expect(bgColor).toContain('rgb(9, 9, 11)')
   })
 
   test('Typography - Headers use Inter font', async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe('Design Consistency Audit', () => {
   })
 
   test('Layout Structure - Sidebar is 240px wide', async ({ page }) => {
-    const sidebar = page.locator('.sidebar, [class*="sidebar"]').first()
+    const sidebar = page.locator('aside').first()
     const width = await sidebar.evaluate((el) => {
       return window.getComputedStyle(el).width
     })

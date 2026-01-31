@@ -18,6 +18,8 @@ export const getTimeWindowRange = (window) => {
     hoursBack = 7 * 24
   } else if (window === '30d') {
     hoursBack = 30 * 24
+  } else if (window === '90d') {
+    hoursBack = 90 * 24
   }
   
   const start = new Date(now.getTime() - (hoursBack * 60 * 60 * 1000))
@@ -54,6 +56,8 @@ export const getBucketSize = (window) => {
     return 'hour' // Hourly aggregation
   } else if (window === '30d') {
     return 'day' // Daily aggregation
+  } else if (window === '90d') {
+    return 'day' // Daily aggregation for 90 days
   }
   return '10min' // default fallback
 }

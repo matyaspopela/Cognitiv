@@ -24,12 +24,15 @@ import {
   getChartOptions,
   getClimateChartOptions,
 } from '../../utils/charts'
-import { getTimeWindowRange, getBucketSize, getHoursForStats } from '../../utils/timeWindow'
+import { getTimeWindowRange, getBucketSize } from '../../utils/timeWindow'
+import { theme } from '../../design/theme'
 import Card from '../ui/Card'
-import TimeWindowSelector from './TimeWindowSelector'
+import MinimalTimeSelector from './MinimalTimeSelector'
 import ProgressBar from '../ui/ProgressBar'
 import KeyMetricsGrid from './KeyMetricsGrid'
 import AirQualityGauge from './AirQualityGauge'
+import LessonDistributionChart from '../analytics/LessonDistributionChart'
+import HourlyHeatmap from '../analytics/HourlyHeatmap'
 import './DeviceDetailView.css'
 
 // Register Chart.js components
@@ -60,99 +63,6 @@ const filterSeriesInRange = (series, startISO, endISO) => {
     const pointTime = new Date(item.bucket_start).getTime()
     return pointTime >= startTime && pointTime <= endTime
   })
-}
-
-
-/**
- * Numerical Values Section Component
- */
-const NumericalValues = ({ deviceId, timeWindow }) => {
-  const [values, setValues] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const loadValues = async () => {
-      if (!deviceId) return
-
-      try {
-        setLoading(true)
-        const hours = getHoursForStats(timeWindow)
-        const response = await dataAPI.getStats(hours, deviceId)
-        const payload = response?.data
-
-        if (payload?.status === 'success' && payload?.stats) {
-          const stats = payload.stats
-          setValues({
-            co2: stats.co2?.current ?? stats.co2?.avg ?? null,
-            temperature: stats.temperature?.current ?? stats.temperature?.avg ?? null,
-            humidity: stats.humidity?.current ?? stats.humidity?.avg ?? null,
-            readings: stats.data_points ?? null
-          })
-        } else {
-          setValues(null)
-        }
-      } catch (error) {
-        console.error('Error loading numerical values:', error)
-        setValues(null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadValues()
-  }, [deviceId, timeWindow])
-
-  if (loading) {
-    return (
-      <Card className="numerical-values">
-        <div className="numerical-values__content">
-          <ProgressBar indeterminate />
-        </div>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="numerical-values">
-      <div className="numerical-values__content">
-        <div className="numerical-values__item numerical-values__item--co2">
-          <span className="numerical-values__label">CO₂:</span>
-          <span className="numerical-values__value numerical-values__value--co2">
-            {values?.co2 !== null && values?.co2 !== undefined
-              ? `${Math.round(values.co2)} ppm`
-              : '--'}
-          </span>
-        </div>
-        <div className="numerical-values__divider" />
-        <div className="numerical-values__item">
-          <span className="numerical-values__label">Temperature:</span>
-          <span className="numerical-values__value">
-            {values?.temperature !== null && values?.temperature !== undefined
-              ? `${values.temperature.toFixed(1)}°C`
-              : '--'}
-          </span>
-        </div>
-        <div className="numerical-values__divider" />
-        <div className="numerical-values__item">
-          <span className="numerical-values__label">Humidity:</span>
-          <span className="numerical-values__value">
-            {values?.humidity !== null && values?.humidity !== undefined
-              ? `${Math.round(values.humidity)}%`
-              : '--'}
-          </span>
-        </div>
-        <div className="numerical-values__divider" />
-        <div className="numerical-values__item">
-          <span className="numerical-values__label">Readings:</span>
-          <span className="numerical-values__value">
-            {values?.readings !== null && values?.readings !== undefined
-              ? values.readings.toLocaleString('en-US')
-              : '--'}
-          </span>
-        </div>
-      </div>
-    </Card>
-  )
 }
 
 /**
@@ -332,123 +242,6 @@ const ClimateGraph = ({ deviceId, timeWindow }) => {
 }
 
 /**
- * Quality Distribution Boxes Component
- */
-const QualityDistributionBoxes = ({ deviceId, timeWindow }) => {
-  const [qualityData, setQualityData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    const loadQualityData = async () => {
-      if (!deviceId) return
-
-      try {
-        setLoading(true)
-        setError(null)
-        setQualityData(null)
-        const { start, end } = getTimeWindowRange(timeWindow)
-
-        const response = await historyAPI.getSummary(start, end, deviceId)
-
-        if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Failed to load data')
-          return
-        }
-
-        const summaryData = response?.data || response
-
-        if (summaryData?.status === 'success' && summaryData?.summary?.co2_quality) {
-          const co2Quality = summaryData.summary.co2_quality
-          const good = typeof co2Quality.good === 'number' ? co2Quality.good : 0
-          const moderate = typeof co2Quality.moderate === 'number' ? co2Quality.moderate : 0
-          const high = typeof co2Quality.high === 'number' ? co2Quality.high : 0
-          const critical = typeof co2Quality.critical === 'number' ? co2Quality.critical : 0
-
-          const total = good + moderate + high + critical
-
-          if (total > 0) {
-            setQualityData({
-              good: { count: good, percent: ((good / total) * 100).toFixed(1), label: 'Very Good (< 1000 ppm)', color: '#10B981' },
-              moderate: { count: moderate, percent: ((moderate / total) * 100).toFixed(1), label: 'Good (1000-1500 ppm)', color: '#F59E0B' },
-              high: { count: high, percent: ((high / total) * 100).toFixed(1), label: 'Poor (1500-2000 ppm)', color: '#EF4444' },
-              critical: { count: critical, percent: ((critical / total) * 100).toFixed(1), label: 'Very Poor (2000+ ppm)', color: '#DC2626' }
-            })
-          } else {
-            setQualityData(null)
-          }
-        } else {
-          setError('No data to display')
-        }
-      } catch (err) {
-        console.error('Error loading quality distribution:', err)
-        setError('Error loading data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadQualityData()
-  }, [deviceId, timeWindow])
-
-  if (loading) {
-    return (
-      <Card className="quality-distribution-boxes">
-        <div className="quality-distribution-boxes__loading">
-          <ProgressBar indeterminate />
-        </div>
-      </Card>
-    )
-  }
-
-  if (error || !qualityData) {
-    return (
-      <Card className="quality-distribution-boxes">
-        <div className="quality-distribution-boxes__error">
-          <p>{error || 'No data to display'}</p>
-        </div>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="quality-distribution-boxes" elevation={2}>
-      <h3 className="quality-distribution-boxes__title">Air Quality Distribution</h3>
-      <div className="quality-distribution-boxes__content">
-        <div
-          className="quality-distribution-boxes__box"
-          style={{ backgroundColor: qualityData.good.color }}
-        >
-          <span className="quality-distribution-boxes__label">{qualityData.good.label}:</span>
-          <span className="quality-distribution-boxes__value">{qualityData.good.percent}%</span>
-        </div>
-        <div
-          className="quality-distribution-boxes__box"
-          style={{ backgroundColor: qualityData.moderate.color }}
-        >
-          <span className="quality-distribution-boxes__label">{qualityData.moderate.label}:</span>
-          <span className="quality-distribution-boxes__value">{qualityData.moderate.percent}%</span>
-        </div>
-        <div
-          className="quality-distribution-boxes__box"
-          style={{ backgroundColor: qualityData.high.color }}
-        >
-          <span className="quality-distribution-boxes__label">{qualityData.high.label}:</span>
-          <span className="quality-distribution-boxes__value">{qualityData.high.percent}%</span>
-        </div>
-        <div
-          className="quality-distribution-boxes__box"
-          style={{ backgroundColor: qualityData.critical.color }}
-        >
-          <span className="quality-distribution-boxes__label">{qualityData.critical.label}:</span>
-          <span className="quality-distribution-boxes__value">{qualityData.critical.percent}%</span>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-/**
  * Quality Pie Chart Component
  */
 const QualityPieChart = ({ deviceId, timeWindow }) => {
@@ -503,16 +296,16 @@ const QualityPieChart = ({ deviceId, timeWindow }) => {
       legend: {
         position: 'right',
         labels: {
-          color: '#586169',
+          color: theme.text.secondary,
           usePointStyle: true,
           padding: 20,
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.96)',
-        titleColor: '#16181C',
-        bodyColor: '#586169',
-        borderColor: 'rgba(229, 231, 235, 0.5)',
+        backgroundColor: theme.colors.tooltipBg,
+        titleColor: theme.text.primary,
+        bodyColor: theme.text.secondary,
+        borderColor: theme.colors.grid,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -590,23 +383,44 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
   return (
     <div className="device-detail-view">
       <div className="device-detail-view__header">
+        <div className="device-detail-view__header-top">
+          <Link to="/dashboard" className="device-detail-view__back-link">
+            ← Back
+          </Link>
+          <div className="device-detail-view__controls">
+            <MinimalTimeSelector value={timeWindow} onChange={onTimeWindowChange} />
+          </div>
+        </div>
         <h2 className="device-detail-view__title">{deviceName || deviceId}</h2>
-        <Link to="/dashboard" className="device-detail-view__back-link">
-          ← Back to overview
-        </Link>
       </div>
 
-      <AirQualityGauge deviceId={deviceId} timeWindow={timeWindow} />
+      <div className="device-detail-view__content">
+        <KeyMetricsGrid deviceId={deviceId} timeWindow={timeWindow} />
 
-      <TimeWindowSelector value={timeWindow} onChange={onTimeWindowChange} />
+        {/* Primary Trends */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
+          <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} />
+        </div>
 
-      <KeyMetricsGrid deviceId={deviceId} timeWindow={timeWindow} />
+        {/* Analytics Section */}
+        <h3 className="text-xl font-semibold text-zinc-100 mb-4 px-1">Detailed Analytics</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <LessonDistributionChart
+            deviceId={deviceId}
+            startDate={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()}
+            endDate={new Date().toISOString()}
+          />
+          <HourlyHeatmap deviceId={deviceId} />
+        </div>
 
-      <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
-
-      <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} />
-
-      <QualityPieChart deviceId={deviceId} timeWindow={timeWindow} />
+        {/* Secondary Distribution */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <QualityPieChart deviceId={deviceId} timeWindow={timeWindow} />
+          {/* Placeholder or move Gauge here if needed, for now keeping PieChart full width or half */}
+          <AirQualityGauge deviceId={deviceId} timeWindow={timeWindow} />
+        </div>
+      </div>
     </div>
   )
 }

@@ -41,7 +41,7 @@
 }
 
 .md3-badge--primary {
-  background: #60a5fa; /* blue-400 */
+  background: #71717a; /* zinc-500 */
   color: var(--md3-color-text-onDark);
 }
 
@@ -51,14 +51,14 @@
 }
 
 .md3-badge--success {
-  background: rgb(16, 185, 129); /* emerald-500 */
-  color: rgb(244, 244, 245); /* zinc-100 */
-  box-shadow: 0 0 4px rgba(16, 185, 129, 0.25); /* Reduced glow effect for online status */
+  background: #a1a1aa; /* zinc-400 */
+  color: var(--md3-color-text-onDark);
+  box-shadow: 0 0 4px rgba(161, 161, 170, 0.25);
 }
 
 .md3-badge--error {
-  background: var(--md3-color-error-500);
-  color: var(--md3-color-text-onDark);
+  background: #ffffff; /* zinc-200/white for High Contrast Danger */
+  color: #000000; /* Dark text on white */
 }
 
 .md3-badge--offline {
@@ -68,8 +68,8 @@
 }
 
 .md3-badge--warning {
-  background: rgb(251, 191, 36); /* amber-400 */
-  color: rgb(244, 244, 245); /* zinc-100 */
+  background: #71717a; /* zinc-500 */
+  color: var(--md3-color-text-onDark);
 }
 
 .md3-badge--info {

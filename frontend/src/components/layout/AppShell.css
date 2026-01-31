@@ -1,7 +1,9 @@
+@import '../../design/tokens.css';
+
 .app-shell {
   min-height: 100vh;
   display: flex;
-  background: #08090A; /* zinc-950 */
+  background: var(--md3-color-background-default);
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
@@ -11,7 +13,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #08090A; /* zinc-950 */
+  background: var(--md3-color-background-default);
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 

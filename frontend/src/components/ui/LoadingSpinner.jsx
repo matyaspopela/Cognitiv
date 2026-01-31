@@ -26,9 +26,9 @@ const LoadingSpinner = ({
     >
       {/* Pulsing dots animation */}
       <div className={`flex items-center justify-center gap-1.5 ${sizeClasses[size]}`}>
-        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0ms', animationDuration: '1.4s' }} />
-        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '200ms', animationDuration: '1.4s' }} />
-        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '400ms', animationDuration: '1.4s' }} />
+        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-pulse" style={{ animationDelay: '0ms', animationDuration: '1.4s' }} />
+        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-pulse" style={{ animationDelay: '200ms', animationDuration: '1.4s' }} />
+        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-pulse" style={{ animationDelay: '400ms', animationDuration: '1.4s' }} />
       </div>
       {showLabel && (
         <span className="text-sm text-zinc-500 font-sans">{label}</span>
