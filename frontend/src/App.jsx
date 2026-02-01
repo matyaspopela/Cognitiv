@@ -4,10 +4,12 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider, useTheme } from './theme/ThemeProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
-import Home from './pages/Home'
 import Login from './pages/Login'
 import AdminPanel from './pages/AdminPanel'
 import Dashboard from './pages/Dashboard'
+
+import VentilationGuide from './pages/VentilationGuide'
+import DataLabLayout from './components/DataLab/DataLabLayout'
 
 // Component to handle global keyboard shortcuts
 const KeyboardShortcuts = () => {
@@ -20,14 +22,14 @@ const KeyboardShortcuts = () => {
       // so we'll use Ctrl+Shift+U instead for Windows/Linux
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const modifier = isMac ? e.metaKey : e.ctrlKey
-      
+
       if (modifier && e.shiftKey && (e.key === 'T' || e.key === 't' || e.key === 'U' || e.key === 'u')) {
         // Only toggle if not in an input field
         const target = e.target
-        const isInput = target.tagName === 'INPUT' || 
-                       target.tagName === 'TEXTAREA' || 
-                       target.isContentEditable
-        
+        const isInput = target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+
         if (!isInput) {
           e.preventDefault()
           toggleTheme()
@@ -57,8 +59,10 @@ function App() {
                   <AppShell>
                     <div className="page-transition-wrapper">
                       <Routes>
-                        <Route path="/" element={<Home />} />
+                        <Route path="/" element={<Dashboard />} />
                         <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/datalab" element={<DataLabLayout />} />
+                        <Route path="/ventilation-guide" element={<VentilationGuide />} />
                         <Route
                           path="/admin"
                           element={

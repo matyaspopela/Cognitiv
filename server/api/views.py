@@ -9,7 +9,8 @@ import csv
 import re
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus, urlparse, urlunparse, parse_qs, urlencode
-from django.http import JsonResponse, HttpResponse, Http404
+from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
+
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
@@ -29,6 +30,11 @@ from board_manager import (
     BoardManagerError,
     upload_firmware,
 )
+
+# Import DataLab Components
+from .datalab.export_engine import ExportEngine
+from .datalab.query_builder import QueryBuilder
+from .annotation.room_manager import RoomManager
 
 # Import annotated data API views
 from .annotation.annotated_api import (
@@ -3348,16 +3354,108 @@ def annotation_run(request):
         
         result = trigger_annotation_now(target_date)
         
-        return JsonResponse({
-            'status': 'success',
-            'message': f'Annotation completed for {result.get("date")}',
-            'result': {
-                'date': result.get('date'),
-                'summary': result.get('summary')
-            }
-        }, status=200)
     except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': f'Error: {str(e)}'
         }, status=500)
+
+@require_http_methods(["GET"])
+def datalab_export(request):
+    """
+    Streaming export for DataLab.
+    Supports CSV (and future JSONL/PDF).
+    """
+    try:
+        # 1. Parse Filters
+        filters = {
+            'start': request.GET.get('start'),
+            'end': request.GET.get('end'),
+            'rooms': request.GET.getlist('rooms') if 'rooms' in request.GET else None
+        }
+        
+        export_format = request.GET.get('format', 'csv')
+        
+        # 2. Initialize Engine
+        engine = ExportEngine()
+        
+        # 3. Stream Response
+        stream = engine.export_stream(filters, format=export_format)
+        
+        content_type = 'text/csv'
+        filename = f"datalab_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        if export_format == 'jsonl':
+            content_type = 'application/json'
+            filename = filename.replace('.csv', '.jsonl')
+            
+        response = StreamingHttpResponse(stream, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except ValueError as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def datalab_preview(request):
+    """
+    Preview query results (First 10 rows + count).
+    """
+    try:
+        data = json.loads(request.body)
+        filters = {
+            'start': data.get('start'),
+            'end': data.get('end'),
+            'rooms': data.get('rooms')
+        }
+        
+        # Use ExportEngine's logic to get cursor
+        # (ExportEngine not optimized for preview, but we can reuse its query builder)
+        qb = QueryBuilder()
+        pipeline = qb.build_pipeline(filters)
+        
+        # Add Limit and Sort
+        pipeline.append({'$sort': {'bucket_start': 1}})
+        pipeline.append({'$limit': 10})
+        
+        # We need a separate count query because limit destroys count
+        # Or use $facet (but might be slow on large data)
+        # For now, just return preview data. Count can be estimated or separate.
+        
+        from .annotation.annotator import get_annotated_readings_collection
+        collection = get_annotated_readings_collection()
+        
+        # Execute Preview
+        results = list(collection.aggregate(pipeline))
+        
+        # Estimate Count (separate fast count)
+        # Re-build match only
+        match_stage = pipeline[0]['$match']
+        estimated_count = collection.count_documents(match_stage)
+        
+        # Format results similar to export but JSON
+        preview_data = []
+        for doc in results:
+            preview_data.append({
+                'timestamp': doc['bucket_start'].isoformat(),
+                'room': doc.get('room_id'),
+                'readings_count': len(doc.get('readings', [])),
+                'avg_co2': doc.get('stats', {}).get('avg_co2')
+            })
+            
+        return JsonResponse({
+            'status': 'success',
+            'data': {
+                'estimated_records': estimated_count,
+                'preview_data': preview_data
+            }
+        })
+
+    except ValueError as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)

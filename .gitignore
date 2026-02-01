@@ -98,6 +98,7 @@ set-env.ps1
 # Documentation (not needed in repo)
 PROJECT_SPECIFICATIONS.txt
 CLEANUP_GIT_HISTORY.md
+temp/
 
 #gemini files
 .gemini

@@ -31,8 +31,7 @@ import MinimalTimeSelector from './MinimalTimeSelector'
 import ProgressBar from '../ui/ProgressBar'
 import KeyMetricsGrid from './KeyMetricsGrid'
 import AirQualityGauge from './AirQualityGauge'
-import LessonDistributionChart from '../analytics/LessonDistributionChart'
-import HourlyHeatmap from '../analytics/HourlyHeatmap'
+
 import './DeviceDetailView.css'
 
 // Register Chart.js components
@@ -403,16 +402,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
           <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} />
         </div>
 
-        {/* Analytics Section */}
-        <h3 className="text-xl font-semibold text-zinc-100 mb-4 px-1">Detailed Analytics</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <LessonDistributionChart
-            deviceId={deviceId}
-            startDate={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()}
-            endDate={new Date().toISOString()}
-          />
-          <HourlyHeatmap deviceId={deviceId} />
-        </div>
+
 
         {/* Secondary Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -90,14 +90,16 @@
 }
 
 .device-detail-view__back-link {
-  color: rgb(161, 161, 170); /* zinc-400 */
+  color: rgb(161, 161, 170);
+  /* zinc-400 */
   text-decoration: none;
   font-size: 14px;
   transition: color 150ms ease;
 }
 
 .device-detail-view__back-link:hover {
-  color: rgb(212, 212, 216); /* zinc-300 */
+  color: rgb(212, 212, 216);
+  /* zinc-300 */
   text-decoration: underline;
 }
 
@@ -169,10 +171,11 @@
   .dashboard-chart-card {
     grid-column: span 12;
   }
-  
+
   .dashboard-grid__activity {
     grid-column: span 12;
   }
+
   .dashboard-grid__chart {
     grid-column: span 12;
   }
@@ -212,4 +215,3 @@
     padding: 16px;
   }
 }
-

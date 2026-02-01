@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { dataAPI } from '../services/api'
 import Card from '../components/ui/Card'
 import DashboardBox from '../components/dashboard/DashboardBox'
-import BentoOverview from '../components/dashboard/BentoOverview'
 import DeviceDetailView from '../components/dashboard/DeviceDetailView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import './Dashboard.css'
@@ -115,11 +114,15 @@ const Dashboard = () => {
             </div>
           )}
 
-          <BentoOverview />
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => navigate('/ventilation-guide')}
+              className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium transition-colors"
+            >
+              How to Ventilate
+            </button>
+          </div>
 
-          <h2 className="text-xl font-semibold text-zinc-100 mt-12 mb-6 px-1">
-            All Devices
-          </h2>
           <DashboardBoxGrid
             devices={devices}
             onDeviceSelect={handleDeviceSelect}

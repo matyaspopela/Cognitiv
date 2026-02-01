@@ -20,6 +20,7 @@ import certifi
 
 from .timetable_fetcher import get_timetable_fetcher, LOCAL_TZ
 from .room_config import VALID_ROOM_CODES
+from .room_manager import RoomManager
 
 
 UTC = timezone.utc
@@ -293,6 +294,9 @@ def annotate_day(target_date: date) -> Dict:
     total_buckets = 0
     rooms_processed = set()
     
+    # Initialize RoomManager
+    room_mgr = RoomManager()
+    
     for device in devices:
         mac = device['mac_address']
         room_code = device['room_code']
@@ -329,6 +333,29 @@ def annotate_day(target_date: date) -> Dict:
             # Convert readings to dicts for storage
             readings_data = [asdict(r) for r in bucket_readings]
             
+            # --- Enrichment Logic ---
+            
+            # 1. Room Metadata
+            room_meta = room_mgr.get_room(room_code) or {}
+            
+            # 2. Occupancy Estimation
+            # Logic: If > 50% of readings in bucket are lessons, assume lesson occupancy
+            # Hardcoded to 25 for now as per spec
+            estimated_occupancy = 0
+            if stats.get('lesson_count', 0) > (stats.get('reading_count', 0) / 2):
+                estimated_occupancy = 25
+            
+            # 3. Ventilation Score
+            # Simple heuristic: 0-10 based on CO2 average
+            avg_co2 = stats.get('avg_co2', 400)
+            if avg_co2 < 1000:
+                vent_score = 10.0
+            else:
+                # Decay: 1000->10, 2000->5, 3000->0
+                # Formula: 10 - (avg - 1000) / 200
+                vent_score = 10.0 - ((avg_co2 - 1000) / 200.0)
+                vent_score = max(0.0, min(10.0, vent_score))
+            
             bucket_doc = {
                 'room_id': room_code,
                 'device_mac': mac,
@@ -336,7 +363,16 @@ def annotate_day(target_date: date) -> Dict:
                 'bucket_start': bucket_start,
                 'bucket_end': bucket_end,
                 'stats': stats,
-                'readings': readings_data
+                'readings': readings_data,
+                'context': {
+                    'room': room_meta,
+                    'lesson': {
+                        'estimated_occupancy': estimated_occupancy
+                    }
+                },
+                'analysis': {
+                    'ventilation_score': round(vent_score, 1)
+                }
             }
             
             try:

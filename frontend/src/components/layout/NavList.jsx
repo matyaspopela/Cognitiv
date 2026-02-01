@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { LayoutDashboard, Smartphone, Settings } from 'lucide-react'
+import { LayoutDashboard, Smartphone, Settings, LineChart } from 'lucide-react'
 
 const NavList = ({ onItemClick }) => {
   const location = useLocation()
@@ -9,7 +9,7 @@ const NavList = ({ onItemClick }) => {
 
   const navItems = [
     { path: '/', label: 'Overview', icon: LayoutDashboard },
-    { path: '/dashboard', label: 'Devices', icon: Smartphone },
+    { path: '/datalab', label: 'DataLab', icon: LineChart },
   ]
 
   const adminNavItems = [

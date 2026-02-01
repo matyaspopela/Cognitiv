@@ -41,16 +41,16 @@ const DashboardBox = ({ device, onClick }) => {
     if (device?.display_name) return device.display_name
     return null
   }
-  
+
   const deviceIdentifier = getDeviceIdentifier()
   const deviceName = typeof device === 'string' ? device : device?.display_name || device?.device_id || device?.mac_address || 'Unknown'
 
   const getIsOffline = () => {
     if (!device) return true
     if (typeof device === 'string') return true
-    
+
     if (device.status === 'offline') return true
-    
+
     if (device.last_seen) {
       try {
         const lastSeenDate = new Date(device.last_seen)
@@ -65,10 +65,10 @@ const DashboardBox = ({ device, onClick }) => {
         // If parsing fails, fall back to status
       }
     }
-    
+
     return device.status !== 'online'
   }
-  
+
   const isOffline = getIsOffline()
 
   useEffect(() => {
@@ -99,7 +99,7 @@ const DashboardBox = ({ device, onClick }) => {
         for (const bucket of bucketOptions) {
           try {
             const response = await historyAPI.getSeries(startIso, endIso, bucket, deviceIdentifier)
-            
+
             if (response?.response?.status >= 400 || response?.status >= 400) {
               continue
             }

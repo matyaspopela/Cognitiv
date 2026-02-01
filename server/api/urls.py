@@ -1,7 +1,7 @@
 """
 URL configuration for api app
 """
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
@@ -41,7 +41,10 @@ urlpatterns = [
     path('annotated/summary', views.annotated_summary, name='annotated_summary'),
     path('annotated/lessons', views.annotated_lessons, name='annotated_lessons'),
     path('annotated/heatmap', views.annotated_heatmap, name='annotated_heatmap'),
+    # DataLab endpoints (delegated to datalab.urls module)
+    path('datalab/', include('api.datalab.urls')),
     # Debug endpoint (remove in production if needed)
     path('debug/build-info', views.debug_build_info, name='debug_build_info'),
 ]
+
 
