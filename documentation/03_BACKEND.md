@@ -46,31 +46,23 @@ Cognitiv bypasses the Django ORM for sensor data, using `pymongo` for direct per
 3.  **`annotated_readings`**
     -   Aggregated hourly data linked to lessons (see below).
 
-4.  **`settings`**
+4.  **`datalab_presets`**
+    -   Stores user-saved filter configurations (rooms, date ranges, metrics).
+
+5.  **`settings`**
     -   Key-value store for system configuration (e.g., `whitelist_enabled: true`).
 
 ## 📡 MQTT Ingestion Service
-Located in `server/api/mqtt_service.py`.
--   **Behavior:** Runs as a daemon thread when Django starts.
--   **Connection:** Connects to the configured MQTT Broker (HiveMQ) using TLS.
--   **Processing:**
-    1.  Receives message.
-    2.  Wraps payload in a mock HTTP Request.
-    3.  Passes it to `api.views.receive_data` for unified validation logic.
-    4.  Saves to MongoDB.
-
+---
 ## 🎓 Data Annotation Engine
-Located in `server/api/annotation/`.
-A specialized subsystem that gives "context" to the air quality data.
+---
+## 🧪 DataLab & Export Engine
+Located in `server/api/datalab/`.
+A powerful subsystem for historical data retrieval and analysis.
 
-1.  **Fetcher (`timetable_fetcher.py`):** Connects to the Bakaláři school system API to download daily schedules for monitored rooms.
-2.  **Annotator (`annotator.py`):**
-    -   Loads raw sensor data for a day.
-    -   Loads the timetable for that day.
-    -   Groups readings into 1-hour buckets.
-    -   Calculates stats (Min/Max/Avg) for CO2/Temp/Hum.
-    -   Tags the bucket with: `Subject`, `Teacher`, `Lesson Number`.
-3.  **Storage:** Saves to `annotated_readings` collection.
+1.  **Query Builder:** Dynamically constructs MongoDB aggregation pipelines based on frontend filters.
+2.  **Streaming Export:** Uses `StreamingHttpResponse` to handle large datasets without memory exhaustion. Supports **CSV** and **PDF** formats.
+3.  **Presets API:** Allows users to save and manage frequently used complex queries.
 
 ## 🛡️ Security & Validation
 -   **MAC Whitelist:** If enabled in `settings`, the server rejects data from unknown MAC addresses.

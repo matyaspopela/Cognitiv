@@ -25,9 +25,9 @@ const DownloadButton = ({ filters, format }) => {
       <button
         onClick={handleDownload}
         disabled={isLoading}
-        className={`flex items-center gap-2 px-6 py-3 rounded-md text-white font-semibold transition-all shadow-lg ${isLoading
-            ? 'bg-zinc-400 cursor-not-allowed'
-            : 'bg-zinc-900 hover:bg-zinc-800 active:scale-95 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200'
+        className={`flex items-center gap-2 px-6 py-3 rounded-md font-semibold transition-all shadow-lg ${isLoading
+          ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+          : 'bg-emerald-600 text-white hover:bg-emerald-500 active:scale-95'
           }`}
       >
         {isLoading ? (

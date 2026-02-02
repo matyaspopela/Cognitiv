@@ -100,6 +100,8 @@ def preview_query(request):
                 'humidity': reading.get('humidity'),
                 'subject': reading.get('subject'),
                 'teacher': reading.get('teacher'),
+                'class_name': reading.get('class_name'),
+                'occupancy': doc.get('context', {}).get('lesson', {}).get('estimated_occupancy', 0),
                 'is_lesson': reading.get('is_lesson', False),
             })
         

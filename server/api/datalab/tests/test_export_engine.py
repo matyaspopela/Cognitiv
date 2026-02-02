@@ -52,16 +52,14 @@ class TestExportEngine(unittest.TestCase):
         # Consume stream
         rows = list(stream)
         
-        # Verify Header
-        self.assertTrue(len(rows) > 0)
-        self.assertIn('timestamp,room_id', rows[0])
-        self.assertIn('weather_temp_c', rows[0])
-        
         # Verify Data (should have 2 readings rows)
-        # Note: Depending on chunking/buffering, rows might be combined or separate lines.
-        # Assuming generator yields lines or chunks of lines.
+        full_output = b"".join(rows).decode('utf-8')
         
-        full_output = "".join(rows)
+        # Verify Header
+        self.assertIn('timestamp,room_id', full_output)
+        self.assertIn('weather_temp_c', full_output)
+        self.assertIn('subject,teacher,class_name,occupancy', full_output)
+        
         self.assertIn("400", full_output)
         self.assertIn("15.0", full_output)
 

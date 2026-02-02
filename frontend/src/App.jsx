@@ -61,8 +61,15 @@ function App() {
                       <Routes>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/datalab" element={<DataLabLayout />} />
-                        <Route path="/ventilation-guide" element={<VentilationGuide />} />
+                        <Route
+                          path="/datalab"
+                          element={
+                            <ProtectedRoute>
+                              <DataLabLayout />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route path="/ventilation" element={<VentilationGuide />} />
                         <Route
                           path="/admin"
                           element={

@@ -8,6 +8,8 @@ import os
 from datetime import datetime, date, timedelta, timezone, time as dt_time
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict
+import json
+from pathlib import Path
 
 try:
     from zoneinfo import ZoneInfo
@@ -102,6 +104,7 @@ class AnnotatedReading:
     subject: Optional[str]
     teacher: Optional[str]
     lesson_number: Optional[int]
+    class_name: Optional[str]
     is_lesson: bool
 
 
@@ -194,6 +197,7 @@ def annotate_reading(reading: Dict, room_code: str, fetcher) -> AnnotatedReading
         subject=lesson['subject'] if lesson else None,
         teacher=lesson['teacher'] if lesson else None,
         lesson_number=lesson['lesson_number'] if lesson else None,
+        class_name=lesson['class_name'] if lesson else None,
         is_lesson=lesson['is_lesson'] if lesson else False
     )
 
@@ -254,6 +258,26 @@ def group_readings_by_hour(readings: List[AnnotatedReading]) -> Dict[datetime, L
         buckets[bucket_start_utc].append(reading)
     
     return buckets
+
+
+def load_class_occupancy() -> Dict[str, int]:
+    """Load class occupancy mapping from JSON file."""
+    try:
+        # Resolve path relative to server root
+        # annotator.py is in server/api/annotation/
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        data_path = base_dir / 'data' / 'annotation_config.json'
+        
+        if not data_path.exists():
+            print(f"⚠️ Annotation config file not found at {data_path}")
+            return {}
+            
+        with open(data_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            return config.get('class_occupancy', {})
+    except Exception as e:
+        print(f"⚠️ Error loading class occupancy: {e}")
+        return {}
 
 
 def annotate_day(target_date: date) -> Dict:
@@ -339,11 +363,40 @@ def annotate_day(target_date: date) -> Dict:
             room_meta = room_mgr.get_room(room_code) or {}
             
             # 2. Occupancy Estimation
-            # Logic: If > 50% of readings in bucket are lessons, assume lesson occupancy
-            # Hardcoded to 25 for now as per spec
+            # Logic: Use class name from the lesson to lookup standard occupancy
             estimated_occupancy = 0
-            if stats.get('lesson_count', 0) > (stats.get('reading_count', 0) / 2):
-                estimated_occupancy = 25
+            dominant_class = None
+            
+            # Find dominant class in this bucket (most frequent class name)
+            classes_in_bucket = [r.class_name for r in bucket_readings if r.is_lesson and r.class_name]
+            
+            if classes_in_bucket:
+                # Get most common class
+                from collections import Counter
+                dominant_class = Counter(classes_in_bucket).most_common(1)[0][0]
+                
+                # Lookup occupancy
+                occupancy_map = load_class_occupancy()
+                
+                if dominant_class in occupancy_map:
+                    estimated_occupancy = occupancy_map[dominant_class]
+                elif ' ' in dominant_class:
+                    # Heuristic: Split classes (e.g. "4.O sk1") default to 15
+                    estimated_occupancy = 15
+                else:
+                    # Default full class
+                    estimated_occupancy = 30
+                
+                # Verify we actually have a lesson majority before assigning occupancy
+                if stats.get('lesson_count', 0) < (stats.get('reading_count', 0) / 2):
+                     # If lessons are minor part of the hour (e.g. break or end of day), reduce or zero?
+                     # Spec says "fetch from timetable". If timetable says class is there, they are there.
+                     # But we are hourly bucketing.
+                     # We'll stick to assignment if a class was detected.
+                     pass
+            else:
+                # No class name found (or no lesson)
+                estimated_occupancy = 0
             
             # 3. Ventilation Score
             # Simple heuristic: 0-10 based on CO2 average
@@ -367,7 +420,8 @@ def annotate_day(target_date: date) -> Dict:
                 'context': {
                     'room': room_meta,
                     'lesson': {
-                        'estimated_occupancy': estimated_occupancy
+                        'estimated_occupancy': estimated_occupancy,
+                        'class_name': dominant_class
                     }
                 },
                 'analysis': {

@@ -10,64 +10,70 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+
 const TrendChart = ({ data, metrics }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg">
+      <div className="flex items-center justify-center h-full min-h-[300px] text-zinc-500 font-medium">
         No data to display. Select filters and click "Apply".
       </div>
     );
   }
 
-  // Generate lines for each metric
-  // For simplicity, we'll map metrics to lines. In a real scenario, we might want multiple axes.
-  const colors = ['#18181b', '#52525b', '#a1a1aa', '#d4d4d8']; // Zinc palette
+  // Generate lines for each metric - using light colors for visibility on black background
+  const colors = ['#ffffff', '#a1a1aa', '#d4d4d8', '#71717a']; // White to light gray palette
 
   return (
-    <div className="h-96 w-full" style={{ minHeight: '384px' }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+    <div className="w-full h-full min-h-[300px]">
+      <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
           margin={{
-            top: 5,
-            right: 30,
-            left: 20,
-            bottom: 5,
+            top: 10,
+            right: 10,
+            left: 0,
+            bottom: 0,
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
           <XAxis
             dataKey="timestamp"
             tickFormatter={(str) => new Date(str).toLocaleDateString()}
             stroke="#71717a"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={false}
+            tickMargin={10}
           />
           <YAxis
             stroke="#71717a"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={false}
+            tickMargin={10}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e4e4e7',
-              borderRadius: '6px',
-              fontSize: '12px'
+              backgroundColor: '#18181b',
+              borderColor: '#27272a',
+              color: '#f4f4f5',
+              borderRadius: '8px',
+              fontSize: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
             }}
+            itemStyle={{ color: '#d4d4d8' }}
+            cursor={{ stroke: '#52525b', strokeDasharray: '3 3' }}
           />
-          <Legend />
+          <Legend wrapperStyle={{ paddingTop: '20px' }} />
           {metrics.map((metric, index) => (
             <Line
               key={metric}
               type="monotone"
               dataKey={metric}
               stroke={colors[index % colors.length]}
-              strokeWidth={2}
+              strokeWidth={3}
               dot={false}
-              activeDot={{ r: 6 }}
+              activeDot={{ r: 6, strokeWidth: 0, fill: colors[index % colors.length] }}
             />
           ))}
         </LineChart>

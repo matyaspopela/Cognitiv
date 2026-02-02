@@ -49,6 +49,13 @@ Restricted area for system management.
 ### 3. Ventilation Guide
 A dedicated view that interprets current CO2 levels into actionable advice (e.g., "Open windows for 5 minutes").
 
+### 4. DataLab (V2 Dashboard)
+The advanced analytics hub of the system.
+-   **Unified Interface:** A "Dashboard" model where users configure global filters (Time, Scope) and widgets update in real-time.
+-   **Flexible Grid:** Allows side-by-side comparison of different metrics (e.g., Temperature next to CO2 Heatmaps).
+-   **Export Wizard:** Integrated tools for generating PDF reports or CSV exports directly from the current view.
+-   **Presets:** Quick access to saved filter configurations.
+
 ## 🛠️ Technology Stack
 -   **Build Tool:** Vite (Fast HMR and building).
 -   **Styling:** Tailwind CSS + CSS Modules.

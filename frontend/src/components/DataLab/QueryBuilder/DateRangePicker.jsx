@@ -3,63 +3,74 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Calendar } from 'lucide-react';
 
+const CustomInput = React.forwardRef(({ value, onClick, activePreset }, ref) => (
+  <button
+    className={`
+      flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all
+      ${activePreset === 'custom'
+        ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+        : 'text-zinc-400 hover:text-zinc-200'}
+    `}
+    onClick={onClick}
+    ref={ref}
+  >
+    <Calendar className="h-3.5 w-3.5" />
+    <span>{activePreset === 'custom' ? value : 'Custom'}</span>
+  </button>
+));
+
 const DateRangePicker = ({ startDate, endDate, onChange }) => {
+  const [activePreset, setActivePreset] = React.useState('7d');
+
+  const handlePreset = (preset) => {
+    setActivePreset(preset);
+    const end = new Date();
+    const start = new Date();
+
+    if (preset === '7d') {
+      start.setDate(end.getDate() - 7);
+    } else if (preset === '1m') {
+      start.setMonth(end.getMonth() - 1);
+    } else if (preset === 'ytd') {
+      start.setMonth(0, 1);
+    }
+    onChange({ start, end });
+  };
+
   return (
-    <div className="w-full mb-4">
-      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-        Date Range
-      </label>
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-zinc-400 z-10 pointer-events-none" />
+    <div className="w-full">
+      <div className="flex p-1 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+        {['7d', '1m', 'ytd'].map((preset) => (
+          <button
+            key={preset}
+            onClick={() => handlePreset(preset)}
+            className={`
+              flex-1 py-1.5 text-xs font-medium rounded-md transition-all
+              ${activePreset === preset
+                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'}
+            `}
+          >
+            {preset === '7d' ? '7 Days' : preset === '1m' ? '1 Month' : 'YTD'}
+          </button>
+        ))}
+
+        <div className="relative">
           <DatePicker
             selected={startDate}
             onChange={(dates) => {
               const [start, end] = dates;
               onChange({ start, end });
+              if (end) setActivePreset('custom');
             }}
             startDate={startDate}
             endDate={endDate}
             selectsRange
-            className="w-full pl-8 pr-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 focus:outline-none"
-            placeholderText="Select range..."
-            dateFormat="MMM d, yyyy"
+            customInput={<CustomInput activePreset={activePreset} />}
+            dateFormat="MMM d"
+            popperPlacement="bottom-end"
           />
         </div>
-      </div>
-      <div className="flex gap-2 mt-2">
-        <button
-          onClick={() => {
-            const end = new Date();
-            const start = new Date();
-            start.setDate(end.getDate() - 7);
-            onChange({ start, end });
-          }}
-          className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded text-zinc-600 dark:text-zinc-300"
-        >
-          Last 7 Days
-        </button>
-        <button
-          onClick={() => {
-            const end = new Date();
-            const start = new Date();
-            start.setMonth(end.getMonth() - 1);
-            onChange({ start, end });
-          }}
-          className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded text-zinc-600 dark:text-zinc-300"
-        >
-          Last Month
-        </button>
-        <button
-          onClick={() => {
-             const now = new Date();
-             const start = new Date(now.getFullYear(), 0, 1);
-             onChange({ start, end: now });
-          }}
-          className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded text-zinc-600 dark:text-zinc-300"
-        >
-          YTD
-        </button>
       </div>
     </div>
   );

@@ -82,13 +82,13 @@ const PresetList = ({ onSelect }) => {
         <div
           key={preset.id}
           onClick={() => onSelect(preset.filters)}
-          className="group relative flex items-start p-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500 transition-all shadow-sm"
+          className="group relative flex items-start p-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-700/50 rounded-lg cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-600 transition-all"
         >
-          <div className="bg-zinc-100 dark:bg-zinc-700 p-2 rounded mr-3">
-            <Bookmark size={16} className="text-zinc-500 dark:text-zinc-400" />
+          <div className="bg-white dark:bg-zinc-800 p-2 rounded mr-3 border border-zinc-100 dark:border-zinc-700/50 shadow-sm">
+            <Bookmark size={16} className="text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-500 transition-colors" />
           </div>
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               {preset.name}
             </h4>
             {preset.created_at && (
@@ -107,7 +107,7 @@ const PresetList = ({ onSelect }) => {
           >
             <Trash2 size={14} />
           </button>
-          <ArrowRight className="text-zinc-300 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity ml-2" size={16} />
+          <ArrowRight className="text-zinc-300 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2" size={16} />
         </div>
       ))}
     </div>

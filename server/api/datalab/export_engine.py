@@ -31,6 +31,7 @@ except (ImportError, OSError) as e:
         print(f"ReportLab also not available: {e2}")
 
 from api.services.weather_service import WeatherService
+from api.analytics.mold_calculator import calculate_mold_factor_simple
 from .query_builder import QueryBuilder
 
 try:
@@ -141,8 +142,7 @@ class ExportEngine:
     def _export_csv(self, filters: Dict) -> Generator[bytes, None, None]:
         """Export data as CSV with manifest header."""
         try:
-            pipeline = self.qb.build_pipeline(filters)
-            pipeline.append({'$sort': {'bucket_start': 1}})
+            pipeline = self.qb.build_export_pipeline(filters)
             
             collection = get_annotated_readings_collection()
             cursor = collection.aggregate(pipeline)
@@ -168,9 +168,9 @@ class ExportEngine:
         header = [
             'timestamp', 'room_id', 'device_mac', 
             'co2', 'temp', 'humidity',
-            'delta_co2',
+            'delta_co2', 'mold_factor',
             'weather_temp_c', 'weather_humidity',
-            'lesson_subject', 'lesson_occupancy_est'
+            'subject', 'teacher', 'class_name', 'occupancy'
         ]
         
         writer.writerow(header)
@@ -219,6 +219,14 @@ class ExportEngine:
                         weather_temp = w_entry.get('temp_c')
                         weather_hum = w_entry.get('humidity_rel')
                 
+                # Calculate mold factor
+                mold_factor = None
+                if reading.get('humidity') is not None and reading.get('temp') is not None:
+                    mold_factor = calculate_mold_factor_simple(
+                        humidity_rel=reading.get('humidity'),
+                        temp_c=reading.get('temp')
+                    )
+                
                 row = [
                     ts.isoformat() if isinstance(ts, datetime) else ts,
                     room_id,
@@ -227,9 +235,12 @@ class ExportEngine:
                     reading.get('temp'),
                     reading.get('humidity'),
                     reading.get('delta_co2'),
+                    mold_factor,
                     weather_temp,
                     weather_hum,
                     reading.get('subject'),
+                    reading.get('teacher'),
+                    reading.get('class_name'),
                     occupancy_est
                 ]
                 
@@ -241,8 +252,7 @@ class ExportEngine:
     def _export_jsonl(self, filters: Dict) -> Generator[bytes, None, None]:
         """Export data as JSON Lines with manifest as first line."""
         try:
-            pipeline = self.qb.build_pipeline(filters)
-            pipeline.append({'$sort': {'bucket_start': 1}})
+            pipeline = self.qb.build_export_pipeline(filters)
             
             collection = get_annotated_readings_collection()
             cursor = collection.aggregate(pipeline)
@@ -293,6 +303,14 @@ class ExportEngine:
                         weather_temp = w_entry.get('temp_c')
                         weather_hum = w_entry.get('humidity_rel')
                 
+                # Calculate mold factor
+                mold_factor = None
+                if reading.get('humidity') is not None and reading.get('temp') is not None:
+                    mold_factor = calculate_mold_factor_simple(
+                        humidity_rel=reading.get('humidity'),
+                        temp_c=reading.get('temp')
+                    )
+                
                 record = {
                     'timestamp': ts.isoformat() if isinstance(ts, datetime) else ts,
                     'room_id': room_id,
@@ -301,13 +319,16 @@ class ExportEngine:
                     'temp': reading.get('temp'),
                     'humidity': reading.get('humidity'),
                     'delta_co2': reading.get('delta_co2'),
+                    'mold_factor': mold_factor,
                     'weather': {
                         'temp_c': weather_temp,
                         'humidity_rel': weather_hum
                     },
                     'lesson': {
                         'subject': reading.get('subject'),
-                        'estimated_occupancy': occupancy_est
+                        'teacher': reading.get('teacher'),
+                        'class_name': reading.get('class_name'),
+                        'occupancy': occupancy_est
                     }
                 }
                 
@@ -326,8 +347,7 @@ class ExportEngine:
             return
         
         try:
-            pipeline = self.qb.build_pipeline(filters)
-            pipeline.append({'$sort': {'bucket_start': 1}})
+            pipeline = self.qb.build_export_pipeline(filters)
             
             collection = get_annotated_readings_collection()
             cursor = collection.aggregate(pipeline)

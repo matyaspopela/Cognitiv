@@ -7,6 +7,7 @@
 1.  **Health & Safety:** Prevent excessive CO2 levels which cause drowsiness and poor concentration.
 2.  **Energy Efficiency:** Optimize ventilation scheduling based on actual data rather than arbitrary time intervals.
 3.  **Educational Insight:** Correlate environmental conditions with specific classes, subjects, and room occupancy (via "Annotated Data").
+4.  **Historical Analytics:** Provide tools for advanced data exploration and export via the "DataLab".
 
 ## 🏗️ System Architecture
 
@@ -25,6 +26,7 @@ graph LR
         Broker -->|Subscribe| Django[Django Backend]
         Django -->|Store| Mongo[MongoDB Atlas]
         Bakalari[Bakaláři API] -->|Timetables| Django
+        DL[DataLab Engine] --- Django
     end
 
     subgraph "User (Client)"

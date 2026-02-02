@@ -69,6 +69,27 @@ Get data formatted for the "School Week" heatmap visualization.
 
 ---
 
+## 🧪 DataLab API
+
+### `POST /api/datalab/preview`
+Get a count estimate and first 10 rows for a given set of filters.
+
+### `GET /api/datalab/export`
+Stream a full dataset in CSV or PDF format.
+
+**Parameters:**
+-   `start`, `end` (ISO Date)
+-   `rooms` (comma-separated list)
+-   `format` (string): `csv` or `pdf`
+
+### `GET /api/datalab/presets`
+List all saved query presets.
+
+### `POST /api/datalab/presets`
+Save current filter configuration as a preset.
+
+---
+
 ## ⚙️ Administration
 
 ### `GET /api/admin/devices`

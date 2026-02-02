@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Search } from 'lucide-react';
+import { Check, Search, ChevronDown } from 'lucide-react';
 import { dataAPI } from '../../../services/api';
 
 const RoomSelector = ({ selectedRooms, onChange }) => {
@@ -58,10 +58,7 @@ const RoomSelector = ({ selectedRooms, onChange }) => {
   };
 
   return (
-    <div className="relative w-full mb-4">
-      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-        Select Rooms
-      </label>
+    <div className="relative w-full">
       {error && (
         <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">
           {error}
@@ -69,48 +66,37 @@ const RoomSelector = ({ selectedRooms, onChange }) => {
       )}
       <div className="relative">
         <div
-          className="w-full border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 p-2 min-h-[42px] cursor-pointer flex flex-wrap gap-1 items-center"
+          className="w-full border-b border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 py-2 cursor-pointer flex items-center justify-between transition-colors group"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {loading ? (
-            <span className="text-zinc-500 text-sm">Loading rooms...</span>
-          ) : selectedRooms.length === 0 ? (
-            <span className="text-zinc-500 text-sm">Select rooms...</span>
-          ) : (
-            selectedRooms.map((id) => {
-              const room = rooms.find((r) => r.id === id);
-              return (
-                <span
-                  key={id}
-                  className="bg-zinc-100 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs px-2 py-1 rounded-full flex items-center gap-1"
-                >
-                  {room ? (room.name || room.id) : id}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleRoom(id);
-                    }}
-                    className="hover:text-red-500"
-                  >
-                    ×
-                  </button>
+          <div className="flex items-center gap-2 overflow-hidden">
+            {selectedRooms.length === 0 ? (
+              <span className="text-zinc-400 text-sm font-medium">All Rooms</span>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-zinc-100">
+                  {selectedRooms.length} Room{selectedRooms.length > 1 ? 's' : ''}
                 </span>
-              );
-            })
-          )}
+                <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                  selected
+                </span>
+              </div>
+            )}
+          </div>
+          <ChevronDown size={16} className={`text-zinc-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
-            <div className="p-2 border-b border-zinc-100 dark:border-zinc-700 sticky top-0 bg-white dark:bg-zinc-800">
+          <div className="absolute z-20 w-full mt-2 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+            <div className="p-2 border-b border-zinc-800 sticky top-0 bg-zinc-900 z-10">
               <div className="relative mb-2">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Search rooms..."
+                  placeholder="Filter..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-zinc-200 dark:border-zinc-700 rounded-md bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-zinc-700 rounded-md bg-zinc-800 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-zinc-600"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -119,7 +105,7 @@ const RoomSelector = ({ selectedRooms, onChange }) => {
                   e.stopPropagation();
                   selectAll();
                 }}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline w-full text-left"
+                className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400 hover:text-emerald-300 w-full text-left px-1"
               >
                 {selectedRooms.length === rooms.length ? 'Deselect All' : 'Select All'}
               </button>
@@ -130,16 +116,19 @@ const RoomSelector = ({ selectedRooms, onChange }) => {
                 <div
                   key={room.id}
                   onClick={() => toggleRoom(room.id)}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer text-sm text-zinc-700 dark:text-zinc-200"
+                  className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm transition-colors ${selectedRooms.includes(room.id)
+                    ? 'bg-emerald-900/20 text-emerald-400'
+                    : 'hover:bg-zinc-800/50 text-zinc-300'
+                    }`}
                 >
-                  <span>{room.name || room.id}</span>
+                  <span className="truncate">{room.name || room.id}</span>
                   {selectedRooms.includes(room.id) && (
-                    <Check className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
                   )}
                 </div>
               ))}
               {filteredRooms.length === 0 && (
-                <div className="px-3 py-4 text-center text-sm text-zinc-500">
+                <div className="px-3 py-4 text-center text-xs text-zinc-500">
                   No rooms found.
                 </div>
               )}
@@ -150,7 +139,7 @@ const RoomSelector = ({ selectedRooms, onChange }) => {
       {/* Overlay to close dropdown when clicking outside */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-0"
+          className="fixed inset-0 z-10"
           onClick={() => setIsOpen(false)}
         />
       )}

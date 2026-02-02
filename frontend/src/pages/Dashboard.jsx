@@ -114,15 +114,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => navigate('/ventilation-guide')}
-              className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium transition-colors"
-            >
-              How to Ventilate
-            </button>
-          </div>
-
           <DashboardBoxGrid
             devices={devices}
             onDeviceSelect={handleDeviceSelect}

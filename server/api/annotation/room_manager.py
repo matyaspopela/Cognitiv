@@ -1,20 +1,18 @@
 from typing import Optional, Dict, List
 import os
+import json
 from datetime import datetime, timezone
-import functools
 from pymongo import MongoClient
 import certifi
-from django.conf import settings
-
-# Import legacy config
-from .room_config import VALID_ROOM_CODES, ROOM_CODE_LABELS
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
 
 UTC = timezone.utc
+
+# Path to annotation config JSON
+ANNOTATION_CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+    'data', 
+    'annotation_config.json'
+)
 
 def get_mongo_uri() -> str:
     """Get MongoDB URI from environment."""
@@ -77,53 +75,73 @@ class RoomManager:
             
         return None
 
-    def sync_config(self) -> int:
+    def get_room_parameters(self, room_id: str) -> Optional[Dict]:
         """
-        Migrate room_config.py data to the database.
-        Returns the number of rooms processed.
+        Get physical parameters for a room.
+        Returns dict with volume_m3, window_area_m2.
         """
+        room = self.get_room(room_id)
+        if not room:
+            return None
+        
+        return {
+            'volume_m3': room.get('volume_m3', 0.0),
+            'window_area_m2': room.get('window_area_m2', 0.0),
+        }
+
+    def sync_parameters(self, config_path: str = None) -> int:
+        """
+        Load room parameters from JSON config file into MongoDB.
+        
+        Args:
+            config_path: Path to JSON file. Defaults to annotation_config.json
+            
+        Returns:
+            Number of rooms processed
+        """
+        if config_path is None:
+            config_path = ANNOTATION_CONFIG_PATH
+        
+        if not os.path.exists(config_path):
+            # Fallback for local testing if path differs
+            alt_path = os.path.join('server', 'data', 'annotation_config.json')
+            if os.path.exists(alt_path):
+                config_path = alt_path
+            else:
+                raise FileNotFoundError(f"Annotation config not found: {config_path}")
+        
         collection = self._get_collection()
         count = 0
         
-        for code in VALID_ROOM_CODES:
-            label = ROOM_CODE_LABELS.get(code, code.upper())
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            room_params = config.get('room_parameters', [])
             
-            # Default metadata structure
-            doc = {
-                '_id': code,
-                'label': label,
-                # Default physics placeholders - to be updated via UI later
-                'volume_m3': 0.0,
-                'window_area_m2': 0.0,
-                'floor_area_m2': 0.0,
-                'metadata': {},
-                'last_modified': datetime.now(UTC)
-            }
-            
-            # Upsert: Don't overwrite existing physics data if it exists
-            # We use $setOnInsert for static fields and $set for updates if needed
-            # But here we want to ensure the room exists.
-            # If we use replace_one(upsert=True), we overwrite everything.
-            # Let's use update_one with $set for basic info and $setOnInsert for physics
-            
-            update_result = collection.update_one(
-                {'_id': code},
-                {
+            for room in room_params:
+                room_id = room.get('room_id', '').strip()
+                if not room_id:
+                    continue
+                
+                doc_update = {
                     '$set': {
-                        'label': label,
+                        'label': room.get('label', room_id),
+                        'volume_m3': float(room.get('volume_m3', 0)),
+                        'window_area_m2': float(room.get('window_area_m2', 0)),
                         'last_modified': datetime.now(UTC)
-                    },
-                    '$setOnInsert': {
-                        'volume_m3': 100.0, # Default dummy volume
-                        'window_area_m2': 0.0,
-                        'floor_area_m2': 0.0,
-                        'metadata': {}
                     }
-                },
-                upsert=True
-            )
-            count += 1
-            
+                }
+                
+                collection.update_one(
+                    {'_id': room_id},
+                    doc_update,
+                    upsert=True
+                )
+                count += 1
+        
         # Invalidate cache after sync
         self._cache.clear()
         return count
+
+    def sync_config(self) -> int:
+        """Legacy sync - now calls sync_parameters."""
+        return self.sync_parameters()
