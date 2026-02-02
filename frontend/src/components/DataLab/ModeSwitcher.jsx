@@ -1,27 +1,69 @@
 import React from 'react';
-import { Download, ChartArea } from 'lucide-react';
+import { colors } from '../../design/tokens';
 
+/**
+ * ModeSwitcher Component
+ * 
+ * Toggles between 'analysis' and 'export' modes in DataLab.
+ * Features glassmorphism styling with smooth transitions.
+ */
 const ModeSwitcher = ({ mode, setMode }) => {
+  const buttonBaseStyle = {
+    padding: '10px 20px',
+    borderRadius: '12px',
+    fontSize: '14px',
+    fontWeight: '500',
+    fontFamily: "'Inter', sans-serif",
+    transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+    border: 'none',
+    cursor: 'pointer',
+    position: 'relative',
+  };
+
+  const getButtonStyle = (isActive) => ({
+    ...buttonBaseStyle,
+    background: 'transparent',
+    color: isActive ? '#FFFFFF' : '#71717a', // White for active, Zinc-500 for inactive
+    border: isActive ? '1px solid #FFFFFF' : '1px solid transparent',
+    boxShadow: 'none',
+    transform: 'translateY(0)',
+  });
+
   return (
-    <div className="flex bg-zinc-900/50 border border-zinc-800 p-1 rounded-lg w-fit">
+    <div
+      className="flex gap-4 p-0"
+    >
       <button
+        style={getButtonStyle(mode === 'analysis')}
         onClick={() => setMode('analysis')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-medium ${mode === 'analysis'
-            ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-            : 'text-zinc-400 hover:text-zinc-200'
-          }`}
+        onMouseEnter={(e) => {
+          if (mode !== 'analysis') {
+            e.currentTarget.style.color = '#a1a1aa'; // Zinc-400
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (mode !== 'analysis') {
+            e.currentTarget.style.color = '#71717a';
+          }
+        }}
       >
-        <ChartArea size={16} />
-        Analysis
+        Analyse
       </button>
+
       <button
+        style={getButtonStyle(mode === 'export')}
         onClick={() => setMode('export')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-medium ${mode === 'export'
-            ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-            : 'text-zinc-400 hover:text-zinc-200'
-          }`}
+        onMouseEnter={(e) => {
+          if (mode !== 'export') {
+            e.currentTarget.style.color = '#a1a1aa';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (mode !== 'export') {
+            e.currentTarget.style.color = '#71717a';
+          }
+        }}
       >
-        <Download size={16} />
         Export Data
       </button>
     </div>

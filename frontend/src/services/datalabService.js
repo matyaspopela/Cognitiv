@@ -21,7 +21,11 @@ export const datalabService = {
       const params = new URLSearchParams({
         start: filters.start || filters.dateRange?.start,
         end: filters.end || filters.dateRange?.end,
-        format: format || 'csv'
+        format: format || 'csv',
+        teacher: filters.teacher || '',
+        subject: filters.subject || '',
+        class_name: filters.class_name || '',
+        lesson_of_day: filters.lesson_of_day || '',
       });
 
       // Add rooms if specified
@@ -86,6 +90,14 @@ export const datalabService = {
    */
   deletePreset: async (presetId) => {
     const response = await apiClient.delete(`/datalab/presets/${presetId}`);
+    return response;
+  },
+
+  /**
+   * Get available filter options (teachers, subjects, etc.)
+   */
+  getFilterOptions: async () => {
+    const response = await apiClient.get('/datalab/filter-options');
     return response;
   }
 }

@@ -1,102 +1,77 @@
 /**
- * Modern Glassmorphism Design Tokens
- * Blue/Teal/Purple Color Scheme
+ * DataLab High-Fidelity Dark Mode Design Tokens
+ * Updated 2026-02-02 for DataLab Overhaul
  */
 
+// Base Color Palette - High-Fidelity Dark Mode
 export const colors = {
-  // Primary - Blue
-  primary: {
-    50: '#E3F2FD',
-    100: '#BBDEFB',
-    200: '#90CAF9',
-    300: '#64B5F6',
-    400: '#42A5F5',
-    500: '#2196F3', // Main primary
-    600: '#1E88E5',
-    700: '#1976D2',
-    800: '#1565C0',
-    900: '#0D47A1',
+  // Base Backgrounds
+  base: {
+    background: '#0B0E14',          // Deep Charcoal (replaces Zinc 950)
+    surface: '#151921',             // Navy-tinted Gray (replaces Zinc 900)
+    surfaceGlass: 'rgba(21, 25, 33, 0.6)',  // For glassmorphism
   },
-  
-  // Secondary - Teal
-  secondary: {
-    50: '#E0F2F1',
-    100: '#B2DFDB',
-    200: '#80CBC4',
-    300: '#4DB6AC',
-    400: '#26A69A',
-    500: '#009688', // Main secondary
-    600: '#00897B',
-    700: '#00796B',
-    800: '#00695C',
-    900: '#004D40',
+
+  // Borders & Dividers
+  borders: {
+    subtle: 'rgba(61, 70, 83, 0.2)',   // Cyan-tinted Slate
+    medium: 'rgba(61, 70, 83, 0.4)',
+    strong: 'rgba(61, 70, 83, 0.6)',
   },
-  
-  // Accent - Purple
+
+  // Interactive Accent Colors
   accent: {
-    50: '#F3E5F5',
-    100: '#E1BEE7',
-    200: '#CE93D8',
-    300: '#BA68C8',
-    400: '#AB47BC',
-    500: '#9C27B0', // Main accent
-    600: '#8E24AA',
-    700: '#7B1FA2',
-    800: '#6A1B9A',
-    900: '#4A148C',
+    primary: '#6366F1',        // Electric Indigo
+    secondary: '#06B6D4',      // Vivid Cyan
+    hover: '#7C7FF5',          // Lightened Indigo
+    focus: 'rgba(99, 102, 241, 0.4)',  // Indigo with opacity for rings
   },
-  
-  // Surface colors with transparency for glassmorphism
-  surface: {
-    default: 'rgba(255, 255, 255, 0.7)',
-    variant: 'rgba(255, 255, 255, 0.5)',
-    dim: 'rgba(255, 255, 255, 0.3)',
-    dark: 'rgba(0, 0, 0, 0.2)',
+
+  // Semantic CO2 Colors (Traffic Light System)
+  semantic: {
+    safe: {
+      color: '#10B981',        // Emerald (< 800 ppm)
+      glow: 'rgba(16, 185, 129, 0.3)',
+      background: 'rgba(16, 185, 129, 0.1)',
+    },
+    warning: {
+      color: '#F59E0B',        // Amber (800-1200 ppm)
+      glow: 'rgba(245, 158, 11, 0.3)',
+      background: 'rgba(245, 158, 11, 0.1)',
+    },
+    critical: {
+      color: '#EF4444',        // Crimson (> 1200 ppm)
+      glow: 'rgba(239, 68, 68, 0.4)',
+      background: 'rgba(239, 68, 68, 0.1)',
+    },
   },
-  
-  // Background
-  background: {
-    default: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    variant: 'linear-gradient(135deg, #2196F3 0%, #009688 50%, #9C27B0 100%)',
-    paper: 'rgba(255, 255, 255, 0.9)',
-  },
-  
-  // Text colors
+
+  // Typography
   text: {
-    primary: '#1A1A1A',
-    secondary: '#4A4A4A',
-    disabled: '#9E9E9E',
-    hint: '#757575',
-    onDark: '#FFFFFF',
+    primary: '#F9FAFB',        // Near white
+    secondary: '#D1D5DB',      // Light gray
+    tertiary: '#9CA3AF',       // Medium gray
+    disabled: '#6B7280',       // Dark gray
   },
-  
-  // Status colors
-  error: {
-    50: '#FFEBEE',
-    100: '#FFCDD2',
-    500: '#F44336',
-    700: '#D32F2F',
-  },
-  
-  success: {
-    50: '#E8F5E9',
-    100: '#C8E6C9',
-    500: '#4CAF50',
-    700: '#388E3C',
-  },
-  
-  warning: {
-    50: '#FFF3E0',
-    100: '#FFE0B2',
-    500: '#FF9800',
-    700: '#F57C00',
-  },
-  
-  info: {
-    50: '#E3F2FD',
-    100: '#BBDEFB',
-    500: '#2196F3',
-    700: '#1976D2',
+
+  // Status colors (for general UI, not CO2-specific)
+  status: {
+    error: {
+      color: '#EF4444',
+      background: 'rgba(239, 68, 68, 0.1)',
+    },
+    success: {
+      color: '#10B981',
+      background: 'rgba(16, 185, 129, 0.1)',
+    },
+    warning: {
+      color: '#F59E0B',
+      background: 'rgba(245, 158, 11, 0.1)',
+    },
+    info: {
+      color: '#06B6D4',
+      background: 'rgba(6, 182, 212, 0.1)',
+    },
   },
 }
 
@@ -113,18 +88,18 @@ export const elevation = {
 // Glassmorphism backdrop blur
 export const glass = {
   light: 'blur(10px)',
-  medium: 'blur(16px)',
-  strong: 'blur(24px)',
+  medium: 'blur(12px)',
+  strong: 'blur(16px)',
 }
 
-// Typography scale - Geometric
+// Typography scale - Technical yet Accessible
 export const typography = {
   fontFamily: {
-    primary: "'Space Grotesk', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    display: "'Montserrat', 'Space Grotesk', sans-serif",
-    mono: "'JetBrains Mono', 'Fira Code', monospace",
+    ui: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    data: "'JetBrains Mono', 'Courier New', monospace",
+    display: "'Inter', sans-serif",
   },
-  
+
   fontSize: {
     display: {
       large: '57px',
@@ -152,14 +127,14 @@ export const typography = {
       small: '11px',
     },
   },
-  
+
   fontWeight: {
     regular: 400,
     medium: 500,
     semiBold: 600,
     bold: 700,
   },
-  
+
   lineHeight: {
     tight: 1.2,
     normal: 1.5,
@@ -204,7 +179,7 @@ export const animation = {
     slow: '350ms',
     slower: '500ms',
   },
-  
+
   easing: {
     ease: 'cubic-bezier(0.4, 0, 0.2, 1)',
     easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
@@ -232,19 +207,26 @@ export const components = {
     },
     borderRadius: borderRadius.md,
   },
-  
+
   card: {
     borderRadius: borderRadius.lg,
     padding: spacing[6],
     backdropBlur: glass.medium,
-    border: '1px solid rgba(255, 255, 255, 0.18)',
+    border: '1px solid rgba(61, 70, 83, 0.2)',
   },
-  
+
+  sidebar: {
+    background: colors.base.surfaceGlass,
+    backdropBlur: glass.medium,
+    border: `1px solid ${colors.borders.subtle}`,
+    borderRadius: borderRadius.xl,
+  },
+
   textField: {
     height: '56px',
     borderRadius: borderRadius.md,
   },
-  
+
   chip: {
     height: '36px',
     borderRadius: borderRadius.full,

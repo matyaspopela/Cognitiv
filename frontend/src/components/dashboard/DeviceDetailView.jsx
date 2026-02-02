@@ -11,9 +11,9 @@ import {
   Legend,
   Filler,
   TimeScale,
-  ArcElement,
+
 } from 'chart.js'
-import { Line, Doughnut } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 import 'chartjs-adapter-date-fns'
 import { dataAPI, historyAPI } from '../../services/api'
 import {
@@ -45,7 +45,7 @@ ChartJS.register(
   Legend,
   Filler,
   TimeScale,
-  ArcElement
+  TimeScale
 )
 
 /**
@@ -241,111 +241,8 @@ const ClimateGraph = ({ deviceId, timeWindow }) => {
 }
 
 /**
- * Quality Pie Chart Component
+ * Component removed: QualityPieChart
  */
-const QualityPieChart = ({ deviceId, timeWindow }) => {
-  const [chartData, setChartData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    const loadChartData = async () => {
-      if (!deviceId) return
-
-      try {
-        setLoading(true)
-        setError(null)
-        setChartData(null)
-        const { start, end } = getTimeWindowRange(timeWindow)
-
-        const response = await historyAPI.getSummary(start, end, deviceId)
-
-        if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Failed to load data')
-          return
-        }
-
-        const summaryData = response?.data || response
-
-        if (summaryData?.status === 'success' && summaryData?.summary?.co2_quality) {
-          const data = buildQualityChartData(summaryData.summary.co2_quality)
-          if (hasValidChartData(data)) {
-            setChartData(data)
-          } else {
-            setError('No data to display')
-          }
-        } else {
-          setError('No data to display')
-        }
-      } catch (err) {
-        console.error('Error loading quality pie chart:', err)
-        setError('Error loading data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadChartData()
-  }, [deviceId, timeWindow])
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right',
-        labels: {
-          color: theme.text.secondary,
-          usePointStyle: true,
-          padding: 20,
-        }
-      },
-      tooltip: {
-        backgroundColor: theme.colors.tooltipBg,
-        titleColor: theme.text.primary,
-        bodyColor: theme.text.secondary,
-        borderColor: theme.colors.grid,
-        borderWidth: 1,
-        padding: 12,
-        cornerRadius: 8,
-        callbacks: {
-          label: (context) => {
-            const label = context.label || ''
-            const value = context.parsed || 0
-            const total = context.dataset.data.reduce((a, b) => a + b, 0)
-            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
-            return `${label}: ${percentage}%`
-          }
-        }
-      }
-    }
-  }
-
-  return (
-    <Card className="chart-container chart-container--pie">
-      <h3 className="chart-container__title">Air Quality Distribution</h3>
-      <div className="chart-container__content">
-        {loading ? (
-          <div className="chart-container__loading">
-            <ProgressBar indeterminate />
-          </div>
-        ) : error ? (
-          <div className="chart-container__error">
-            <p>{error}</p>
-          </div>
-        ) : chartData ? (
-          <div className="chart-container__chart chart-container__chart--pie" style={{ height: '400px' }}>
-            <Doughnut data={chartData} options={options} />
-          </div>
-        ) : (
-          <div className="chart-container__empty">
-            <p>No data to display</p>
-          </div>
-        )}
-      </div>
-    </Card>
-  )
-}
 
 /**
  * DeviceDetailView Component
@@ -405,9 +302,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
 
 
         {/* Secondary Distribution */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <QualityPieChart deviceId={deviceId} timeWindow={timeWindow} />
-          {/* Placeholder or move Gauge here if needed, for now keeping PieChart full width or half */}
+        <div className="mb-6">
           <AirQualityGauge deviceId={deviceId} timeWindow={timeWindow} />
         </div>
       </div>

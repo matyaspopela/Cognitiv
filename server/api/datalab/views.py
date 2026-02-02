@@ -86,7 +86,7 @@ def preview_query(request):
         
         # Format preview data - readings are in 'readings' field after unwind
         preview_data = []
-        for doc in unwound_docs[:100]:  # Max 100 for preview
+        for doc in unwound_docs:
             reading = doc.get('readings', {})
             ts = reading.get('ts')
             if isinstance(ts, datetime):
@@ -139,6 +139,12 @@ def export_data(request):
         rooms_param = request.GET.get('rooms', '')
         export_format = request.GET.get('format', 'csv')
         
+        # Advanced filters
+        teacher = request.GET.get('teacher')
+        subject = request.GET.get('subject')
+        class_name = request.GET.get('class_name')
+        lesson_of_day = request.GET.get('lesson_of_day')
+        
         if not start_date or not end_date:
             return JsonResponse({'error': 'start and end dates are required'}, status=400)
         
@@ -148,7 +154,11 @@ def export_data(request):
         filters = {
             'start': start_date,
             'end': end_date,
-            'rooms': rooms
+            'rooms': rooms,
+            'teacher': teacher,
+            'subject': subject,
+            'class_name': class_name,
+            'lesson_of_day': lesson_of_day,
         }
         
         # Validate format

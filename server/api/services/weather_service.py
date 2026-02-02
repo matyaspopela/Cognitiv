@@ -129,6 +129,131 @@ class WeatherService:
                 
         return count
 
+    def fetch_forecast_weather(self, start_date: date, end_date: date) -> int:
+        """
+        Fetch weather data from Open-Meteo Forecast API and save to DB.
+        This API supports historical data for the past 3 months (past_days=92).
+        
+        Args:
+            start_date: Start date (inclusive)
+            end_date: End date (inclusive)
+            
+        Returns:
+            Number of records inserted/updated
+        """
+        url = "https://api.open-meteo.com/v1/forecast"
+        
+        # Calculate how many past days we need
+        days_ago = (date.today() - start_date).days
+        
+        params = {
+            "latitude": self.lat,
+            "longitude": self.lon,
+            "hourly": ["temperature_2m", "relative_humidity_2m", "weather_code"],
+            "timezone": "UTC",
+            "past_days": max(1, min(days_ago + 1, 92)),  # At least 1, max 92 days
+            "forecast_days": 1  # Include today
+        }
+
+        
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+        except requests.exceptions.Timeout:
+            print(f"⚠️ Weather API timeout after 10s")
+            return 0
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Error fetching forecast weather data: {e}")
+            return 0
+        except Exception as e:
+            print(f"⚠️ Unexpected error fetching weather: {e}")
+            return 0
+            
+        hourly = data.get('hourly', {})
+        times = hourly.get('time', [])
+        temps = hourly.get('temperature_2m', [])
+        humidities = hourly.get('relative_humidity_2m', [])
+        codes = hourly.get('weather_code', [])
+        
+        collection = self._get_collection()
+        count = 0
+        
+        # Filter to only store data within our requested range
+        start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=UTC)
+        end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=UTC)
+        
+        for i, time_str in enumerate(times):
+            try:
+                # Parse timestamp
+                if not time_str.endswith('Z') and '+' not in time_str:
+                    time_str += 'Z'
+                
+                dt = datetime.fromisoformat(time_str).replace(tzinfo=UTC)
+                
+                # Only store if within requested range
+                if dt < start_dt or dt > end_dt:
+                    continue
+                
+                doc = {
+                    'timestamp': dt,
+                    'temp_c': temps[i],
+                    'humidity_rel': humidities[i],
+                    'condition_code': codes[i],
+                    'source': 'open-meteo-forecast'
+                }
+                
+                collection.replace_one(
+                    {'timestamp': dt},
+                    doc,
+                    upsert=True
+                )
+                count += 1
+            except Exception as e:
+                print(f"⚠️ Error processing weather entry {time_str}: {e}")
+                
+        return count
+
+    def ensure_weather_for_date(self, target_date: date) -> bool:
+        """
+        Ensure weather data exists for a specific date.
+        If missing, fetch using forecast API.
+        
+        Args:
+            target_date: The date to ensure weather data for
+            
+        Returns:
+            True if weather data is available, False otherwise
+        """
+        collection = self._get_collection()
+        
+        # Check if we have any data for this date
+        start_dt = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=UTC)
+        end_dt = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=UTC)
+        
+        existing_count = collection.count_documents({
+            'timestamp': {
+                '$gte': start_dt,
+                '$lte': end_dt
+            }
+        })
+        
+        if existing_count > 0:
+            print(f"✓ Weather data already exists for {target_date.isoformat()} ({existing_count} records)")
+            return True
+        
+        # Fetch weather data for this date
+        print(f"📡 Fetching weather data for {target_date.isoformat()}...")
+        count = self.fetch_forecast_weather(target_date, target_date)
+        
+        if count > 0:
+            print(f"✓ Fetched {count} weather records for {target_date.isoformat()}")
+            return True
+        else:
+            print(f"⚠️ Failed to fetch weather data for {target_date.isoformat()}")
+            return False
+
+
     def get_weather_for_timestamp(self, timestamp: datetime) -> Optional[Dict]:
         """
         Get weather data for a specific timestamp.

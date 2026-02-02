@@ -71,26 +71,112 @@ class QueryBuilder:
         if lesson_of_day:
             match_stage['context.lesson.lesson_of_day'] = int(lesson_of_day)
         
-        # Build pipeline based on use case
         if for_export:
-            # Export: Return raw buckets with readings arrays (no unwind, no limit)
+            # Export doesn't use bucketing to preserve full fidelity
             pipeline = [
                 {'$match': match_stage},
                 {'$sort': {'bucket_start': 1}},
             ]
         else:
-            # Preview: Unwind readings and limit for UI display
-            pipeline = [
-                {'$match': match_stage},
-                {'$sort': {'bucket_start': 1}},
-                # Unwind the readings array to get individual data points
-                {'$unwind': '$readings'},
-                # Limit total readings to prevent excessive data
-                {'$limit': 2000},
-            ]
+            # Calculate granularity based on target resolution
+            # User request: "count data point amount and based on the data point amount... be more precise"
+            # We assume 1-minute density data.
+            duration = end_dt - start_dt
+            total_minutes = duration.total_seconds() / 60
+            
+            # Target ~2500 points for high-resolution 4k displays
+            target_points = 2500
+            
+            # Calculate exact minutes needed per bucket to hit target
+            minutes_per_bucket = total_minutes / target_points
+            
+            granularity = None
+
+            if minutes_per_bucket <= 1.0:
+                 # Less than 1 minute per pixel? No bucketing needed.
+                 granularity = None
+            elif minutes_per_bucket < 60:
+                # Sub-hourly bucketing: Use exact calculated integer minutes
+                # e.g. 5.2 -> 5 min bucket. 21.6 -> 21 min bucket.
+                bin_size = int(minutes_per_bucket)
+                if bin_size < 1: bin_size = 1
+                granularity = {"unit": "minute", "binSize": bin_size}
+            elif minutes_per_bucket < 1440:
+                # Sub-daily bucketing: Use exact calculated integer hours
+                # e.g. 64 min -> 1 hour. 300 min -> 5 hours.
+                bin_size_hours = int(minutes_per_bucket / 60)
+                if bin_size_hours < 1: bin_size_hours = 1
+                granularity = {"unit": "hour", "binSize": bin_size_hours}
+            else:
+                 # Multi-day bucketing
+                 bin_size_days = int(minutes_per_bucket / 1440)
+                 if bin_size_days < 1: bin_size_days = 1
+                 granularity = {"unit": "day", "binSize": bin_size_days}
+
+            if granularity:
+                # Apply bucketing pipeline
+                pipeline = [
+                    {'$match': match_stage},
+                    {'$unwind': '$readings'},
+                    {'$group': {
+                        '_id': {
+                            'room': '$room_id',
+                            'ts': {
+                                '$dateTrunc': {
+                                    'date': '$readings.ts',
+                                    'unit': granularity['unit'],
+                                    'binSize': granularity['binSize']
+                                }
+                            }
+                        },
+                        # Numeric averages
+                        'avg_co2': {'$avg': '$readings.co2'},
+                        'avg_temp': {'$avg': '$readings.temp'},
+                        'avg_humidity': {'$avg': '$readings.humidity'},
+                        'avg_mold': {'$avg': '$readings.mold_factor'},
+                        'avg_delta': {'$avg': '$readings.delta_co2'},
+                        
+                        # Metadata (take first/max)
+                        'subject': {'$first': '$readings.subject'},
+                        'teacher': {'$first': '$readings.teacher'},
+                        'class_name': {'$first': '$readings.class_name'},
+                        'is_lesson': {'$max': '$readings.is_lesson'},
+                        'occupancy': {'$max': '$context.lesson.estimated_occupancy'}
+                    }},
+                    {'$sort': {'_id.ts': 1}},
+                    {'$project': {
+                        '_id': 0,
+                        'room_id': '$_id.room',
+                        'readings': {
+                            'ts': '$_id.ts',
+                            'co2': '$avg_co2',
+                            'temp': '$avg_temp',
+                            'humidity': '$avg_humidity',
+                            'mold_factor': '$avg_mold',
+                            'delta_co2': '$avg_delta',
+                            'subject': '$subject',
+                            'teacher': '$teacher',
+                            'class_name': '$class_name',
+                            'is_lesson': '$is_lesson'
+                        },
+                        'context': {
+                            'lesson': {
+                                'estimated_occupancy': '$occupancy'
+                            }
+                        }
+                    }}
+                ]
+            else:
+                # Short Duration: Return raw 1-minute data
+                pipeline = [
+                    {'$match': match_stage},
+                    {'$sort': {'bucket_start': 1}},
+                    {'$unwind': '$readings'},
+                    # Limit removed
+                ]
         
         return pipeline
-    
+
     def build_export_pipeline(self, filters: Dict[str, Any]) -> List[Dict]:
         """Convenience method for export pipeline."""
         return self.build_pipeline(filters, for_export=True)

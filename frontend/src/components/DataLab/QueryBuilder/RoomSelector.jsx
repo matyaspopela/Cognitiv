@@ -66,16 +66,16 @@ const RoomSelector = ({ selectedRooms, onChange }) => {
       )}
       <div className="relative">
         <div
-          className="w-full border-b border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 py-2 cursor-pointer flex items-center justify-between transition-colors group"
+          className="w-full border border-zinc-700 bg-zinc-900/30 rounded-lg px-3 py-2 text-sm text-zinc-200 cursor-pointer flex items-center justify-between transition-colors group hover:border-zinc-500"
           onClick={() => setIsOpen(!isOpen)}
         >
           <div className="flex items-center gap-2 overflow-hidden">
             {selectedRooms.length === 0 ? (
-              <span className="text-zinc-400 text-sm font-medium">All Rooms</span>
+              <span className="text-zinc-300 text-sm font-medium">All Devices</span>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-zinc-100">
-                  {selectedRooms.length} Room{selectedRooms.length > 1 ? 's' : ''}
+                  {selectedRooms.length} Device{selectedRooms.length > 1 ? 's' : ''}
                 </span>
                 <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">
                   selected

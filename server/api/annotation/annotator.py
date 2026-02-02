@@ -23,6 +23,8 @@ import certifi
 from .timetable_fetcher import get_timetable_fetcher, LOCAL_TZ
 from .room_config import VALID_ROOM_CODES
 from .room_manager import RoomManager
+from ..services.weather_service import WeatherService
+
 
 
 UTC = timezone.utc
@@ -321,6 +323,12 @@ def annotate_day(target_date: date) -> Dict:
     # Initialize RoomManager
     room_mgr = RoomManager()
     
+    # Initialize WeatherService and ensure data available
+    weather_service = WeatherService()
+    print(f"\n🌤️  Ensuring weather data for {target_date.isoformat()}...")
+    weather_service.ensure_weather_for_date(target_date)
+
+    
     for device in devices:
         mac = device['mac_address']
         room_code = device['room_code']
@@ -409,6 +417,17 @@ def annotate_day(target_date: date) -> Dict:
                 vent_score = 10.0 - ((avg_co2 - 1000) / 200.0)
                 vent_score = max(0.0, min(10.0, vent_score))
             
+            # 4. Weather Data
+            # Fetch outdoor weather for this bucket's timestamp
+            weather_data = weather_service.get_weather_for_timestamp(bucket_start)
+            weather_context = None
+            if weather_data:
+                weather_context = {
+                    'temp_c': weather_data.get('temp_c'),
+                    'humidity_rel': weather_data.get('humidity_rel'),
+                    'condition_code': weather_data.get('condition_code')
+                }
+            
             bucket_doc = {
                 'room_id': room_code,
                 'device_mac': mac,
@@ -422,12 +441,14 @@ def annotate_day(target_date: date) -> Dict:
                     'lesson': {
                         'estimated_occupancy': estimated_occupancy,
                         'class_name': dominant_class
-                    }
+                    },
+                    'weather': weather_context
                 },
                 'analysis': {
                     'ventilation_score': round(vent_score, 1)
                 }
             }
+
             
             try:
                 # Upsert: replace if same room + bucket_start exists
