@@ -119,38 +119,7 @@ const AdminPanel = () => {
     setCustomizeDevice(null)
   }
 
-  const handleExportCSV = async (device) => {
-    if (!device?.device_id) {
-      console.error('Cannot export: missing device_id')
-      return
-    }
 
-    try {
-      const now = new Date()
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      const startIso = thirtyDaysAgo.toISOString()
-      const endIso = now.toISOString()
-
-      const response = await historyAPI.exportCSV(startIso, endIso, device.device_id)
-
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-
-      const deviceNameSafe = (device.display_name || device.device_id || 'device').replace(/[^a-z0-9]/gi, '_').toLowerCase()
-      const dateStr = now.toISOString().split('T')[0]
-      link.download = `cognitiv_${deviceNameSafe}_${dateStr}.csv`
-
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Error exporting CSV:', error)
-      alert('Failed to export CSV. Please try again later.')
-    }
-  }
 
   // Define table columns
   const columns = [
@@ -296,7 +265,7 @@ const AdminPanel = () => {
                       <DeviceActionsMenu
                         device={row.device}
                         onRename={handleRenameClick}
-                        onExport={handleExportCSV}
+
                         onDetails={handleDetailsClick}
                         onCustomize={handleCustomizeClick}
                       />

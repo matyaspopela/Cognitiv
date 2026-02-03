@@ -61,8 +61,8 @@ Located in `server/api/datalab/`.
 A powerful subsystem for historical data retrieval and analysis.
 
 1.  **Query Builder:** Dynamically constructs MongoDB aggregation pipelines based on frontend filters.
-2.  **Streaming Export:** Uses `StreamingHttpResponse` to handle large datasets without memory exhaustion. Supports **CSV** and **PDF** formats.
-3.  **Presets API:** Allows users to save and manage frequently used complex queries.
+2.  **Streaming Export:** Uses `StreamingHttpResponse` to handle large datasets without memory exhaustion. Supports **CSV** and **JSONL** formats.
+3.  **Presets API:** (Planned) Will allow users to save and manage frequently used complex queries.
 
 ## 🛡️ Security & Validation
 -   **MAC Whitelist:** If enabled in `settings`, the server rejects data from unknown MAC addresses.

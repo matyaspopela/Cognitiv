@@ -13,7 +13,7 @@ const NavList = ({ onItemClick }) => {
   ]
 
   const adminNavItems = [
-    { path: '/datalab', label: 'DataLab', icon: LineChart },
+    { path: '/datalab', label: 'Export', icon: LineChart },
     { path: '/admin', label: 'Management', icon: Settings },
   ]
 

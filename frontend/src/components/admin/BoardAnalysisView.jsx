@@ -79,29 +79,29 @@ const safeValue = (value) => {
 
 // Helper for Lesson Dates (Week aligned)
 const getLessonDateRange = (mode) => {
-    const end = new Date()
-    const start = new Date()
+  const end = new Date()
+  const start = new Date()
 
-    if (mode === 'current_week') {
-        const day = start.getDay()
-        const diff = start.getDate() - day + (day === 0 ? -6 : 1)
-        start.setDate(diff)
-        start.setHours(0, 0, 0, 0)
-    } else if (mode === 'last_week') {
-        const day = end.getDay()
-        const diff = end.getDate() - day + (day === 0 ? -6 : 1) - 7
-        start.setDate(diff)
-        start.setHours(0, 0, 0, 0)
-        end.setDate(diff + 6)
-        end.setHours(23, 59, 59, 999)
-    } else if (mode === 'last_month') {
-        start.setDate(end.getDate() - 30)
-    }
+  if (mode === 'current_week') {
+    const day = start.getDay()
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+    start.setDate(diff)
+    start.setHours(0, 0, 0, 0)
+  } else if (mode === 'last_week') {
+    const day = end.getDay()
+    const diff = end.getDate() - day + (day === 0 ? -6 : 1) - 7
+    start.setDate(diff)
+    start.setHours(0, 0, 0, 0)
+    end.setDate(diff + 6)
+    end.setHours(23, 59, 59, 999)
+  } else if (mode === 'last_month') {
+    start.setDate(end.getDate() - 30)
+  }
 
-    return {
-        start: start.toISOString(),
-        end: end.toISOString()
-    }
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
+  }
 }
 
 /**
@@ -136,9 +136,9 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
   // Initialize custom dates if needed
   useEffect(() => {
     if (analysisPreset === 'custom' && (!analysisStartDate || !analysisEndDate)) {
-        const now = new Date()
-        setAnalysisStartDate(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
-        setAnalysisEndDate(now)
+      const now = new Date()
+      setAnalysisStartDate(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
+      setAnalysisEndDate(now)
     }
   }, [analysisPreset])
 
@@ -179,7 +179,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
       // Pre-check for custom mode to avoid stuck loading state
       if (analysisPreset === 'custom' && (!analysisStartDate || !analysisEndDate)) {
-          return
+        return
       }
 
       setLoading(true)
@@ -195,30 +195,30 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         let bucket = '10min' // Default
 
         if (analysisPreset === 'custom') {
-            startIso = analysisStartDate.toISOString()
-            endIso = analysisEndDate.toISOString()
-            
-            // Determine bucket dynamically for custom range
-            const diffHours = Math.abs(analysisEndDate - analysisStartDate) / 36e5;
-            const diffDays = diffHours / 24;
-            
-            // Override to match old logic: raw for anything <= 30 days
-            if (diffDays <= 30) bucket = 'raw'
-            else bucket = 'hour' // or day, but hour is safer for transition
+          startIso = analysisStartDate.toISOString()
+          endIso = analysisEndDate.toISOString()
+
+          // Determine bucket dynamically for custom range
+          const diffHours = Math.abs(analysisEndDate - analysisStartDate) / 36e5;
+          const diffDays = diffHours / 24;
+
+          // Override to match old logic: raw for anything <= 30 days
+          if (diffDays <= 30) bucket = 'raw'
+          else bucket = 'hour' // or day, but hour is safer for transition
 
         } else {
-            const range = getTimeWindowRange(analysisPreset)
-            startIso = range.start
-            endIso = range.end
-            
-            // Override bucket selection to match previous behavior: raw for shorter durations
-            if (analysisPreset === '24h' || analysisPreset === '7d' || analysisPreset === '1d') {
-                bucket = 'raw'
-            } else if (analysisPreset === '30d') {
-                bucket = 'raw' // Even 30d was 'raw' in old logic (<= 30)
-            } else {
-                bucket = getBucketSize(analysisPreset)
-            }
+          const range = getTimeWindowRange(analysisPreset)
+          startIso = range.start
+          endIso = range.end
+
+          // Override bucket selection to match previous behavior: raw for shorter durations
+          if (analysisPreset === '24h' || analysisPreset === '7d' || analysisPreset === '1d') {
+            bucket = 'raw'
+          } else if (analysisPreset === '30d') {
+            bucket = 'raw' // Even 30d was 'raw' in old logic (<= 30)
+          } else {
+            bucket = getBucketSize(analysisPreset)
+          }
         }
 
         let summaryData = null
@@ -234,12 +234,12 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
             if (data?.status === 'success' || (data && !data.status)) {
               summaryData = data
             } else if (data?.error) {
-                lastError = data.error
+              lastError = data.error
             }
           } else {
-             // Extract error from response if available
-             const respData = summaryResponse?.data || summaryResponse?.response?.data
-             if (respData?.error) lastError = respData.error
+            // Extract error from response if available
+            const respData = summaryResponse?.data || summaryResponse?.response?.data
+            if (respData?.error) lastError = respData.error
           }
         } catch (summaryError) {
           lastError = summaryError.message
@@ -249,21 +249,21 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
         let seriesLoaded = false
         try {
           const seriesResponse = await historyAPI.getSeries(startIso, endIso, bucket, deviceId)
-           if (seriesResponse?.status < 400) {
+          if (seriesResponse?.status < 400) {
             const data = seriesResponse?.data || seriesResponse
             if (data?.status === 'success' && data.series && Array.isArray(data.series)) {
               seriesData = data
               seriesLoaded = true
             } else if (data?.error) {
-                lastError = data.error
+              lastError = data.error
             }
           } else {
-             const respData = seriesResponse?.data || seriesResponse?.response?.data
-             if (respData?.error) lastError = respData.error
+            const respData = seriesResponse?.data || seriesResponse?.response?.data
+            if (respData?.error) lastError = respData.error
           }
         } catch (seriesError) {
-           console.error(`Series API exception`, seriesError)
-           if (!lastError) lastError = seriesError.message
+          console.error(`Series API exception`, seriesError)
+          if (!lastError) lastError = seriesError.message
         }
 
         if (!summaryData && !seriesLoaded) {
@@ -299,34 +299,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
     loadAnalysisData()
   }, [deviceId, analysisPreset, activeTab, useRealTimeScale, analysisStartDate, analysisEndDate])
 
-  const handleExportCSV = async () => {
-    if (!deviceId) return
 
-    try {
-        let start, end
-        if (analysisPreset === 'custom') {
-             if (!analysisStartDate || !analysisEndDate) return
-             start = analysisStartDate.toISOString()
-             end = analysisEndDate.toISOString()
-        } else {
-            const range = getTimeWindowRange(analysisPreset)
-            start = range.start
-            end = range.end
-        }
-
-        const response = await historyAPI.exportCSV(start, end, deviceId)
-        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `cognitiv_${deviceId}_${analysisPreset}.csv`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-    } catch (error) {
-        console.error('Export failed', error)
-    }
-  }
 
   const qualityTableData = summary?.co2_quality || {}
 
@@ -339,16 +312,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
           <h2 className="board-analysis-view__title">{deviceName || deviceId}</h2>
         </div>
         <div className="board-analysis-view__header-actions">
-           {activeTab === 'analysis' && (
-             <Button
-                variant="filled"
-                size="medium"
-                onClick={handleExportCSV}
-                title="Export data to CSV"
-             >
-                📥 Export CSV
-             </Button>
-           )}
+
           <Button variant="outlined" size="medium" onClick={onClose}>
             Close
           </Button>
@@ -383,256 +347,256 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       {/* Analysis Tab */}
       {activeTab === 'analysis' && (
         <div className="board-analysis-view__tab-content">
-            <div className="flex flex-col gap-4 mb-4">
-                <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-zinc-100">Data Analysis</h3>
-                    <MinimalTimeSelector 
-                        value={analysisPreset} 
-                        onChange={setAnalysisPreset} 
-                        options={[
-                            { value: '24h', label: '24 Hours' },
-                            { value: '7d', label: '7 Days' },
-                            { value: '30d', label: '30 Days' },
-                            { value: '90d', label: '90 Days' },
-                            { value: 'custom', label: 'Custom' }
-                        ]}
-                    />
-                </div>
-                
-                {/* Custom Date Picker Area */}
-                {analysisPreset === 'custom' && (
-                    <div className="flex items-center gap-4 p-3 bg-zinc-900/50 rounded-lg border border-white/10 animate-in fade-in slide-in-from-top-2">
-                        <Calendar size={16} className="text-zinc-400" />
-                        <div className="flex items-center gap-2">
-                            <DatePicker
-                                selected={analysisStartDate}
-                                onChange={(date) => setAnalysisStartDate(date)}
-                                selectsStart
-                                startDate={analysisStartDate}
-                                endDate={analysisEndDate}
-                                maxDate={new Date()}
-                                dateFormat="dd MMM yyyy"
-                                className="bg-transparent text-zinc-200 text-sm focus:outline-none w-28 cursor-pointer hover:text-white"
-                                placeholderText="Start Date"
-                            />
-                            <span className="text-zinc-600">→</span>
-                            <DatePicker
-                                selected={analysisEndDate}
-                                onChange={(date) => setAnalysisEndDate(date)}
-                                selectsEnd
-                                startDate={analysisStartDate}
-                                endDate={analysisEndDate}
-                                minDate={analysisStartDate}
-                                maxDate={new Date()}
-                                dateFormat="dd MMM yyyy"
-                                className="bg-transparent text-zinc-200 text-sm focus:outline-none w-28 cursor-pointer hover:text-white"
-                                placeholderText="End Date"
-                            />
-                        </div>
-                    </div>
-                )}
+          <div className="flex flex-col gap-4 mb-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-zinc-100">Data Analysis</h3>
+              <MinimalTimeSelector
+                value={analysisPreset}
+                onChange={setAnalysisPreset}
+                options={[
+                  { value: '24h', label: '24 Hours' },
+                  { value: '7d', label: '7 Days' },
+                  { value: '30d', label: '30 Days' },
+                  { value: '90d', label: '90 Days' },
+                  { value: 'custom', label: 'Custom' }
+                ]}
+              />
             </div>
 
-            {loading && (
-                <Card className="board-analysis-view__loading" elevation={2}>
-                <ProgressBar indeterminate />
-                <p>Loading analysis data...</p>
-                </Card>
+            {/* Custom Date Picker Area */}
+            {analysisPreset === 'custom' && (
+              <div className="flex items-center gap-4 p-3 bg-zinc-900/50 rounded-lg border border-white/10 animate-in fade-in slide-in-from-top-2">
+                <Calendar size={16} className="text-zinc-400" />
+                <div className="flex items-center gap-2">
+                  <DatePicker
+                    selected={analysisStartDate}
+                    onChange={(date) => setAnalysisStartDate(date)}
+                    selectsStart
+                    startDate={analysisStartDate}
+                    endDate={analysisEndDate}
+                    maxDate={new Date()}
+                    dateFormat="dd MMM yyyy"
+                    className="bg-transparent text-zinc-200 text-sm focus:outline-none w-28 cursor-pointer hover:text-white"
+                    placeholderText="Start Date"
+                  />
+                  <span className="text-zinc-600">→</span>
+                  <DatePicker
+                    selected={analysisEndDate}
+                    onChange={(date) => setAnalysisEndDate(date)}
+                    selectsEnd
+                    startDate={analysisStartDate}
+                    endDate={analysisEndDate}
+                    minDate={analysisStartDate}
+                    maxDate={new Date()}
+                    dateFormat="dd MMM yyyy"
+                    className="bg-transparent text-zinc-200 text-sm focus:outline-none w-28 cursor-pointer hover:text-white"
+                    placeholderText="End Date"
+                  />
+                </div>
+              </div>
             )}
+          </div>
 
-            {error && (
-                <Card className="board-analysis-view__error" elevation={2}>
-                <div className="board-analysis-view__error-message">{error}</div>
-                </Card>
-            )}
+          {loading && (
+            <Card className="board-analysis-view__loading" elevation={2}>
+              <ProgressBar indeterminate />
+              <p>Loading analysis data...</p>
+            </Card>
+          )}
 
-            {!loading && !error && (
-                <>
-                {/* Summary Statistics */}
-                {summary && (
+          {error && (
+            <Card className="board-analysis-view__error" elevation={2}>
+              <div className="board-analysis-view__error-message">{error}</div>
+            </Card>
+          )}
+
+          {!loading && !error && (
+            <>
+              {/* Summary Statistics */}
+              {summary && (
                 <Card className="board-analysis-view__summary" elevation={2}>
-                    <div className="board-analysis-view__summary-grid">
+                  <div className="board-analysis-view__summary-grid">
                     <Card className="board-analysis-view__summary-item" elevation={1}>
-                        <div className="board-analysis-view__summary-label">CO₂ (ppm)</div>
-                        <div className="board-analysis-view__summary-value">{safeValue(summary.co2?.avg)}</div>
-                        <div className="board-analysis-view__summary-footer">
+                      <div className="board-analysis-view__summary-label">CO₂ (ppm)</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.co2?.avg)}</div>
+                      <div className="board-analysis-view__summary-footer">
                         Min {safeValue(summary.co2?.min)} · Max {safeValue(summary.co2?.max)}
-                        </div>
+                      </div>
                     </Card>
                     <Card className="board-analysis-view__summary-item" elevation={1}>
-                        <div className="board-analysis-view__summary-label">Temperature (°C)</div>
-                        <div className="board-analysis-view__summary-value">{safeValue(summary.temperature?.avg)}</div>
-                        <div className="board-analysis-view__summary-footer">
+                      <div className="board-analysis-view__summary-label">Temperature (°C)</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.temperature?.avg)}</div>
+                      <div className="board-analysis-view__summary-footer">
                         Min {safeValue(summary.temperature?.min)} · Max {safeValue(summary.temperature?.max)}
-                        </div>
+                      </div>
                     </Card>
                     <Card className="board-analysis-view__summary-item" elevation={1}>
-                        <div className="board-analysis-view__summary-label">Humidity (%)</div>
-                        <div className="board-analysis-view__summary-value">{safeValue(summary.humidity?.avg)}</div>
-                        <div className="board-analysis-view__summary-footer">
+                      <div className="board-analysis-view__summary-label">Humidity (%)</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.humidity?.avg)}</div>
+                      <div className="board-analysis-view__summary-footer">
                         Min {safeValue(summary.humidity?.min)} · Max {safeValue(summary.humidity?.max)}
-                        </div>
+                      </div>
                     </Card>
                     <Card className="board-analysis-view__summary-item" elevation={1}>
-                        <div className="board-analysis-view__summary-label">Samples</div>
-                        <div className="board-analysis-view__summary-value">{safeValue(summary.samples)}</div>
-                        <div className="board-analysis-view__summary-footer">
+                      <div className="board-analysis-view__summary-label">Samples</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.samples)}</div>
+                      <div className="board-analysis-view__summary-footer">
                         From: {summary.range?.data_start || '–'}
                         <br />
                         To: {summary.range?.data_end || '–'}
-                        </div>
+                      </div>
                     </Card>
-                    </div>
+                  </div>
                 </Card>
-                )}
+              )}
 
-                {/* Trend Graphs */}
-                <div className="board-analysis-view__charts">
-                    <Card className="board-analysis-view__chart-card" elevation={2}>
-                    <div className="board-analysis-view__chart-header">
-                        <h3 className="board-analysis-view__chart-title">CO₂</h3>
-                        <label className="board-analysis-view__toggle">
-                            <input
-                                type="checkbox"
-                                checked={useRealTimeScale}
-                                onChange={(e) => setUseRealTimeScale(e.target.checked)}
-                            />
-                            <span className="board-analysis-view__toggle-label" style={{fontSize: '0.8rem'}}>Real Time</span>
-                        </label>
-                    </div>
-                    <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
-                        {co2Chart ? (
-                        <Line
-                            data={co2Chart}
-                            options={getChartOptions('line', {
-                            useRealTimeScale,
-                            plugins: {
-                                tooltip: {
-                                callbacks: {
-                                    label: (context) => `${context.dataset.label}: ${context.parsed.y} ppm`
-                                }
-                                }
+              {/* Trend Graphs */}
+              <div className="board-analysis-view__charts">
+                <Card className="board-analysis-view__chart-card" elevation={2}>
+                  <div className="board-analysis-view__chart-header">
+                    <h3 className="board-analysis-view__chart-title">CO₂</h3>
+                    <label className="board-analysis-view__toggle">
+                      <input
+                        type="checkbox"
+                        checked={useRealTimeScale}
+                        onChange={(e) => setUseRealTimeScale(e.target.checked)}
+                      />
+                      <span className="board-analysis-view__toggle-label" style={{ fontSize: '0.8rem' }}>Real Time</span>
+                    </label>
+                  </div>
+                  <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
+                    {co2Chart ? (
+                      <Line
+                        data={co2Chart}
+                        options={getChartOptions('line', {
+                          useRealTimeScale,
+                          plugins: {
+                            tooltip: {
+                              callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y} ppm`
+                              }
                             }
-                            })}
-                        />
-                        ) : (
-                        <div className="board-analysis-view__empty">No data to display</div>
-                        )}
-                    </div>
-                    </Card>
+                          }
+                        })}
+                      />
+                    ) : (
+                      <div className="board-analysis-view__empty">No data to display</div>
+                    )}
+                  </div>
+                </Card>
 
-                    <Card className="board-analysis-view__chart-card" elevation={2}>
-                    <div className="board-analysis-view__chart-header">
-                        <h3 className="board-analysis-view__chart-title">Temperature & Humidity</h3>
-                    </div>
-                    <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
-                        {climateChart ? (
-                        <Line data={climateChart} options={getClimateChartOptions({ useRealTimeScale })} />
-                        ) : (
-                        <div className="board-analysis-view__empty">No data to display</div>
-                        )}
-                    </div>
-                    </Card>
-                </div>
+                <Card className="board-analysis-view__chart-card" elevation={2}>
+                  <div className="board-analysis-view__chart-header">
+                    <h3 className="board-analysis-view__chart-title">Temperature & Humidity</h3>
+                  </div>
+                  <div className="board-analysis-view__chart-container" style={{ height: '400px' }}>
+                    {climateChart ? (
+                      <Line data={climateChart} options={getClimateChartOptions({ useRealTimeScale })} />
+                    ) : (
+                      <div className="board-analysis-view__empty">No data to display</div>
+                    )}
+                  </div>
+                </Card>
+              </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-                    {/* Distribution Graph */}
-                    <Card className="board-analysis-view__distribution-card" elevation={2} style={{margin: 0}}>
-                        <div className="board-analysis-view__distribution-header">
-                        <h3 className="board-analysis-view__distribution-title">Distribution</h3>
-                        </div>
-                        <div className="board-analysis-view__distribution-content">
-                        <div className="board-analysis-view__distribution-chart" style={{ height: '300px' }}>
-                            {qualityPieChart ? (
-                            <Doughnut
-                                data={qualityPieChart}
-                                options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                    position: 'right',
-                                    labels: {
-                                        color: '#586169',
-                                        usePointStyle: true,
-                                        padding: 10,
-                                        boxWidth: 8
-                                    }
-                                    }
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+                {/* Distribution Graph */}
+                <Card className="board-analysis-view__distribution-card" elevation={2} style={{ margin: 0 }}>
+                  <div className="board-analysis-view__distribution-header">
+                    <h3 className="board-analysis-view__distribution-title">Distribution</h3>
+                  </div>
+                  <div className="board-analysis-view__distribution-content">
+                    <div className="board-analysis-view__distribution-chart" style={{ height: '300px' }}>
+                      {qualityPieChart ? (
+                        <Doughnut
+                          data={qualityPieChart}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                position: 'right',
+                                labels: {
+                                  color: '#586169',
+                                  usePointStyle: true,
+                                  padding: 10,
+                                  boxWidth: 8
                                 }
-                                }}
-                            />
-                            ) : (
-                            <div className="board-analysis-view__empty">No data.</div>
-                            )}
-                        </div>
-                        </div>
-                    </Card>
+                              }
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="board-analysis-view__empty">No data.</div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
 
-                    {/* Quality Breakdown Table */}
-                    <Card className="board-analysis-view__quality-table-card" elevation={2} style={{margin: 0}}>
-                        <div className="board-analysis-view__quality-header">
-                        <h3 className="board-analysis-view__quality-title">Breakdown</h3>
-                        </div>
-                        <table className="board-analysis-view__table">
-                        <thead>
-                            <tr>
-                            <th>Level</th>
-                            <th>%</th>
-                            <th>Range</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {qualityTableData.good !== undefined ? (
-                            <>
-                                <tr>
-                                <td><Badge variant="standard" color="success">Good</Badge></td>
-                                <td>{qualityTableData.good_percent || 0}%</td>
-                                <td>&lt; 1000</td>
-                                </tr>
-                                <tr>
-                                <td><Badge variant="standard" color="warning">Mod</Badge></td>
-                                <td>{qualityTableData.moderate_percent || 0}%</td>
-                                <td>1000–1500</td>
-                                </tr>
-                                <tr>
-                                <td><Badge variant="standard" color="warning">Poor</Badge></td>
-                                <td>{qualityTableData.high_percent || 0}%</td>
-                                <td>1500–2000</td>
-                                </tr>
-                                <tr>
-                                <td><Badge variant="standard" color="error">Crit</Badge></td>
-                                <td>{qualityTableData.critical_percent || 0}%</td>
-                                <td>&gt; 2000</td>
-                                </tr>
-                            </>
-                            ) : (
-                            <tr><td colSpan="3">No data</td></tr>
-                            )}
-                        </tbody>
-                        </table>
-                    </Card>
-                </div>
-                </>
-            )}
+                {/* Quality Breakdown Table */}
+                <Card className="board-analysis-view__quality-table-card" elevation={2} style={{ margin: 0 }}>
+                  <div className="board-analysis-view__quality-header">
+                    <h3 className="board-analysis-view__quality-title">Breakdown</h3>
+                  </div>
+                  <table className="board-analysis-view__table">
+                    <thead>
+                      <tr>
+                        <th>Level</th>
+                        <th>%</th>
+                        <th>Range</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {qualityTableData.good !== undefined ? (
+                        <>
+                          <tr>
+                            <td><Badge variant="standard" color="success">Good</Badge></td>
+                            <td>{qualityTableData.good_percent || 0}%</td>
+                            <td>&lt; 1000</td>
+                          </tr>
+                          <tr>
+                            <td><Badge variant="standard" color="warning">Mod</Badge></td>
+                            <td>{qualityTableData.moderate_percent || 0}%</td>
+                            <td>1000–1500</td>
+                          </tr>
+                          <tr>
+                            <td><Badge variant="standard" color="warning">Poor</Badge></td>
+                            <td>{qualityTableData.high_percent || 0}%</td>
+                            <td>1500–2000</td>
+                          </tr>
+                          <tr>
+                            <td><Badge variant="standard" color="error">Crit</Badge></td>
+                            <td>{qualityTableData.critical_percent || 0}%</td>
+                            <td>&gt; 2000</td>
+                          </tr>
+                        </>
+                      ) : (
+                        <tr><td colSpan="3">No data</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {/* Lessons Tab */}
       {activeTab === 'lessons' && (
         <div className="board-analysis-view__tab-content">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-zinc-100">Lesson Analytics</h3>
-                 <MinimalTimeSelector 
-                    value={lessonsPreset} 
-                    onChange={setLessonsPreset} 
-                    options={[
-                        { value: 'current_week', label: 'Current Week' },
-                        { value: 'last_week', label: 'Last Week' },
-                        { value: 'last_month', label: 'Last Month' }
-                    ]}
-                />
-            </div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-zinc-100">Lesson Analytics</h3>
+            <MinimalTimeSelector
+              value={lessonsPreset}
+              onChange={setLessonsPreset}
+              options={[
+                { value: 'current_week', label: 'Current Week' },
+                { value: 'last_week', label: 'Last Week' },
+                { value: 'last_month', label: 'Last Month' }
+              ]}
+            />
+          </div>
 
           <StatsSummaryCards
             deviceId={deviceId}

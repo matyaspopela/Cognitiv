@@ -24,6 +24,12 @@ from .timetable_fetcher import get_timetable_fetcher, LOCAL_TZ
 from .room_config import VALID_ROOM_CODES
 from .room_manager import RoomManager
 from ..services.weather_service import WeatherService
+from ..analytics.mold_risk_engine import (
+    MoldRiskState,
+    update_mold_risk_state,
+    get_risk_level,
+    get_risk_recommendations
+)
 
 
 
@@ -108,6 +114,7 @@ class AnnotatedReading:
     lesson_number: Optional[int]
     class_name: Optional[str]
     is_lesson: bool
+    mold_risk: float = 0.0  # Accumulated mold risk score
 
 
 def get_devices_with_rooms() -> List[Dict]:
@@ -130,6 +137,37 @@ def get_devices_with_rooms() -> List[Dict]:
         }
         for d in devices
     ]
+
+
+def get_previous_mold_state(room_id: str, before_timestamp: datetime) -> MoldRiskState:
+    """
+    Get the most recent mold risk state for a room before a given timestamp.
+    
+    Args:
+        room_id: Room identifier
+        before_timestamp: Get state before this time
+    
+    Returns:
+        MoldRiskState (empty if no previous state found)
+    """
+    collection = get_annotated_readings_collection()
+    
+    # Find the most recent bucket before the given timestamp
+    previous_bucket = collection.find_one(
+        {
+            'room_id': room_id,
+            'bucket_start': {'$lt': before_timestamp}
+        },
+        sort=[('bucket_start', -1)]
+    )
+    
+    if previous_bucket and 'context' in previous_bucket:
+        mold_state_data = previous_bucket.get('context', {}).get('mold_risk_state')
+        if mold_state_data:
+            return MoldRiskState.from_dict(mold_state_data)
+    
+    # No previous state found, return fresh state
+    return MoldRiskState()
 
 
 def get_readings_for_date(mac_address: str, target_date: date) -> List[Dict]:
@@ -346,10 +384,27 @@ def annotate_day(target_date: date) -> Dict:
         if not readings:
             continue
         
-        # Annotate each reading
+        # Get previous mold risk state for this room
+        # Use start of day to get state from previous day
+        day_start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=LOCAL_TZ).astimezone(UTC)
+        mold_state = get_previous_mold_state(room_code, day_start)
+        
+        # Annotate each reading and calculate mold risk sequentially
         annotated_readings = []
         for reading in readings:
             annotated = annotate_reading(reading, room_code, fetcher)
+            
+            # Calculate mold risk for this reading
+            mold_state, current_risk = update_mold_risk_state(
+                current_state=mold_state,
+                temp_c=annotated.temp,
+                rh=annotated.humidity,
+                timestamp=annotated.ts,
+                reading_interval_minutes=30.0
+            )
+            
+            # Update the annotated reading with current risk score
+            annotated.mold_risk = round(current_risk, 4)
             annotated_readings.append(annotated)
         
         # Group into hourly buckets
@@ -428,6 +483,11 @@ def annotate_day(target_date: date) -> Dict:
                     'condition_code': weather_data.get('condition_code')
                 }
             
+            # 5. Mold Risk State
+            # Get the final mold state from the last reading in this bucket
+            # This will be used by the next bucket/day
+            final_mold_state = mold_state  # Already updated in the loop above
+            
             bucket_doc = {
                 'room_id': room_code,
                 'device_mac': mac,
@@ -442,7 +502,8 @@ def annotate_day(target_date: date) -> Dict:
                         'estimated_occupancy': estimated_occupancy,
                         'class_name': dominant_class
                     },
-                    'weather': weather_context
+                    'weather': weather_context,
+                    'mold_risk_state': final_mold_state.to_dict()  # Store state for continuity
                 },
                 'analysis': {
                     'ventilation_score': round(vent_score, 1)

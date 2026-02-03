@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import './DeviceActionsMenu.css'
 
-const DeviceActionsMenu = ({ device, onRename, onExport, onDetails, onCustomize }) => {
+const DeviceActionsMenu = ({ device, onRename, onDetails, onCustomize }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownStyle, setDropdownStyle] = useState({})
   const menuRef = useRef(null)
@@ -69,10 +69,7 @@ const DeviceActionsMenu = ({ device, onRename, onExport, onDetails, onCustomize 
     onRename(device)
   }
 
-  const handleExport = () => {
-    setIsOpen(false)
-    onExport(device)
-  }
+
 
   const handleDetails = () => {
     setIsOpen(false)
@@ -100,9 +97,7 @@ const DeviceActionsMenu = ({ device, onRename, onExport, onDetails, onCustomize 
           <span>Customize</span>
         </button>
       )}
-      <button className="device-actions-menu__item" onClick={handleExport}>
-        <span>Export CSV</span>
-      </button>
+
     </div>
   ) : null
 

@@ -4,28 +4,27 @@ export const datalabService = {
   /**
    * Get estimated record count based on filters
    * @param {Object} filters
+   * @param {string} bucketing
    */
-  previewQuery: async (filters) => {
-    const response = await apiClient.post('/datalab/preview', { filters });
+  previewQuery: async (filters, bucketing) => {
+    const response = await apiClient.post('/datalab/preview', { filters, bucketing });
     return response;
   },
 
   /**
    * Trigger data export and download
    * @param {Object} filters
-   * @param {string} format 'csv', 'jsonl', 'pdf'
+   * @param {string} format 'csv', 'jsonl'
+   * @param {string} bucketing 'raw', '15m', '1h', '1d'
    */
-  downloadExport: async (filters, format) => {
+  downloadExport: async (filters, format, bucketing) => {
     try {
       // Build query parameters
       const params = new URLSearchParams({
         start: filters.start || filters.dateRange?.start,
         end: filters.end || filters.dateRange?.end,
         format: format || 'csv',
-        teacher: filters.teacher || '',
-        subject: filters.subject || '',
-        class_name: filters.class_name || '',
-        lesson_of_day: filters.lesson_of_day || '',
+        bucketing: bucketing || 'raw'
       });
 
       // Add rooms if specified
@@ -67,37 +66,10 @@ export const datalabService = {
   },
 
   /**
-   * Get saved query presets
-   */
-  getPresets: async () => {
-    const response = await apiClient.get('/datalab/presets');
-    return response;
-  },
-
-  /**
-   * Save current configuration as preset
-   * @param {string} name
-   * @param {Object} filters
-   */
-  savePreset: async (name, filters) => {
-    const response = await apiClient.post('/datalab/presets', { name, filters });
-    return response;
-  },
-
-  /**
-   * Delete a preset by ID
-   * @param {string} presetId
-   */
-  deletePreset: async (presetId) => {
-    const response = await apiClient.delete(`/datalab/presets/${presetId}`);
-    return response;
-  },
-
-  /**
-   * Get available filter options (teachers, subjects, etc.)
+   * Get available filter options (teachers, subjects, etc.) - Legacy support or empty
    */
   getFilterOptions: async () => {
-    const response = await apiClient.get('/datalab/filter-options');
-    return response;
+    // Deprecated but keeping for interface compatibility if needed, though mostly unused now
+    return { data: {} };
   }
 }

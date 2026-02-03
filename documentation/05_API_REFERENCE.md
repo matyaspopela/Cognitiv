@@ -72,20 +72,33 @@ Get data formatted for the "School Week" heatmap visualization.
 ## 🧪 DataLab API
 
 ### `POST /api/datalab/preview`
-Get a count estimate and first 10 rows for a given set of filters.
+Get a count estimate and first 50 rows for a given set of filters.
+
+**Payload:**
+```json
+{
+    "filters": {
+        "start": "2026-01-01",
+        "end": "2026-01-31",
+        "rooms": ["b2", "b4"]
+    },
+    "bucketing": "1h"
+}
+```
 
 ### `GET /api/datalab/export`
-Stream a full dataset in CSV or PDF format.
+Stream a full dataset in CSV or JSONL format.
 
 **Parameters:**
 -   `start`, `end` (ISO Date)
 -   `rooms` (comma-separated list)
--   `format` (string): `csv` or `pdf`
+-   `format` (string): `csv` or `jsonl`
+-   `bucketing` (string, optional): `15m`, `1h`, `1d`, or `raw`.
 
-### `GET /api/datalab/presets`
+### `GET /api/datalab/presets` (Planned)
 List all saved query presets.
 
-### `POST /api/datalab/presets`
+### `POST /api/datalab/presets` (Planned)
 Save current filter configuration as a preset.
 
 ---

@@ -1,143 +1,90 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { datalabService } from '../../services/datalabService';
-import ModeSwitcher from './ModeSwitcher';
-import ActionSidebar from './ActionSidebar';
-import ExportDrawer from './ExportWizard/ExportDrawer';
+import RoomSelector from './QueryBuilder/RoomSelector';
+import DateRangePicker from './QueryBuilder/DateRangePicker';
 import FormatSelector from './ExportWizard/FormatSelector';
+import BucketingSelector from './ExportWizard/BucketingSelector';
 import DownloadButton from './ExportWizard/DownloadButton';
-import DataLabGraph from './DataVisualizer/DataLabGraph';
-import './DataLab.css'; // Import interactive state styles
+import './DataLab.css';
 
-import { Loader2 } from 'lucide-react';
+import { FileDown, Database } from 'lucide-react';
 
 const DataLabLayout = () => {
-  // State
-  const [mode, setMode] = useState('analysis'); // 'analysis' | 'export'
   const [filters, setFilters] = useState({
     rooms: [],
     dateRange: { start: new Date(new Date().setDate(new Date().getDate() - 7)), end: new Date() },
-    metrics: ['co2', 'temp'],
   });
-  const [advancedFilters, setAdvancedFilters] = useState({});
+  const [bucketing, setBucketing] = useState('raw');
   const [exportFormat, setExportFormat] = useState('csv');
-  const [previewData, setPreviewData] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  // Graph visualization state
-  const [layers, setLayers] = useState([
-    { id: 1, type: 'line', metric: 'co2', visible: true }
-  ]);
-  const [backgroundLayer, setBackgroundLayer] = useState('none');
-
-  // Debounced preview fetch
-  const fetchPreview = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Format dates as ISO strings for API
-      const formattedFilters = {
-        ...filters,
-        ...advancedFilters,
-        start: filters.dateRange.start?.toISOString?.().split('T')[0],
-        end: filters.dateRange.end?.toISOString?.().split('T')[0],
-      };
-
-      const result = await datalabService.previewQuery(formattedFilters);
-      setPreviewData(result.data.preview_data);
-    } catch (error) {
-      console.error('Preview failed:', error);
-      setPreviewData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, advancedFilters]);
+  const [estimatedCount, setEstimatedCount] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchPreview();
-    }, 800); // Debounce 800ms
+    const fetchEstimate = async () => {
+      try {
+        const formattedFilters = {
+          ...filters,
+          start: filters.dateRange.start?.toISOString?.().split('T')[0],
+          end: filters.dateRange.end?.toISOString?.().split('T')[0],
+        };
+        const result = await datalabService.previewQuery(formattedFilters, bucketing);
+        setEstimatedCount(result.data.estimated_count);
+      } catch (error) {
+        console.error("Failed to fetch estimate", error);
+      }
+    };
+
+    // Debounce
+    const timer = setTimeout(fetchEstimate, 500);
     return () => clearTimeout(timer);
-  }, [filters, advancedFilters, fetchPreview]);
+  }, [filters, bucketing]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleAdvancedFilterChange = (newFilters) => {
-    setAdvancedFilters(newFilters);
-  };
-
   return (
-    <div
-      className="datalab-container p-12 mx-auto"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 320px', // Fixed width sidebar for stability
-        gap: '4rem',
-        minHeight: 'calc(100vh - 4rem)',
-        maxWidth: '100%', // Allow full width
-      }}
-    >
-      {/* Main Canvas Area (80%) */}
-      <div className="flex flex-col min-w-0">
-        {/* Streamlined Header */}
-        <div className="flex items-center justify-between mb-8 shrink-0">
-          <h1 className="text-2xl font-semibold font-ui" style={{ color: '#F9FAFB' }}>DataLab</h1>
-          <ModeSwitcher mode={mode} setMode={setMode} />
+    <div className="datalab-container min-h-screen p-8 md:p-12 flex flex-col items-center">
+
+      {/* Content */}
+      <div className="w-full max-w-4xl flex flex-col gap-12 mt-12">
+
+        {/* Row 1: Scope */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <DateRangePicker
+            startDate={filters.dateRange?.start}
+            endDate={filters.dateRange?.end}
+            onChange={(range) => handleFilterChange('dateRange', range)}
+          />
+          <RoomSelector
+            selectedRooms={filters.rooms || []}
+            onChange={(rooms) => handleFilterChange('rooms', rooms)}
+          />
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1" style={{ minHeight: '500px' }}>
-          {loading && !previewData ? (
-            <div className="flex items-center justify-center h-full text-zinc-400">
-              <Loader2 className="animate-spin h-6 w-6 text-zinc-500" />
-            </div>
-          ) : (
-            <>
-              {mode === 'analysis' ? (
-                <div style={{ height: '100%', minHeight: '500px' }}>
-                  {/* Main Analysis Chart */}
-                  <DataLabGraph
-                    data={previewData}
-                    layers={layers}
-                    backgroundLayer={backgroundLayer}
-                  />
-                </div>
-              ) : (
-                <div className="p-8 max-w-2xl mx-auto w-full">
-                  <h2 className="text-lg font-medium text-zinc-100 mb-2">Export Configuration</h2>
-                  <p className="text-sm text-zinc-400 mb-8">
-                    Export will use the filters configured in the sidebar (time range, devices, lesson filters).
-                  </p>
-                  <div className="space-y-8">
-                    <FormatSelector format={exportFormat} setFormat={setExportFormat} />
-                    <DownloadButton
-                      filters={{
-                        ...filters,
-                        ...advancedFilters,
-                        start: filters.dateRange.start?.toISOString?.().split('T')[0],
-                        end: filters.dateRange.end?.toISOString?.().split('T')[0],
-                      }}
-                      format={exportFormat}
-                    />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+        {/* Row 2: Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2">
+            <BucketingSelector value={bucketing} onChange={setBucketing} />
+          </div>
+          <div>
+            <FormatSelector format={exportFormat} setFormat={setExportFormat} />
+          </div>
         </div>
+
+        {/* Row 3: Action */}
+        <div className="pt-2">
+          <DownloadButton
+            filters={{
+              ...filters,
+              start: filters.dateRange.start?.toISOString?.().split('T')[0],
+              end: filters.dateRange.end?.toISOString?.().split('T')[0],
+            }}
+            format={exportFormat}
+            bucketing={bucketing}
+          />
+        </div>
+
       </div>
-
-      {/* Action Sidebar (20%) */}
-      <ActionSidebar
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        advancedFilters={advancedFilters}
-        onAdvancedFilterChange={handleAdvancedFilterChange}
-        layers={layers}
-        onLayersChange={setLayers}
-        backgroundLayer={backgroundLayer}
-        onBackgroundLayerChange={setBackgroundLayer}
-      />
     </div>
   );
 };

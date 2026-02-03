@@ -51,9 +51,9 @@ This app handles all logic.
 A specialized module for the "DataLab" feature (advanced querying).
 -   `views.py`:
     -   `preview_query`: Runs an aggregation pipeline on MongoDB to preview results.
-    -   `export_data`: Streams data as CSV/JSONL/PDF using `StreamingHttpResponse`.
+    -   `export_data`: Streams data as CSV/JSONL using `StreamingHttpResponse`.
 -   `query_builder.py`: Converts frontend filter objects (JSON) into MongoDB Aggregation Pipelines.
--   `export_engine.py`: Handles the formatting of data into CSV or PDF.
+-   `export_engine.py`: Handles the formatting of data into CSV or JSONL.
 
 #### `server/api/annotation/` (Sub-module: Annotation)
 Handles the "Smart School" features (correlating CO2 with class schedules).
@@ -107,10 +107,16 @@ A React application built with Vite.
 -   **`MetricCard.jsx`**: Generic UI for displaying a single stat (e.g., "800 ppm").
 -   **`ActivityFeed.jsx`**: Side panel showing recent alerts/events.
 
-#### `DataLab/` (Advanced Analytics UI)
+#### `DataLab/` (Export Engine)
+-   **`DataLabLayout.jsx`**: Main layout wrapper.
 -   **`QueryBuilder/`**: Form inputs for selecting dates, rooms, and metrics.
--   **`DataVisualizer/`**: Renders the results of a DataLab query (likely using Recharts or Chart.js).
--   **`ExportWizard/`**: Step-by-step UI for downloading data.
+-   **`ExportWizard/`**: Step-by-step UI for downloading data (CSV/JSONL).
+
+#### `DataLabV2/` (Visual Dashboard)
+-   **`Dashboard/`**: Main view container.
+-   **`Widgets/`**: Reusable analytic widgets.
+-   **`Sidebar/`**: Analytics-specific navigation.
+-   **`Toolbar/`**: Controls for global dashboard settings.
 
 #### `layout/`
 -   **`AppShell.jsx`**: The main container. Renders the `Sidebar` and the main content area.

@@ -2,52 +2,47 @@ import React, { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { datalabService } from '../../../services/datalabService';
 
-const DownloadButton = ({ filters, format }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+const DownloadButton = ({ filters, format, bucketing }) => {
+  const [loading, setLoading] = useState(false);
 
   const handleDownload = async () => {
-    setIsLoading(true);
-    setError(null);
+    setLoading(true);
     try {
-      await datalabService.downloadExport(filters, format);
-      // Download is handled by the service which triggers browser download
-    } catch (err) {
-      setError('Download failed. Please try again.');
-      console.error('Download error:', err);
+      await datalabService.downloadExport(filters, format, bucketing);
+    } catch (error) {
+      console.error('Download failed', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <button
-        onClick={handleDownload}
-        disabled={isLoading}
-        className={`flex items-center gap-2 px-6 py-3 rounded-md font-semibold transition-all shadow-lg ${isLoading
-          ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-          : 'bg-emerald-600 text-white hover:bg-emerald-500 active:scale-95'
-          }`}
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="animate-spin" size={20} />
-            Generating...
-          </>
-        ) : (
-          <>
-            <Download size={20} />
-            Download {format.toUpperCase()}
-          </>
-        )}
-      </button>
-      {error && (
-        <p className="text-red-600 dark:text-red-400 text-sm mt-2">{error}</p>
+    <button
+      onClick={handleDownload}
+      disabled={loading}
+      className={`
+        w-full py-4 px-6 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 transition-all duration-200 border border-zinc-700
+        ${loading
+          ? 'bg-zinc-800/50 text-zinc-500 cursor-not-allowed border-zinc-800'
+          : 'bg-transparent text-zinc-300 hover:bg-zinc-800/50 hover:text-white hover:border-zinc-500 active:bg-zinc-800'
+        }
+      `}
+    >
+      {loading ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Preparing Export...</span>
+        </>
+      ) : (
+        <>
+          <Download className="w-4 h-4" />
+          <span>Download Export</span>
+        </>
       )}
-    </div>
+    </button>
   );
 };
+
 
 export default DownloadButton;
 

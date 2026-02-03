@@ -16,18 +16,19 @@ const TopHeader = () => {
     if (path === '/') {
       return [{ label: 'Dashboard', path: '/' }]
     }
-    
+
     const parts = path.split('/').filter(Boolean)
     const crumbs = [{ label: 'Dashboard', path: '/' }]
-    
+
     parts.forEach((part, index) => {
       const pathToPart = '/' + parts.slice(0, index + 1).join('/')
       let label = part.charAt(0).toUpperCase() + part.slice(1)
-      
+
       // Map route names to display labels
       if (part === 'dashboard') label = 'Devices'
       else if (part === 'admin') label = 'Management'
-      
+      else if (part === 'datalab') label = 'Export'
+
       // If there's a device ID in the path, extract it
       if (path.includes('device=') || /^[A-Z0-9]+$/.test(part)) {
         const params = new URLSearchParams(location.search)
@@ -36,10 +37,10 @@ const TopHeader = () => {
           label = deviceId
         }
       }
-      
+
       crumbs.push({ label, path: pathToPart })
     })
-    
+
     return crumbs
   }
 
@@ -50,7 +51,7 @@ const TopHeader = () => {
     const handleKeyDown = (e) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const modifier = isMac ? e.metaKey : e.ctrlKey
-      
+
       if (modifier && e.key === 'k') {
         e.preventDefault()
         const searchInput = document.getElementById('global-search-input')
