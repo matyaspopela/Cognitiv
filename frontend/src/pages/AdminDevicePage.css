@@ -1,0 +1,37 @@
+.admin-device-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0;
+}
+
+.admin-device-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #a1a1aa;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    bottom: -1px;
+}
+
+.admin-device-tab:hover {
+    color: #e4e4e7;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-device-tab--active {
+    color: #ffffff;
+    border-bottom-color: #3b82f6;
+}
+
+.admin-device-tab svg {
+    flex-shrink: 0;
+}

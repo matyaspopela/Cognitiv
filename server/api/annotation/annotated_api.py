@@ -4,61 +4,38 @@ Provides endpoints for lesson-aware statistical analysis of sensor data.
 """
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo import MongoClient
 import certifi
 
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+# Import shared utilities from common module
+from ..common import (
+    UTC,
+    LOCAL_TZ,
+    get_mongo_uri,
+    get_mongo_db_name,
+    parse_iso_datetime,
+    resolve_device_identifier,
+)
 
 
-UTC = timezone.utc
-LOCAL_TZ = ZoneInfo(os.getenv('LOCAL_TIMEZONE', 'Europe/Prague'))
-
-
-def _get_mongo_client():
-    """Create a MongoDB client."""
-    mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
-    return MongoClient(
+def _get_annotated_collection():
+    """Get annotated_readings collection."""
+    mongo_uri = get_mongo_uri()
+    if not mongo_uri:
+        raise RuntimeError("MONGO_URI must be set")
+    
+    client = MongoClient(
         mongo_uri,
         serverSelectionTimeoutMS=5000,
         tlsCAFile=certifi.where(),
         tz_aware=True,
         tzinfo=UTC,
     )
-
-
-def _get_annotated_collection():
-    """Get annotated_readings collection."""
-    client = _get_mongo_client()
-    db_name = os.getenv('MONGO_DB_NAME', 'cognitiv')
+    db_name = get_mongo_db_name()
     return client[db_name]['annotated_readings']
-
-
-def _parse_datetime(value, default=None):
-    """Parse ISO datetime string to timezone-aware datetime."""
-    if not value:
-        return default
-    try:
-        if isinstance(value, str):
-            sanitized = value.strip()
-            if sanitized.endswith('Z'):
-                sanitized = sanitized[:-1] + '+00:00'
-            dt = datetime.fromisoformat(sanitized)
-        elif isinstance(value, datetime):
-            dt = value
-        else:
-            return default
-        
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=LOCAL_TZ)
-        return dt.astimezone(UTC)
-    except (ValueError, TypeError):
-        return default
 
 
 @require_http_methods(["GET"])
@@ -87,8 +64,8 @@ def annotated_series(request):
                 'error': 'start and end parameters are required'
             }, status=400)
         
-        start_dt = _parse_datetime(start_str)
-        end_dt = _parse_datetime(end_str)
+        start_dt = parse_iso_datetime(start_str)
+        end_dt = parse_iso_datetime(end_str)
         
         if not start_dt or not end_dt:
             return JsonResponse({
@@ -103,12 +80,18 @@ def annotated_series(request):
             'bucket_start': {'$gte': start_dt, '$lte': end_dt}
         }
         
+        # STRICT MAC ADDRESS FILTERING: Resolve device_id to MAC address
         if device_id:
-            match_filter['$or'] = [
-                {'device_mac': device_id},
-                {'device_name': device_id},
-                {'room_id': device_id}
-            ]
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                # Device not found in registry - return empty result
+                return JsonResponse({
+                    'status': 'success',
+                    'series': [],
+                    'count': 0
+                })
         
         # Determine grouping based on bucket
         if bucket == 'day':
@@ -200,8 +183,8 @@ def annotated_summary(request):
         JSON with aggregate statistics including by-subject breakdown
     """
     try:
-        end_dt = _parse_datetime(request.GET.get('end')) or datetime.now(UTC)
-        start_dt = _parse_datetime(request.GET.get('start')) or (end_dt - timedelta(days=7))
+        end_dt = parse_iso_datetime(request.GET.get('end')) or datetime.now(UTC)
+        start_dt = parse_iso_datetime(request.GET.get('start')) or (end_dt - timedelta(days=7))
         device_id = request.GET.get('device_id')
         
         collection = _get_annotated_collection()
@@ -210,12 +193,27 @@ def annotated_summary(request):
             'bucket_start': {'$gte': start_dt, '$lte': end_dt}
         }
         
+        # STRICT MAC ADDRESS FILTERING: Resolve device_id to MAC address
         if device_id:
-            match_filter['$or'] = [
-                {'device_mac': device_id},
-                {'device_name': device_id},
-                {'room_id': device_id}
-            ]
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                # Device not found - return empty summary
+                return JsonResponse({
+                    'status': 'success',
+                    'summary': {
+                        'total_readings': 0,
+                        'total_lessons': 0,
+                        'avg_co2': 0,
+                        'min_co2': None,
+                        'max_co2': None,
+                        'avg_temp': 0,
+                        'avg_humidity': 0,
+                        'co2_quality': {'good': 0, 'moderate': 0, 'high': 0, 'critical': 0}
+                    },
+                    'by_subject': []
+                })
         
         # Overall stats pipeline
         overall_pipeline = [
@@ -319,8 +317,8 @@ def annotated_lessons(request):
         JSON with lesson analysis (by teacher, by period)
     """
     try:
-        end_dt = _parse_datetime(request.GET.get('end')) or datetime.now(UTC)
-        start_dt = _parse_datetime(request.GET.get('start')) or (end_dt - timedelta(days=7))
+        end_dt = parse_iso_datetime(request.GET.get('end')) or datetime.now(UTC)
+        start_dt = parse_iso_datetime(request.GET.get('start')) or (end_dt - timedelta(days=7))
         device_id = request.GET.get('device_id')
         
         collection = _get_annotated_collection()
@@ -329,12 +327,18 @@ def annotated_lessons(request):
             'bucket_start': {'$gte': start_dt, '$lte': end_dt}
         }
         
+        # STRICT MAC ADDRESS FILTERING: Resolve device_id to MAC address
         if device_id:
-            match_filter['$or'] = [
-                {'device_mac': device_id},
-                {'device_name': device_id},
-                {'room_id': device_id}
-            ]
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                # Device not found - return empty lessons
+                return JsonResponse({
+                    'status': 'success',
+                    'by_teacher': [],
+                    'by_period': []
+                })
         
         # By teacher pipeline - count unique lessons (Day + Lesson Number)
         teacher_pipeline = [
@@ -441,8 +445,8 @@ def annotated_heatmap(request):
         end_str = request.GET.get('end')
         
         if start_str and end_str:
-            start_dt = _parse_datetime(start_str)
-            end_dt = _parse_datetime(end_str)
+            start_dt = parse_iso_datetime(start_str)
+            end_dt = parse_iso_datetime(end_str)
         else:
             # Fallback to weeks logic
             weeks = int(request.GET.get('weeks', 4))
@@ -455,12 +459,20 @@ def annotated_heatmap(request):
             'bucket_start': {'$gte': start_dt, '$lte': end_dt}
         }
         
+        # STRICT MAC ADDRESS FILTERING: Resolve device_id to MAC address
         if device_id:
-            match_filter['$or'] = [
-                {'device_mac': device_id},
-                {'device_name': device_id},
-                {'room_id': device_id}
-            ]
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                # Device not found - return empty heatmap
+                return JsonResponse({
+                    'status': 'success',
+                    'heatmap': {} if mode == 'hourly' else [],
+                    'mode': mode,
+                    'start': start_dt.isoformat(),
+                    'end': end_dt.isoformat()
+                })
             
         if mode == 'daily':
             pipeline = [

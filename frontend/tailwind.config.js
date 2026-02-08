@@ -8,6 +8,9 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Soften aggressive white
+        white: '#ebebeb', // Zinc-200ish, much softer than #ffffff
+
         // Monochrome / Zinc palette
         background: {
           DEFAULT: '#09090b', // Zinc 950
@@ -19,7 +22,7 @@ export default {
         },
         // Zinc Scale (Explicitly needed if using zinc-* classes, but Tailwind includes them by default. 
         // We add them here to map 'primary' etc if needed, but let's stick to 'zinc' in code or variables)
-        
+
         // Remove 'scifi' object completely.
       },
       fontFamily: {

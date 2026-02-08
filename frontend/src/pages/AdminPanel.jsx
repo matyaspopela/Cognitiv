@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { RefreshCw } from 'lucide-react'
-import { adminAPI, historyAPI } from '../services/api'
+import { adminAPI } from '../services/api'
 import Button from '../components/ui/Button'
 import Skeleton from '../components/ui/Skeleton'
 import DataTable from '../components/ui/DataTable'
 import DeviceActionsMenu from '../components/admin/DeviceActionsMenu'
-import BoardAnalysisView from '../components/admin/BoardAnalysisView'
+import AdminStatusBar from '../components/admin/AdminStatusBar'
 import DeviceRenameModal from '../components/admin/DeviceRenameModal'
 import DeviceCustomizationModal from '../components/admin/DeviceCustomizationModal'
 import DeviceDetailsModal from '../components/admin/DeviceDetailsModal'
 
 const AdminPanel = () => {
+  const navigate = useNavigate()
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedBoard, setSelectedBoard] = useState(null)
   const [detailsDevice, setDetailsDevice] = useState(null)
   const [renameDevice, setRenameDevice] = useState(null)
   const [customizeDevice, setCustomizeDevice] = useState(null)
@@ -73,15 +74,6 @@ const AdminPanel = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleDetailsClick = (deviceId) => {
-    // Opens the BoardAnalysisView data viewing section
-    setSelectedBoard(deviceId)
-  }
-
-  const handleCloseAnalysis = () => {
-    setSelectedBoard(null)
   }
 
   const handleViewDeviceDetails = (device) => {
@@ -190,34 +182,7 @@ const AdminPanel = () => {
     <div className="flex-1 flex flex-col w-full">
       <div className="flex flex-col gap-6">
         {/* Header */}
-        <header className="mb-2">
-          <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex-1 min-w-[400px]">
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">
-                  Admin Panel
-                </h1>
-                <p className="text-sm text-zinc-500">
-                  Manage and view all devices in the system
-                </p>
-              </div>
-              <Button
-                variant="filled"
-                size="medium"
-                onClick={loadDevices}
-                disabled={loading}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw
-                  size={18}
-                  strokeWidth={2}
-                  className={loading ? 'animate-spin' : ''}
-                />
-                Refresh
-              </Button>
-            </div>
-          </div>
-        </header>
+
 
         {/* Error State */}
         {error && (
@@ -226,13 +191,14 @@ const AdminPanel = () => {
           </div>
         )}
 
+        {/* Status Bar */}
+        {!loading && <AdminStatusBar devices={devices} />}
+
         {/* Main Content */}
         <div className="flex flex-col gap-6">
           <section>
             <div className="bg-transparent border-none p-0">
-              <h2 className="text-lg font-semibold text-zinc-100 tracking-tight mb-4">
-                Device List
-              </h2>
+
 
               {loading ? (
                 <div className="flex flex-col gap-4 p-12 bg-zinc-900/50 border border-white/10 rounded-lg">
@@ -256,17 +222,16 @@ const AdminPanel = () => {
                   columns={columns}
                   data={tableData}
                   onRowClick={(row) => {
-                    // Prefer mac_address over device_id for unique identification
                     const deviceIdentifier = row.device?.mac_address || row.device?.device_id
-                    handleDetailsClick(deviceIdentifier)
+                    navigate(`/admin/device/${deviceIdentifier}`, {
+                      state: { device: row.device }
+                    })
                   }}
                   actions={{
                     render: (row) => (
                       <DeviceActionsMenu
                         device={row.device}
                         onRename={handleRenameClick}
-
-                        onDetails={handleDetailsClick}
                         onCustomize={handleCustomizeClick}
                       />
                     )
@@ -275,10 +240,6 @@ const AdminPanel = () => {
               )}
             </div>
           </section>
-
-          {selectedBoard && (
-            <BoardAnalysisView deviceId={selectedBoard} onClose={handleCloseAnalysis} />
-          )}
         </div>
 
         {detailsDevice && (

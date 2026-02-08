@@ -1,0 +1,54 @@
+.admin-combined-graph {
+    padding: 24px;
+}
+
+.admin-combined-graph__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.admin-combined-graph__title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #f4f4f5;
+}
+
+.admin-combined-graph__toggles {
+    display: flex;
+    gap: 16px;
+}
+
+.admin-combined-graph__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #a1a1aa;
+    cursor: pointer;
+    user-select: none;
+}
+
+.admin-combined-graph__toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.admin-combined-graph__toggle:hover {
+    color: #e4e4e7;
+}
+
+.admin-combined-graph__chart {
+    position: relative;
+}
+
+.admin-combined-graph__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #71717a;
+    font-size: 14px;
+}

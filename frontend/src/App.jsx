@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import Login from './pages/Login'
 import AdminPanel from './pages/AdminPanel'
+import AdminDevicePage from './pages/AdminDevicePage'
 import Dashboard from './pages/Dashboard'
 
 import VentilationGuide from './pages/VentilationGuide'
@@ -75,6 +76,14 @@ function App() {
                           element={
                             <ProtectedRoute>
                               <AdminPanel />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/admin/device/:deviceId"
+                          element={
+                            <ProtectedRoute>
+                              <AdminDevicePage />
                             </ProtectedRoute>
                           }
                         />
