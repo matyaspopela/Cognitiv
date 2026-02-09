@@ -68,4 +68,16 @@
 // 30 minutes = 30 * 60 * 1000000 = 1,800,000,000 microseconds
 #define QUIET_HOURS_SLEEP_DURATION_US 1800000000UL
 
+// ===== DEEP SLEEP CONFIGURATION =====
+// Normal deep sleep duration (seconds) - addresses audit finding 4.2
+// This is used when NOT in quiet hours mode
+#define DEEP_SLEEP_DURATION_SEC 30
+
+// ===== WARNING THRESHOLD =====
+// CO2 threshold for warning mode (ppm)
+#define WARNING_CO2_THRESHOLD 1000
+
+// LED warning blink interval (seconds)
+#define LED_WARNING_INTERVAL_SEC 0.5
+
 #endif
