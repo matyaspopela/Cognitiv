@@ -118,6 +118,7 @@ const AdminPanel = () => {
     {
       key: 'status',
       label: 'Status',
+      align: 'center',
       render: (value, row) => row.status,
     },
     {
@@ -125,23 +126,20 @@ const AdminPanel = () => {
       label: 'Name',
     },
     {
-      key: 'location',
-      label: 'MAC Address',
-    },
-    {
       key: 'co2',
       label: 'CO₂',
-      align: 'right',
     },
     {
       key: 'temp',
       label: 'Temp',
-      align: 'right',
+    },
+    {
+      key: 'humidity',
+      label: 'Humidity',
     },
     {
       key: 'voltage',
       label: 'Voltage',
-      align: 'right',
     },
     {
       key: 'lastSeen',
@@ -170,9 +168,10 @@ const AdminPanel = () => {
     id: device.mac_address || device.device_id,
     status: device.status,
     name: device.display_name || device.device_id || 'Unknown',
-    location: device.mac_address || device.device_id || '—',
+
     co2: device.current_readings?.co2 != null ? `${Math.round(device.current_readings.co2)} ppm` : '—',
     temp: device.current_readings?.temperature != null ? `${Math.round(device.current_readings.temperature)}°C` : '—',
+    humidity: device.current_readings?.humidity != null ? `${Math.round(device.current_readings.humidity)}%` : '—',
     voltage: formatVoltage(device.current_readings?.voltage),
     lastSeen: device.last_seen || '—',
     device,

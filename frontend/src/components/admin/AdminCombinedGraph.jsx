@@ -13,7 +13,6 @@ import {
     Filler
 } from 'chart.js'
 import 'chartjs-adapter-date-fns'
-import { buildCo2ChartData } from '../../utils/charts'
 import { theme } from '../../design/theme'
 import Card from '../ui/Card'
 import './AdminCombinedGraph.css'
@@ -30,6 +29,33 @@ ChartJS.register(
     TimeScale,
     Filler
 )
+
+// Helper to create the dynamic gradient
+const getGradient = (context, chartArea) => {
+    if (!context.chart.scales.y) return null
+    const { chart } = context
+    const { ctx, scales: { y } } = chart
+
+    // 1. Calculate pixel positions for our specific thresholds
+    // Note: y-axis pixels go from Top (low value) to Bottom (high value) usually,
+    // but getPixelForValue handles the mapping correctly.
+    const yStart = y.getPixelForValue(1500) // Green start
+    const yEnd = y.getPixelForValue(3000)   // Red end
+
+    // 2. Create gradient aligned with these pixels
+    // We extend the gradient slightly beyond to ensure coverage
+    const gradient = ctx.createLinearGradient(0, yStart, 0, yEnd)
+
+    // 3. Define stops.
+    // Since 1500 is "Safe" (Green) and 3000 is "Danger" (Red)
+    // We clamp the colors: below 1500 is green, above 3000 is red.
+    // 0 = at 1500px, 1 = at 3000px
+    gradient.addColorStop(0, theme.colors.safe)    // #10B981
+    gradient.addColorStop(0.5, theme.colors.warning) // #F59E0B (Transition)
+    gradient.addColorStop(1, theme.colors.danger)  // #EF4444
+
+    return gradient
+}
 
 const AdminCombinedGraph = ({ series }) => {
     const [showTemp, setShowTemp] = useState(true)
@@ -65,8 +91,13 @@ const AdminCombinedGraph = ({ series }) => {
             {
                 label: 'CO₂ (ppm)',
                 data: co2Values,
-                borderColor: '#a1a1aa',
-                backgroundColor: 'rgba(161, 161, 170, 0.1)',
+                borderColor: (context) => {
+                    const chart = context.chart
+                    const { ctx, chartArea } = chart
+                    if (!chartArea) return theme.text.secondary // Fallback
+                    return getGradient(context, chartArea)
+                },
+                backgroundColor: 'rgba(161, 161, 170, 0.05)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 0,
@@ -80,7 +111,7 @@ const AdminCombinedGraph = ({ series }) => {
             datasets.push({
                 label: 'Temperature (°C)',
                 data: tempValues,
-                borderColor: '#71717a',
+                borderColor: theme.text.secondary,
                 backgroundColor: 'transparent',
                 fill: false,
                 tension: 0.4,
@@ -95,7 +126,7 @@ const AdminCombinedGraph = ({ series }) => {
             datasets.push({
                 label: 'Humidity (%)',
                 data: humidityValues,
-                borderColor: '#52525b',
+                borderColor: theme.text.tertiary,
                 backgroundColor: 'transparent',
                 fill: false,
                 tension: 0.4,
@@ -111,7 +142,7 @@ const AdminCombinedGraph = ({ series }) => {
             datasets.push({
                 label: 'Voltage (V)',
                 data: voltageValues,
-                borderColor: '#ffffff',
+                borderColor: theme.text.primary,
                 backgroundColor: 'transparent',
                 fill: false,
                 tension: 0.4,
@@ -138,7 +169,7 @@ const AdminCombinedGraph = ({ series }) => {
                 display: true,
                 position: 'top',
                 labels: {
-                    color: '#a1a1aa',
+                    color: theme.text.secondary,
                     usePointStyle: true,
                     padding: 20,
                     font: { size: 12 }
@@ -146,10 +177,10 @@ const AdminCombinedGraph = ({ series }) => {
             },
             tooltip: {
                 enabled: true,
-                backgroundColor: '#18181b',
-                titleColor: '#f4f4f5',
-                bodyColor: '#a1a1aa',
-                borderColor: '#27272a',
+                backgroundColor: theme.colors.tooltipBg,
+                titleColor: theme.text.primary,
+                bodyColor: theme.text.secondary,
+                borderColor: theme.colors.grid,
                 borderWidth: 1,
                 padding: 12,
                 cornerRadius: 8,
@@ -168,7 +199,7 @@ const AdminCombinedGraph = ({ series }) => {
                     display: false,
                 },
                 ticks: {
-                    color: '#71717a',
+                    color: theme.text.secondary,
                     maxRotation: 0,
                     autoSkip: true,
                     maxTicksLimit: 8,
@@ -184,14 +215,14 @@ const AdminCombinedGraph = ({ series }) => {
                 title: {
                     display: true,
                     text: 'CO₂ (ppm)',
-                    color: '#a1a1aa',
+                    color: theme.text.secondary,
                 },
                 grid: {
-                    color: '#27272a',
+                    color: theme.colors.grid,
                     drawBorder: false,
                 },
                 ticks: {
-                    color: '#a1a1aa',
+                    color: theme.text.secondary,
                 },
                 border: {
                     display: false,
@@ -204,13 +235,13 @@ const AdminCombinedGraph = ({ series }) => {
                 title: {
                     display: true,
                     text: 'Temp (°C) / Humidity (%)',
-                    color: '#71717a',
+                    color: theme.text.tertiary,
                 },
                 grid: {
                     drawOnChartArea: false,
                 },
                 ticks: {
-                    color: '#71717a',
+                    color: theme.text.tertiary,
                 },
                 border: {
                     display: false,
@@ -223,13 +254,13 @@ const AdminCombinedGraph = ({ series }) => {
                 title: {
                     display: true,
                     text: 'Voltage (V)',
-                    color: '#ffffff',
+                    color: theme.text.primary,
                 },
                 grid: {
                     drawOnChartArea: false,
                 },
                 ticks: {
-                    color: '#ffffff',
+                    color: theme.text.primary,
                 },
                 border: {
                     display: false,
