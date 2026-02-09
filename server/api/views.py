@@ -1001,29 +1001,7 @@ def receive_data(request):
         print(f"{'='*50}")
         print(json.dumps(data, indent=2))
         
-        # Check MAC address whitelist if enabled
-        mac_address_raw = data.get('mac_address')
-        if is_whitelist_enabled():
-            if not mac_address_raw:
-                print(f"⚠️  MAC address whitelist is enabled but no MAC address provided - rejecting data")
-                return JsonResponse({
-                    'error': 'MAC address is required when whitelist is enabled',
-                    'whitelist_enabled': True
-                }, status=403)
-            
-            if not is_mac_whitelisted(mac_address_raw):
-                try:
-                    mac_normalized = normalize_mac_address(mac_address_raw)
-                    print(f"⚠️  MAC address {mac_normalized} is not whitelisted - rejecting data")
-                except ValueError:
-                    print(f"⚠️  Invalid MAC address {mac_address_raw} - rejecting data")
-                return JsonResponse({
-                    'error': 'MAC address is not whitelisted',
-                    'mac_address': mac_address_raw,
-                    'whitelist_enabled': True
-                }, status=403)
-        
-        # Normalize payload to canonical keys
+        # Normalize payload to canonical keys FIRST
         try:
             normalized = normalize_sensor_data(data)
         except KeyError as exc:
@@ -1043,7 +1021,8 @@ def receive_data(request):
         if mac_address_raw:
             try:
                 mac_address = normalize_mac_address(mac_address_raw)
-                # Ensure registry entry exists
+                # CRITICAL: Register device BEFORE checking whitelist
+                # This ensures new devices are visible in registry for manual approval
                 ensure_registry_entry(mac_address, normalized.get('device_id'))
             except ValueError as e:
                 print(f"⚠️  Neplatná MAC adresa: {e}")
@@ -1051,6 +1030,16 @@ def receive_data(request):
         else:
              # Should be caught by validate_sensor_data, but double check
              return JsonResponse({'error': "MAC adresa je povinná"}, status=400)
+        
+        # NOW check MAC address whitelist (after device is registered)
+        if is_whitelist_enabled():
+            if not is_mac_whitelisted(mac_address):
+                print(f"⚠️  MAC address {mac_address} is not whitelisted - rejecting data")
+                return JsonResponse({
+                    'error': 'MAC address is not whitelisted',
+                    'mac_address': mac_address,
+                    'whitelist_enabled': True
+                }, status=403)
 
         # Determine device_id to use in database (metadata.device_id)
         # 1. Use provided device_id if available (legacy)

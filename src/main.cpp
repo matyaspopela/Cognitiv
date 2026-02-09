@@ -208,14 +208,8 @@ void setup() {
         }
       }
 
-      // --- DECISION POINT ---
-      if (reading.co2 >= WARNING_CO2_THRESHOLD) {
-        Serial.println("!!! WARNING MODE: CO2 High. Staying Awake. !!!");
-        // Activate LED Ticker
-        updateLedMode();
-        // EXIT setup() -> go to loop()
-        return;
-      }
+      // Always proceed to deep sleep (warning mode disabled)
+      Serial.println("Data sent. Proceeding to deep sleep...");
 
     } else {
       Serial.println("✗ Could not get valid reading in time.");
@@ -581,6 +575,11 @@ void connectWiFi() {
     Serial.print("Subnet: ");
     Serial.println(WiFi.subnetMask());
 
+    // Extract and cache MAC address
+    deviceMacAddress = WiFi.macAddress();
+    Serial.print("Device MAC Address: ");
+    Serial.println(deviceMacAddress);
+
     wifiState = CONNECTED;
 #ifdef HAS_DISPLAY
     displayStatus("WiFi Connected", TFT_GREEN);
@@ -815,19 +814,12 @@ bool sendSingleReading(SensorData data) {
       doc; // Increased from 256 to accommodate voltage field
   doc["timestamp"] = data.timestamp;
 
-  // Generate/derive device_id for backward compatibility
-  String deviceId = "ESP8266_";
-  if (deviceMacAddress.length() > 0) {
-    deviceId += deviceMacAddress;
-    deviceId.replace(":", "");
-  } else {
-    deviceId += "unknown";
-  }
-  doc["device_id"] = deviceId;
-
-  // Add MAC address if available
+  // Add MAC address (primary identifier)
   if (deviceMacAddress.length() > 0) {
     doc["mac_address"] = deviceMacAddress;
+  } else {
+    // Fallback: read MAC directly if cache is empty
+    doc["mac_address"] = WiFi.macAddress();
   }
 
   doc["temperature"] = round(data.temperature * 100) / 100.0;
