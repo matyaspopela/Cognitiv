@@ -28,6 +28,9 @@ bool SensorManager::initSensors(uint16_t warmupReadings) {
     // Benefits: Lower power, no 500ms stop delay, simpler state machine
     Serial.println("SCD41: Configured for single-shot mode (optimized for deep sleep)");
 
+    // CRITICAL: Set this BEFORE warmup so measureSingleShot() works
+    sensorsInitialized = true;
+
     // Perform warmup readings if configured
     if (warmupTarget > 0) {
       Serial.print("SCD41: Warming up (");
@@ -62,7 +65,6 @@ bool SensorManager::initSensors(uint16_t warmupReadings) {
       Serial.println("⚠️  SCD41: No warmup configured (first reading may be unstable)");
     }
 
-    sensorsInitialized = true;
     return true;
   } else {
     Serial.println("✗ FAILED - Check I2C connections");
