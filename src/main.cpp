@@ -585,6 +585,28 @@ void connectWiFi() {
     displayStatus("WiFi Connected", TFT_GREEN);
 #endif
 
+    // Sync time with NTP
+    Serial.print("Syncing time with NTP");
+    configTime(0, 0, NTP_SERVER);
+
+    // Wait for time to be set
+    time_t now = time(nullptr);
+    int retries = 0;
+    while (now < 1000000000 && retries < 20) { // Wait up to 10 seconds
+      delay(500);
+      Serial.print(".");
+      now = time(nullptr);
+      retries++;
+    }
+    Serial.println();
+
+    if (now > 1000000000) {
+      Serial.print("✓ Time synced: ");
+      Serial.println(ctime(&now));
+    } else {
+      Serial.println("⚠️  Time sync failed");
+    }
+
     // Initialize MQTT client (safe to call multiple times)
     mqttClient.setServer(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
     mqttSecureClient.setInsecure(); // TODO: replace with certificate validation

@@ -1047,7 +1047,16 @@ def receive_data(request):
         db_device_id = normalized.get('device_id') or mac_address
 
         # Format timestamp
-        timestamp_utc = datetime.fromtimestamp(float(normalized['timestamp']), tz=UTC)
+        # Ensure timestamp is valid (after 2024-01-01), otherwise use server time
+        # This fixes issues where ESP32 fails NTP sync and sends 1970 timestamp
+        ts_val = float(normalized['timestamp'])
+        min_valid_ts = 1704067200  # 2024-01-01
+        
+        if ts_val < min_valid_ts:
+            print(f"⚠️  Invalid device timestamp ({ts_val}). Using server time.")
+            timestamp_utc = datetime.now(UTC)
+        else:
+            timestamp_utc = datetime.fromtimestamp(ts_val, tz=UTC)
         timestamp_local = to_local_datetime(timestamp_utc)
         timestamp_str = timestamp_local.strftime('%Y-%m-%d %H:%M:%S')
 
