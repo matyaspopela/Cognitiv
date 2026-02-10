@@ -21,4 +21,7 @@ bool recover();
 /// Quick probe for a device at `address`.  Returns true on ACK.
 bool devicePresent(uint8_t address);
 
+/// Scan the full 7-bit address range and log every responding device.
+void scanBus();
+
 }  // namespace I2CManager

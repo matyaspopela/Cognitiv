@@ -128,6 +128,13 @@ static void handleNormalCycle() {
     // ── I2C Bus Recovery ──────────────────────────────────────────────
     I2CManager::recover();
 
+    // Give the bus + sensor time to settle after recovery.
+    delay(100);
+
+    // Full bus scan for diagnostics (DEBUG builds only, still useful in production
+    // when investigating field hardware).
+    I2CManager::scanBus();
+
     // Probe sensor before committing time to WiFi.
     if (!I2CManager::devicePresent(SCD41_I2C_ADDR)) {
         emergencySleep("SCD41 not found on I2C bus");

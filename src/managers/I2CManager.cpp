@@ -56,4 +56,19 @@ bool devicePresent(uint8_t address) {
     return (err == 0);
 }
 
+void scanBus() {
+    DBG("I2C bus scan (0x03–0x77):");
+    uint8_t found = 0;
+    for (uint8_t addr = 0x03; addr <= 0x77; ++addr) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            DBG("  → Device found at 0x%02X", addr);
+            ++found;
+        }
+        yield();   // Feed ESP8266 watchdog during scan
+    }
+    DBG("  Scan complete: %u device(s)", found);
+}
+
 }  // namespace I2CManager
+
