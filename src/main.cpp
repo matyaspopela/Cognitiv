@@ -20,37 +20,24 @@
 #include "config.h"
 
 // Manager classes
-#include "DisplayManager.h"
 #include "NetworkManager.h"
 #include "PowerManager.h"
 #include "SensorManager.h"
 
-
 // ESP8266 libraries
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 #include <time.h>
 
 // LaskaKit AirBoard 8266 specific I2C pins for μSup connectors
 #define I2C_SDA 0 // GPIO 0 (D3) - connected to μSup connectors
 #define I2C_SCL 2 // GPIO 2 (D4) - connected to μSup connectors
 
-// Display configuration
-#define HAS_DISPLAY
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-
 // Apply configuration
 const char *NTP_SERVER = "pool.ntp.org";
 const unsigned long READING_INTERVAL = READING_INTERVAL_MS;
 
-// Hardware objects
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
 // Manager instances
 NetworkManager networkManager;
 SensorManager sensorManager;
-DisplayManager displayManager(display);
 PowerManager powerManager;
 
 unsigned long lastReadingTime = 0;
@@ -67,16 +54,9 @@ void setup() {
   // Initialize I2C
   Wire.begin(I2C_SDA, I2C_SCL);
 
-#ifdef HAS_DISPLAY
-  displayManager.init();
-  displayManager.showStatus("Waking Up...", TFT_YELLOW);
-#endif
-
   // Connect to WiFi
-  displayManager.showStatus("WiFi Connecting", TFT_YELLOW);
   if (!networkManager.connectWiFi(WIFI_SSID, WIFI_PASSWORD)) {
     Serial.println("✗ WiFi connection failed");
-    displayManager.showStatus("WiFi Failed!", TFT_RED);
     delay(2000);
   }
 
@@ -94,11 +74,9 @@ void setup() {
   networkManager.connectMQTT();
 
   // Initialize sensors with warmup (addresses audit finding 3.4)
-  displayManager.showStatus("Sensor Init", TFT_YELLOW);
   // Reduce warmup to 4 readings (20s) to balance stability vs battery life
   if (!sensorManager.initSensors(4)) {
     Serial.println("✗ Sensor initialization failed");
-    displayManager.showStatus("Sensor Error!", TFT_RED);
     delay(2000);
   }
 
@@ -113,12 +91,6 @@ void setup() {
     reading.voltage = sensorManager.readVoltage(VOLTAGE_DIVIDER_RATIO);
 
     lastReadingTime = millis();
-
-#ifdef HAS_DISPLAY
-    displayManager.showReadings(reading, networkManager.getWiFiState(),
-                                networkManager.getMQTTState(),
-                                WARNING_CO2_THRESHOLD);
-#endif
 
     // Send to MQTT
     if (networkManager.getWiFiState() == CONNECTED) {
@@ -139,7 +111,6 @@ void setup() {
     Serial.println("Data sent. Proceeding to deep sleep...");
   } else {
     Serial.println("✗ Could not get valid reading in time");
-    displayManager.showStatus("Read Error", TFT_RED);
   }
 
   // --- SAFE / NORMAL MODE: Deep Sleep ---
@@ -152,9 +123,6 @@ void setup() {
     // Stop sensors before sleep
     sensorManager.stopSensors();
 
-    // Turn off display
-    displayManager.turnOff();
-
     // Enter quiet hours sleep (will not return)
     powerManager.enterQuietHoursSleep(GOTOSLEEP_TIME_HOUR, GOTOSLEEP_TIME_MIN,
                                       WAKEUP_TIME_HOUR, WAKEUP_TIME_MIN,
@@ -166,10 +134,6 @@ void setup() {
   Serial.print(DEEP_SLEEP_DURATION_SEC);
   Serial.println(" seconds...");
 
-#ifdef HAS_DISPLAY
-  displayManager.showStatus("Sleeping...", TFT_BLACK);
-#endif
-
   delay(100);
 
   // Stop sensors
@@ -177,11 +141,6 @@ void setup() {
 
   // Disconnect network (addresses audit finding 3.3 - WiFi shutdown)
   networkManager.disconnectWiFi();
-
-  // Turn off display
-#ifdef HAS_DISPLAY
-  displayManager.turnOff();
-#endif
 
   // DEEP SLEEP (addresses audit finding 4.2 - use constant)
   powerManager.enterDeepSleep(DEEP_SLEEP_DURATION_SEC);
@@ -216,12 +175,6 @@ void loop() {
     reading.voltage = sensorManager.readVoltage(VOLTAGE_DIVIDER_RATIO);
 
     if (reading.valid) {
-
-#ifdef HAS_DISPLAY
-      displayManager.showReadings(reading, networkManager.getWiFiState(),
-                                  networkManager.getMQTTState(),
-                                  WARNING_CO2_THRESHOLD);
-#endif
 
       // Send Data
       if (networkManager.getWiFiState() == CONNECTED) {
