@@ -1,4 +1,4 @@
-# GEMINI.md
+# Cognitiv
 
 ## Core Directives (CRITICAL)
 
@@ -17,16 +17,5 @@
 ## Approval Model
 - `/plan` = always safe, never writes code
 - `/implement` with no plan = outputs plan only
-- `/implement` with <!-- Import failed: tagged - ENOENT: no such file or directory, access 'C:\Users\matya\MyFiles\learning\Cognitiv\.gemini	agged' --> plan = executes (plan is approval)
-- `/tdd` requires <!-- Import failed: tagged - ENOENT: no such file or directory, access 'C:\Users\matya\MyFiles\learning\Cognitiv\.gemini	agged' --> plan in args
-
----
-
-## 1. IDENTITY & BEHAVIOR
-@{ .gemini/policy/identity.md }
-
-## 2. GOVERNANCE & SAFETY
-@{ .gemini/policy/governance.md }
-
-## 3. STANDARDS & FORMATTING
-@{ .gemini/policy/standards.md }
+- `/implement` with plan = executes (plan is approval)
+- `/tdd` requires plan in args
