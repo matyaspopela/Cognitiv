@@ -19,55 +19,51 @@ bool SensorManager::initSensors(uint16_t warmupReadings) {
   if (scd41.begin(Wire)) {
     Serial.println("✓ OK");
 
-    // Stop any ongoing measurement
+    // Stop any ongoing measurement from previous session
     scd41.stopPeriodicMeasurement();
     delay(500);
 
-    // Start periodic measurements
-    Serial.print("SCD41: Starting measurements... ");
-    if (scd41.startPeriodicMeasurement()) {
-      Serial.println("✓ OK");
+    // Audit finding 2.2: Use single-shot mode for deep sleep cycles
+    // Single-shot is optimized for infrequent readings (30s intervals)
+    // Benefits: Lower power, no 500ms stop delay, simpler state machine
+    Serial.println("SCD41: Configured for single-shot mode (optimized for deep sleep)");
 
-      // Addresses audit finding 3.4 - Sensor Stabilization
-      if (warmupTarget > 0) {
-        Serial.print("SCD41: Warming up (discarding first ");
-        Serial.print(warmupTarget);
-        Serial.println(" readings for stability)");
+    // Perform warmup readings if configured
+    if (warmupTarget > 0) {
+      Serial.print("SCD41: Warming up (");
+      Serial.print(warmupTarget);
+      Serial.println(" single-shot readings for stability)");
 
-        // Discard warmup readings
-        unsigned long warmupStart = millis();
-        while (warmupCount < warmupTarget && (millis() - warmupStart) < 60000) {
-          if (scd41.readMeasurement()) {
-            warmupCount++;
-            Serial.print("  Warmup reading ");
-            Serial.print(warmupCount);
-            Serial.print("/");
-            Serial.print(warmupTarget);
-            Serial.print(": CO2=");
-            Serial.print(scd41.getCO2());
-            Serial.print(" ppm, Temp=");
-            Serial.print(scd41.getTemperature(), 1);
-            Serial.println("°C (discarded)");
-          }
-          delay(5000); // SCD41 measures every 5 seconds
-        }
-
-        if (warmupCount >= warmupTarget) {
-          Serial.println("✓ SCD41: Warmup complete, sensor stabilized");
+      unsigned long warmupStart = millis();
+      while (warmupCount < warmupTarget && (millis() - warmupStart) < 60000) {
+        SensorData warmupData;
+        if (measureSingleShot(warmupData, 6000)) {
+          warmupCount++;
+          Serial.print("  Warmup reading ");
+          Serial.print(warmupCount);
+          Serial.print("/");
+          Serial.print(warmupTarget);
+          Serial.print(": CO2=");
+          Serial.print(warmupData.co2);
+          Serial.print(" ppm, Temp=");
+          Serial.print(warmupData.temperature, 1);
+          Serial.println("°C (discarded)");
         } else {
-          Serial.println("⚠️  SCD41: Warmup timeout, proceeding anyway");
+          Serial.println("  Warmup reading failed, retrying...");
         }
-      } else {
-        Serial.println(
-            "⚠️  SCD41: No warmup configured (first reading may be unstable)");
       }
 
-      sensorsInitialized = true;
-      return true;
+      if (warmupCount >= warmupTarget) {
+        Serial.println("✓ SCD41: Warmup complete, sensor stabilized");
+      } else {
+        Serial.println("⚠️  SCD41: Warmup timeout, proceeding anyway");
+      }
     } else {
-      Serial.println("✗ FAILED to start measurements");
-      return false;
+      Serial.println("⚠️  SCD41: No warmup configured (first reading may be unstable)");
     }
+
+    sensorsInitialized = true;
+    return true;
   } else {
     Serial.println("✗ FAILED - Check I2C connections");
     sensorsInitialized = false;
@@ -116,6 +112,63 @@ SensorData SensorManager::readSensors() {
   return data;
 }
 
+bool SensorManager::measureSingleShot(SensorData& data, unsigned long timeoutMs) {
+  // Initialize data structure
+  data.valid = false;
+  data.timestamp = time(nullptr);
+  data.voltage = 0.0;
+  data.temperature = 0.0;
+  data.humidity = 0.0;
+  data.co2 = 0;
+
+  if (!sensorsInitialized) {
+    Serial.println("SensorManager: Sensors not initialized");
+    return false;
+  }
+
+  // Audit finding 2.2: Single-shot mode for deep sleep cycles
+  // This is the recommended mode for infrequent readings (30s intervals)
+  Serial.println("SCD41: Starting single-shot measurement...");
+  
+  uint16_t error = scd41.measureSingleShot();
+  if (error) {
+    Serial.print("SCD41: measureSingleShot failed with error: ");
+    Serial.println(error);
+    return false;
+  }
+
+  // Wait for measurement to complete (SCD41 takes 5 seconds for single-shot)
+  Serial.println("SCD41: Waiting 5 seconds for measurement...");
+  delay(5000);
+
+  // Read the measurement
+  if (scd41.readMeasurement()) {
+    data.co2 = scd41.getCO2();
+    data.temperature = scd41.getTemperature();
+    data.humidity = scd41.getHumidity();
+
+    Serial.print("SCD41 - CO2: ");
+    Serial.print(data.co2);
+    Serial.print(" ppm, Temp: ");
+    Serial.print(data.temperature, 2);
+    Serial.print("°C, Humidity: ");
+    Serial.print(data.humidity, 2);
+    Serial.println("%");
+
+    // Validate readings
+    if (validateReading(data)) {
+      data.valid = true;
+      return true;
+    } else {
+      Serial.println("SensorManager: Reading out of valid range");
+      return false;
+    }
+  } else {
+    Serial.println("SensorManager: No data available from SCD41");
+    return false;
+  }
+}
+
 float SensorManager::readVoltage(float dividerRatio) {
   // Read ADC value (0-1023)
   int adcValue = analogRead(A0);
@@ -142,9 +195,10 @@ float SensorManager::readVoltage(float dividerRatio) {
 
 void SensorManager::stopSensors() {
   if (sensorsInitialized) {
-    scd41.stopPeriodicMeasurement();
-    delay(500); // Give sensor time to process stop command before deep sleep
-    Serial.println("SensorManager: Sensors stopped");
+    // Audit finding 2.2: Single-shot mode doesn't require stopping
+    // No periodic measurement running, so no stop command needed
+    // This eliminates the 500ms delay before deep sleep
+    Serial.println("SensorManager: Sensors stopped (single-shot mode, no action needed)");
   }
 }
 

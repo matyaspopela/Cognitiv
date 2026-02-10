@@ -17,6 +17,7 @@ bool NetworkManager::connectWiFi(const char* ssid, const char* password) {
   wifiState = CONNECTING;
   
   WiFi.mode(WIFI_STA);
+  WiFi.persistent(false); // CRITICAL FIX: Disable flash writes (audit finding 2.1)
   WiFi.disconnect();
   delay(100);
   

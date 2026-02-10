@@ -20,8 +20,10 @@ void PowerManager::enterDeepSleep(unsigned long durationSeconds) {
   Serial.println("All systems shutting down...");
   Serial.println("========================================\n");
 
-  // Longer delay to ensure WiFi and RF are fully powered down
-  delay(500);
+  // CRITICAL: Reduced from 500ms to 100ms to prevent brownout on battery
+  // 500ms delay drains capacitor on weak power sources, causing zombie state
+  // 100ms is sufficient for WiFi shutdown acknowledgment and serial flush
+  delay(100);
 
   // Enter deep sleep
   // Convert seconds to microseconds

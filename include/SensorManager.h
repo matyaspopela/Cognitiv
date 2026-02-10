@@ -24,6 +24,9 @@ public:
   // Read sensor data with validation
   SensorData readSensors();
   
+  // Single-shot measurement (audit finding 2.2 - optimized for deep sleep)
+  bool measureSingleShot(SensorData& data, unsigned long timeoutMs = 6000);
+  
   // Read voltage from ADC
   float readVoltage(float dividerRatio);
   

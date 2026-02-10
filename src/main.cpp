@@ -42,22 +42,104 @@ PowerManager powerManager;
 
 unsigned long lastReadingTime = 0;
 
+/**
+ * I2C Bus Recovery (Audit Finding 2.3)
+ * 
+ * If the ESP8266 reboots while the SCD41 is pulling SDA low (transmitting a 0),
+ * the I2C bus will lock up. Wire.begin() does not automatically clear this.
+ * 
+ * Solution: Toggle SCL 9 times to complete any partial byte transmission,
+ * allowing the slave device to release SDA.
+ */
+void recoverI2C() {
+  Serial.println("I2C: Performing bus recovery...");
+  
+  pinMode(I2C_SCL, OUTPUT);
+  pinMode(I2C_SDA, INPUT_PULLUP); // Monitor SDA state
+  
+  for (int i = 0; i < 9; i++) {
+    digitalWrite(I2C_SCL, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(I2C_SCL, LOW);
+    delayMicroseconds(5);
+  }
+  
+  // Return pins to I2C control
+  pinMode(I2C_SCL, INPUT);
+  pinMode(I2C_SDA, INPUT);
+  
+  Serial.println("I2C: Bus recovery complete");
+}
+
 void setup() {
   Serial.begin(115200);
   delay(100);
 
-  Serial.println("\n\n=================================");
+  Serial.println("\\n\\n=================================");
   Serial.println("Environmental Monitoring System");
   Serial.println("(Refactored with Manager Classes)");
-  Serial.println("=================================\n");
+  Serial.println("=================================\\n");
+
+  // ========================================
+  // PHASE 1: Boot & I2C Initialization
+  // ========================================
+  
+  // Recover I2C bus before initialization (audit finding 2.3)
+  recoverI2C();
 
   // Initialize I2C
   Wire.begin(I2C_SDA, I2C_SCL);
 
-  // Connect to WiFi
+  // ========================================
+  // PHASE 2: Sensor Read (PRIORITY)
+  // ========================================
+  // Audit finding: Read sensor BEFORE WiFi to save battery on failures
+  // If sensor fails, skip WiFi entirely (saves ~300mA current spike)
+  
+  // Initialize sensors with warmup
+  // Reduce warmup to 4 readings (20s) to balance stability vs battery life
+  if (!sensorManager.initSensors(4)) {
+    Serial.println("✗ Sensor initialization failed");
+    Serial.println("⚠️  Skipping WiFi to save battery, going to sleep...");
+    delay(100);
+    sensorManager.stopSensors();
+    powerManager.enterDeepSleep(DEEP_SLEEP_DURATION_SEC);
+    // Never returns
+  }
+
+  Serial.println("--- Single Shot Reading ---");
+  SensorData reading;
+  
+  // Use single-shot mode (audit finding 2.2)
+  if (!sensorManager.measureSingleShot(reading, 6000)) {
+    Serial.println("✗ Could not get valid reading in time");
+    Serial.println("⚠️  Skipping WiFi to save battery, going to sleep...");
+    delay(100);
+    sensorManager.stopSensors();
+    powerManager.enterDeepSleep(DEEP_SLEEP_DURATION_SEC);
+    // Never returns
+  }
+
+  // Read voltage after successful sensor measurement
+  reading.voltage = sensorManager.readVoltage(VOLTAGE_DIVIDER_RATIO);
+  lastReadingTime = millis();
+
+  // ========================================
+  // PHASE 3: Network (LAZY LOADING)
+  // ========================================
+  // Audit finding: Only enable WiFi AFTER valid data acquired
+  // This is the lazy loading optimization
+  
+  Serial.println("\\n--- Network Initialization (Lazy Loading) ---");
+  
+  // Connect to WiFi (WiFi.persistent(false) is set in NetworkManager)
   if (!networkManager.connectWiFi(WIFI_SSID, WIFI_PASSWORD)) {
     Serial.println("✗ WiFi connection failed");
-    delay(2000);
+    Serial.println("⚠️  Proceeding to sleep without sending data...");
+    delay(100);
+    sensorManager.stopSensors();
+    powerManager.enterDeepSleep(DEEP_SLEEP_DURATION_SEC);
+    // Never returns
   }
 
   // Initialize MQTT
@@ -71,49 +153,33 @@ void setup() {
   networkManager.setInsecureMode();
 
   // Connect MQTT
-  networkManager.connectMQTT();
-
-  // Initialize sensors with warmup (addresses audit finding 3.4)
-  // Reduce warmup to 4 readings (20s) to balance stability vs battery life
-  if (!sensorManager.initSensors(4)) {
-    Serial.println("✗ Sensor initialization failed");
-    delay(2000);
+  if (!networkManager.connectMQTT()) {
+    Serial.println("✗ MQTT connection failed, retrying once...");
+    delay(1000);
+    networkManager.connectMQTT(); // One retry
   }
 
-  // --- OPERATION: Single Shot Reading ---
-  Serial.println("--- Single Shot Reading ---");
-
-  SensorData reading;
-  reading.voltage = sensorManager.readVoltage(VOLTAGE_DIVIDER_RATIO);
-
-  if (sensorManager.waitForValidReading(reading, 6000)) {
-    // Update voltage (waitForValidReading doesn't read voltage)
-    reading.voltage = sensorManager.readVoltage(VOLTAGE_DIVIDER_RATIO);
-
-    lastReadingTime = millis();
-
-    // Send to MQTT
-    if (networkManager.getWiFiState() == CONNECTED) {
-      if (!networkManager.isConnected()) {
-        networkManager.connectMQTT();
-      }
-
-      if (networkManager.publishSensorData(
-              reading.timestamp, networkManager.getMacAddress(),
-              reading.temperature, reading.humidity, reading.co2,
-              reading.voltage)) {
-        Serial.println("✓ Data sent successfully");
-      } else {
-        Serial.println("✗ Failed to send data");
-      }
+  // Send to MQTT
+  if (networkManager.getWiFiState() == CONNECTED) {
+    if (!networkManager.isConnected()) {
+      networkManager.connectMQTT();
     }
 
-    Serial.println("Data sent. Proceeding to deep sleep...");
-  } else {
-    Serial.println("✗ Could not get valid reading in time");
+    if (networkManager.publishSensorData(
+            reading.timestamp, networkManager.getMacAddress(),
+            reading.temperature, reading.humidity, reading.co2,
+            reading.voltage)) {
+      Serial.println("✓ Data sent successfully");
+    } else {
+      Serial.println("✗ Failed to send data");
+    }
   }
 
-  // --- SAFE / NORMAL MODE: Deep Sleep ---
+  Serial.println("Data sent. Proceeding to deep sleep...");
+
+  // ========================================
+  // PHASE 4: Sleep
+  // ========================================
 
   // Check Quiet Hours (addresses audit finding for power management)
 #if QUIET_HOURS_ENABLED
@@ -139,10 +205,8 @@ void setup() {
   // Stop sensors
   sensorManager.stopSensors();
 
-  // Disconnect network (addresses audit finding 3.3 - WiFi shutdown)
-  networkManager.disconnectWiFi();
-
   // DEEP SLEEP (addresses audit finding 4.2 - use constant)
+  // PowerManager owns all WiFi shutdown logic (audit finding 2.4)
   powerManager.enterDeepSleep(DEEP_SLEEP_DURATION_SEC);
 }
 
@@ -193,10 +257,8 @@ void loop() {
         // Stop sensors
         sensorManager.stopSensors();
 
-        // Disconnect network
-        networkManager.disconnectWiFi();
-
         delay(100);
+        // PowerManager owns all WiFi shutdown logic
         powerManager.enterDeepSleep(DEEP_SLEEP_DURATION_SEC);
       } else {
         Serial.println("CO2 still high. Staying active.");
