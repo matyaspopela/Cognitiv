@@ -38,8 +38,10 @@ bool readRTC(RTCData &data) {
     uint32_t expected = crc32(payload, sizeof(data) - sizeof(data.crc32));
 
     if (data.crc32 != expected || data.magic != RTC_MAGIC) {
-        DBG("RTC integrity FAIL  crc=%08X/%08X  magic=%08X/%08X",
+        DBG("RTC invalid (first boot or corrupted)  crc=%08X/%08X  magic=%08X/%08X",
             data.crc32, expected, data.magic, RTC_MAGIC);
+        // Zero out data to prevent using garbage
+        memset(&data, 0, sizeof(data));
         return false;
     }
 

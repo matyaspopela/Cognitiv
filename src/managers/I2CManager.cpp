@@ -14,40 +14,51 @@ void init() {
 }
 
 bool recover() {
-    DBG("Attempting I2C bus recovery …");
+    DBG("Attempting I2C bus recovery (9 clocks) …");
 
-    // Reconfigure pins for manual bit-bang (ESP8266 Wire has no end()).
+    // 1. Force Software mode for pins (release Wire control)
     pinMode(PIN_SDA, INPUT_PULLUP);
     pinMode(PIN_SCL, OUTPUT);
 
-    // Clock SCL up to 9 times; exit early if SDA releases.
-    bool recovered = false;
-    for (uint8_t i = 0; i < 9; ++i) {
+    // 2. Clock up to 9 cycles
+    bool released = false;
+    for (int i = 0; i < 9; i++) {
         digitalWrite(PIN_SCL, LOW);
-        delayMicroseconds(5);
+        delayMicroseconds(10);
         digitalWrite(PIN_SCL, HIGH);
-        delayMicroseconds(5);
+        delayMicroseconds(10);
 
+        // Check if device released SDA
         if (digitalRead(PIN_SDA) == HIGH) {
-            recovered = true;
+            released = true;
+            DBG("  → Bus released at clock %d", i + 1);
             break;
         }
     }
 
-    // Generate STOP condition: SDA LOW→HIGH while SCL is HIGH.
+    // 3. Send STOP condition: SCL High, then SDA Low->High
+    digitalWrite(PIN_SCL, LOW);
+    delayMicroseconds(10);
     pinMode(PIN_SDA, OUTPUT);
-    digitalWrite(PIN_SDA, LOW);
-    delayMicroseconds(5);
-    digitalWrite(PIN_SCL, HIGH);
-    delayMicroseconds(5);
-    digitalWrite(PIN_SDA, HIGH);
-    delayMicroseconds(5);
+    digitalWrite(PIN_SDA, LOW); // SDA Low
+    delayMicroseconds(10);
+    
+    digitalWrite(PIN_SCL, HIGH); // SCL High
+    delayMicroseconds(10);
+    digitalWrite(PIN_SDA, HIGH); // SDA High (STOP)
+    delayMicroseconds(10);
 
-    // Re-initialise Wire.
+    // 4. Restore pins for hardware I2C
+    pinMode(PIN_SDA, INPUT);
+    pinMode(PIN_SCL, OUTPUT); // Wire library will take over
+
+    if (!released) {
+        DBG("  x Bus still held LOW after 9 clocks");
+    }
+
+    // Explicitly re-init Wire
     init();
-
-    DBG("Bus recovery %s", recovered ? "OK" : "FAILED – SDA stuck LOW");
-    return recovered;
+    return released;
 }
 
 bool devicePresent(uint8_t address) {
