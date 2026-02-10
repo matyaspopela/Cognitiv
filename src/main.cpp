@@ -54,9 +54,10 @@ unsigned long lastReadingTime = 0;
 void recoverI2C() {
   Serial.println("I2C: Performing bus recovery...");
   
+  // Temporarily take control of SCL to clock out any stuck transmission
   pinMode(I2C_SCL, OUTPUT);
-  pinMode(I2C_SDA, INPUT_PULLUP); // Monitor SDA state
   
+  // Toggle SCL 9 times to complete any partial byte
   for (int i = 0; i < 9; i++) {
     digitalWrite(I2C_SCL, HIGH);
     delayMicroseconds(5);
@@ -64,7 +65,8 @@ void recoverI2C() {
     delayMicroseconds(5);
   }
   
-  // Return pins to I2C control
+  // Release SCL back to default state
+  // Wire.begin() will properly configure both pins for I2C
   pinMode(I2C_SCL, INPUT);
   pinMode(I2C_SDA, INPUT);
   
@@ -85,7 +87,8 @@ void setup() {
   // ========================================
   
   // Recover I2C bus before initialization (audit finding 2.3)
-  recoverI2C();
+  // TEMPORARILY DISABLED: Test if this is causing sensor init failures
+  // recoverI2C();
 
   // Initialize I2C
   Wire.begin(I2C_SDA, I2C_SCL);
