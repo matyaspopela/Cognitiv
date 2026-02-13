@@ -37,12 +37,16 @@ from .datalab.query_builder import QueryBuilder
 from .annotation.room_manager import RoomManager
 
 # Import annotated data API views
+# Import annotated data API views
 from .annotation.annotated_api import (
     annotated_series,
     annotated_summary,
     annotated_lessons,
     annotated_heatmap,
 )
+
+from .aqi import calculate_aqi, get_aqi_status
+
 
 # Configuration - Use functions to read env vars lazily (after .env is loaded)
 def get_mongo_uri():
@@ -1822,10 +1826,17 @@ def get_stats(request):
         current_humidity = None
         current_co2 = None
 
+        current_aqi = None
+        current_aqi_status = None
+
         if latest_doc:
             current_temperature = round(float(latest_doc.get('temperature', 0)), 1)
             current_humidity = round(float(latest_doc.get('humidity', 0)), 1)
             current_co2 = int(latest_doc.get('co2', 0))
+            
+            # Calculate AQI
+            current_aqi = calculate_aqi(current_co2)
+            current_aqi_status = get_aqi_status(current_aqi)
 
         count = stats_doc.get('count', 0)
         co2_good = stats_doc.get('co2_good', 0)
@@ -1851,6 +1862,10 @@ def get_stats(request):
                 'max': int(stats_doc.get('co2_max', 0)),
                 'avg': round(stats_doc.get('co2_avg', 0)),
                 'current': current_co2
+            },
+            'aqi': {
+                'score': current_aqi,
+                'status': current_aqi_status
             },
             'data_points': count,
             'time_range_hours': hours
@@ -2197,7 +2212,11 @@ def get_devices(request):
                                 'temperature': latest_doc.get('temperature'),
                                 'humidity': latest_doc.get('humidity'),
                                 'co2': latest_doc.get('co2'),
-                                'voltage': voltage
+                                'voltage': voltage,
+                                'aqi': {
+                                    'score': calculate_aqi(latest_doc.get('co2')),
+                                    'status': get_aqi_status(calculate_aqi(latest_doc.get('co2')))
+                                }
                             }
                 
                 devices.append({
@@ -2273,7 +2292,11 @@ def get_devices(request):
                     'temperature': latest_doc.get('temperature'),
                     'humidity': latest_doc.get('humidity'),
                     'co2': latest_doc.get('co2'),
-                    'voltage': voltage
+                    'voltage': voltage,
+                    'aqi': {
+                        'score': calculate_aqi(latest_doc.get('co2')),
+                        'status': get_aqi_status(calculate_aqi(latest_doc.get('co2')))
+                    }
                 }
 
             # Only add if device_id is valid
