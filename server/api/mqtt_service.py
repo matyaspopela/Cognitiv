@@ -51,8 +51,8 @@ def on_message(client, userdata, msg):
     """Called when a message is received from the broker"""
     global _message_count
     try:
-        # Import here to avoid circular imports
-        from api.views import receive_data
+        # Import services directly (no HTTP loopback)
+        from api.services import DataService, DeviceService
         
         # Parse JSON payload
         payload = json.loads(msg.payload.decode('utf-8'))
@@ -61,23 +61,38 @@ def on_message(client, userdata, msg):
         print(f'\n[MQTT] Message #{_message_count} received')
         print(f'  Device: {payload.get("mac_address", "unknown")}')
         
-        # Create a mock HTTP request to reuse existing receive_data() logic
-        request = _factory.post(
-            '/api/data',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        # Normalize and validate data
+        try:
+            normalized_data = DataService.normalize_sensor_data(payload)
+        except KeyError as e:
+            print(f'  [ERROR] Missing required field: {e}')
+            return
         
-        # Process the data using existing view function
-        response = receive_data(request)
+        is_valid, error_msg = DataService.validate_sensor_data(normalized_data)
+        if not is_valid:
+            print(f'  [ERROR] Validation failed: {error_msg}')
+            return
         
-        # Check response status
-        if response.status_code == 200:
-            response_data = json.loads(response.content.decode('utf-8'))
-            print(f'  [OK] Data stored: {response_data.get("message", "")}')
+        # Check whitelist if enabled
+        mac_address = normalized_data.get('mac_address')
+        if mac_address:
+            if DeviceService.is_whitelist_enabled():
+                if not DeviceService.is_mac_whitelisted(mac_address):
+                    print(f'  [WARN] Device {mac_address} not whitelisted')
+                    return
+            
+            # Register/update device
+            DeviceService.register_device(
+                mac_address, 
+                normalized_data.get('device_id')
+            )
+        
+        # Ingest data
+        success, message = DataService.ingest_data(normalized_data)
+        if success:
+            print(f'  [OK] {message}')
         else:
-            response_data = json.loads(response.content.decode('utf-8'))
-            print(f'  [ERROR] {response_data.get("error", "Unknown error")}')
+            print(f'  [ERROR] {message}')
             
     except json.JSONDecodeError as e:
         print(f'[ERROR] Error parsing JSON: {e}')

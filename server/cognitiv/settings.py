@@ -66,10 +66,12 @@ if DEBUG:
 
 # Application definition
 INSTALLED_APPS = [
-    'django.contrib.staticfiles',  # For serving static HTML files
-    'django.contrib.sessions',  # For admin session management
-    'corsheaders',  # CORS support
-    'api',  # Main API application
+    'django.contrib.auth',           # Authentication framework
+    'django.contrib.contenttypes',   # Required by auth
+    'django.contrib.staticfiles',    # For serving static HTML files
+    'django.contrib.sessions',       # For admin session management
+    'corsheaders',                   # CORS support
+    'api',                           # Main API application
 ]
 
 MIDDLEWARE = [
@@ -79,6 +81,7 @@ MIDDLEWARE = [
     'api.middleware.DisableCSRFForAPI',  # Disable CSRF for API endpoints (before CSRF middleware)
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection (views use csrf_exempt where needed)
     'django.contrib.sessions.middleware.SessionMiddleware',  # For admin session management
+    'api.middleware.api_key.ApiKeyMiddleware',  # API key authentication for devices
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -130,8 +133,13 @@ TEMPLATES = []
 
 WSGI_APPLICATION = 'cognitiv.wsgi.application'
 
-# Database - Not using Django ORM (using MongoDB via pymongo)
-DATABASES = {}
+# Database - SQLite for Django auth, MongoDB for sensor data
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'

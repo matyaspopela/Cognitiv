@@ -8,11 +8,13 @@ import json
 import csv
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Dict, Any, List, Optional
 from urllib.parse import quote_plus, urlparse, urlunparse, parse_qs, urlencode
-from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse
+from django.http import JsonResponse, HttpResponse, Http404, StreamingHttpResponse, HttpRequest
 
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django_ratelimit.decorators import ratelimit
 from django.conf import settings
 from pathlib import Path
 from pymongo import MongoClient, ASCENDING
@@ -46,6 +48,22 @@ from .annotation.annotated_api import (
 )
 
 from .aqi import calculate_aqi, get_aqi_status
+
+
+# Custom decorator for API endpoints that require authentication
+def api_login_required(view_func):
+    """
+    Decorator for API endpoints that require authentication.
+    Returns JSON 401 instead of redirecting to login page.
+    """
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Authentication required'
+            }, status=401)
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # Configuration - Use functions to read env vars lazily (after .env is loaded)
@@ -992,7 +1010,77 @@ def data_endpoint(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@ratelimit(key='ip', rate='60/m', method='POST')
 def receive_data(request):
+    """Device data ingestion endpoint with Pydantic validation"""
+    from pydantic import ValidationError
+    from api.schemas import SensorDataSchema
+    from api.services import DataService, DeviceService
+    
+    try:
+        # Parse request body
+        data = json.loads(request.body)
+        
+        # Validate with Pydantic
+        try:
+            validated_data = SensorDataSchema(**data)
+        except ValidationError as e:
+            print(f"⚠️  Validation error: {e}")
+            return JsonResponse({
+                'error': 'Validation failed',
+                'details': e.errors()
+            }, status=400)
+        
+        # Convert to dict
+        normalized = validated_data.model_dump()
+        
+        print(f"\n{'='*50}")
+        print(f"Received data from {normalized.get('mac_address', 'unknown')}")
+        print(f"{'='*50}")
+        print(json.dumps(normalized, indent=2, default=str))
+        
+        mac_address = normalized['mac_address']
+        
+        # Check whitelist (if not already authenticated via API key)
+        if not hasattr(request, 'authenticated_device_mac'):
+            if DeviceService.is_whitelist_enabled():
+                if not DeviceService.is_mac_whitelisted(mac_address):
+                    print(f"⚠️  MAC address {mac_address} is not whitelisted - rejecting data")
+                    return JsonResponse({
+                        'error': 'MAC address is not whitelisted',
+                        'mac_address': mac_address,
+                        'whitelist_enabled': True
+                    }, status=403)
+        
+        # Register device
+        DeviceService.register_device(mac_address, normalized.get('device_id'))
+        
+        # Ingest data
+        success, message = DataService.ingest_data(normalized)
+        
+        if success:
+            print(f"✓ {message}")
+            return JsonResponse({
+                'status': 'success',
+                'message': message
+            }, status=200)
+        else:
+            print(f"✗ {message}")
+            return JsonResponse({
+                'error': message
+            }, status=500)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': 'Invalid JSON format'
+        }, status=400)
+    except Exception as e:
+        print(f"[ERROR] Data ingestion failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Server error: {str(e)}'
+        }, status=500)
     """Příjem dat ze senzoru"""
     try:
         data = json.loads(request.body)
@@ -2070,42 +2158,49 @@ def check_admin_auth(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@ratelimit(key='ip', rate='5/m', method='POST')
 def admin_login(request):
-    """Admin login endpoint"""
+    """Admin login using Django native authentication"""
+    from django.contrib.auth import authenticate, login
+    
     try:
         data = json.loads(request.body)
         username = data.get('username', '').strip()
         password = data.get('password', '')
-
-        # Require credentials to be configured
-        if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+        
+        if not username or not password:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Admin credentials not configured on server'
-            }, status=500)
-
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            request.session['admin_authenticated'] = True
-            request.session['admin_username'] = username
+                'message': 'Username and password required'
+            }, status=400)
+        
+        # Use Django's authenticate
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None and user.is_staff:
+            # Log the user in (creates session)
+            login(request, user)
             return JsonResponse({
                 'status': 'success',
-                'message': 'Přihlášení úspěšné',
-                'username': username
+                'message': 'Login successful',
+                'username': user.username
             }, status=200)
         else:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Neplatné přihlašovací údaje'
+                'message': 'Invalid credentials or insufficient permissions'
             }, status=401)
+    
     except json.JSONDecodeError:
         return JsonResponse({
             'status': 'error',
-            'message': 'Neplatný formát požadavku'
+            'message': 'Invalid JSON format'
         }, status=400)
     except Exception as e:
+        print(f"[ERROR] Admin login failed: {e}")
         return JsonResponse({
             'status': 'error',
-            'message': f'Chyba při přihlašování: {str(e)}'
+            'message': f'Login error: {str(e)}'
         }, status=500)
 
 
@@ -2331,6 +2426,7 @@ def get_devices(request):
 
 
 @require_http_methods(["GET"])
+@api_login_required
 def admin_devices(request):
     """Get list of all devices with summary statistics"""
     if not check_admin_auth(request):
@@ -2455,6 +2551,7 @@ def admin_devices(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_rename_device(request, mac_address):
     """Rename device by MAC address"""
     if not check_admin_auth(request):
@@ -2518,6 +2615,7 @@ def admin_rename_device(request, mac_address):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_customize_device(request, mac_address):
     """Customize device by MAC address - update name, class, school, and room_code"""
     if not check_admin_auth(request):
@@ -2669,6 +2767,7 @@ def debug_build_info(request):
 
 
 @require_http_methods(["GET"])
+@api_login_required
 def admin_device_stats(request, device_id):
     """Get detailed statistics for a specific device"""
     if not check_admin_auth(request):
@@ -2789,6 +2888,7 @@ def admin_device_stats(request, device_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_merge_device(request):
     """Merge a legacy device into a MAC-tracked device"""
     if not check_admin_auth(request):
@@ -2868,6 +2968,7 @@ def admin_merge_device(request):
 
 @csrf_exempt
 @require_http_methods(["DELETE"])
+@api_login_required
 def admin_delete_device(request, device_id):
     """Delete a legacy device (by device_id) and all its data"""
     if not check_admin_auth(request):
@@ -2974,6 +3075,7 @@ def ai_chat(request):
 # ==================== MAC Address Whitelist Management ====================
 
 @require_http_methods(["GET"])
+@api_login_required
 def admin_whitelist_status(request):
     """Get the current whitelist enabled status"""
     if not check_admin_auth(request):
@@ -3012,6 +3114,7 @@ def admin_whitelist_status(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_whitelist_toggle(request):
     """Enable or disable MAC address whitelisting"""
     if not check_admin_auth(request):
@@ -3069,6 +3172,7 @@ def admin_whitelist_toggle(request):
 
 
 @require_http_methods(["GET"])
+@api_login_required
 def admin_whitelist_devices(request):
     """Get all devices with their whitelist status"""
     if not check_admin_auth(request):
@@ -3109,6 +3213,7 @@ def admin_whitelist_devices(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_whitelist_set(request, mac_address):
     """Set whitelist status for a specific MAC address"""
     if not check_admin_auth(request):
@@ -3181,6 +3286,7 @@ def admin_whitelist_set(request, mac_address):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_whitelist_all(request):
     """Whitelist all existing MAC addresses in the registry"""
     if not check_admin_auth(request):
@@ -3219,6 +3325,7 @@ def admin_whitelist_all(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_login_required
 def admin_whitelist_add_mac(request):
     """Add a new MAC address to the whitelist (create registry entry if needed)"""
     if not check_admin_auth(request):
