@@ -24,6 +24,26 @@ export const getCo2Color = (co2, alpha = 1) => {
 }
 
 /**
+ * Get color based on AQI score (0-100)
+ * 0-50: Poor (Red)
+ * 50-90: Fair (Yellow)
+ * 90-100: Top (Green)
+ * @param {number|null} score 
+ * @param {number} alpha 
+ */
+export const getAQIColor = (score, alpha = 1) => {
+    if (score == null) return `rgba(61, 70, 83, ${alpha})`
+
+    let color;
+    if (score < 50) color = theme.colors.danger;
+    else if (score < 90) color = theme.colors.warning;
+    else color = theme.colors.safe;
+
+    if (alpha === 1) return color
+    return hexToRgba(color, alpha)
+}
+
+/**
  * Get detailed style object for CO2 value
  * Includes color, glow, line style, and pulse animation flag
  * @param {number|null} co2 - CO2 value in ppm

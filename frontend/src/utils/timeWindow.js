@@ -11,7 +11,7 @@
 export const getTimeWindowRange = (window) => {
   const now = new Date()
   let hoursBack = 24 // default 24h
-  
+
   if (window === '1h') {
     hoursBack = 1
   } else if (window === '7d') {
@@ -21,9 +21,9 @@ export const getTimeWindowRange = (window) => {
   } else if (window === '90d') {
     hoursBack = 90 * 24
   }
-  
+
   const start = new Date(now.getTime() - (hoursBack * 60 * 60 * 1000))
-  
+
   return {
     start: start.toISOString(),
     end: now.toISOString()
@@ -39,25 +39,26 @@ export const getTimeWindowRange = (window) => {
  * - CSV exports are NOT affected - they always use raw data regardless of bucket size
  * 
  * Bucketing Strategy:
- * - 1h window: 'raw' - No aggregation, highest granularity (~60-120 data points)
- * - 24h window: '10min' - 10-minute averages (~144 data points)
- * - 7d window: 'hour' - Hourly averages (~168 data points)
- * - 30d window: 'day' - Daily averages (~30 data points)
+ * - 1h window: 'raw' - No aggregation, highest granularity
+ * - 24h window: '10min' - 10-minute averages
+ * - 7d window: '1h' - Hourly averages
+ * - 30d window: '3h' - 3-hour averages
+ * - 90d window: '6h' - 6-hour averages
  * 
- * @param {string} window - '1h', '24h', '7d', or '30d'
- * @returns {string} bucket size ('raw', '10min', 'hour', or 'day')
+ * @param {string} window - '1h', '24h', '7d', '30d', or '90d'
+ * @returns {string} bucket size ('raw', '10min', '1h', '3h', or '6h')
  */
 export const getBucketSize = (window) => {
   if (window === '1h') {
-    return 'raw' // Use raw data for 1 hour (most granular)
+    return 'raw' // No aggregation for 1 hour
   } else if (window === '24h') {
-    return '10min' // 10-minute aggregation
+    return '10min' // 10-minute aggregation for 24 hours
   } else if (window === '7d') {
-    return 'hour' // Hourly aggregation
+    return '1h' // 1-hour aggregation for 7 days
   } else if (window === '30d') {
-    return 'day' // Daily aggregation
+    return '3h' // 3-hour aggregation for 30 days
   } else if (window === '90d') {
-    return 'day' // Daily aggregation for 90 days
+    return '6h' // 6-hour aggregation for 90 days
   }
   return '10min' // default fallback
 }
@@ -70,32 +71,32 @@ export const getBucketSize = (window) => {
  */
 export const formatTimeLabel = (timestamp, window) => {
   const date = new Date(timestamp)
-  
+
   // Handle invalid dates
   if (isNaN(date.getTime())) {
     return ''
   }
-  
+
   // Use English locale
   if (window === '1h' || window === '24h') {
     // Show hours/minutes for 1h and 24h windows
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
       hour12: false
     })
   } else if (window === '7d') {
     // Show day and time for 7d window
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      hour: '2-digit', 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      hour: '2-digit',
       minute: '2-digit',
       hour12: false
     })
   } else {
     // Show date for 30d window
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric'
     })
   }

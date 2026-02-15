@@ -1,248 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  TimeScale,
-
-} from 'chart.js'
-import { Line } from 'react-chartjs-2'
-import 'chartjs-adapter-date-fns'
-import { dataAPI, historyAPI } from '../../services/api'
-import {
-  buildCo2ChartData,
-  buildClimateChartData,
-  buildQualityChartData,
-  hasValidChartData,
-  getChartOptions,
-  getClimateChartOptions,
-} from '../../utils/charts'
-import { getTimeWindowRange, getBucketSize } from '../../utils/timeWindow'
-import { theme } from '../../design/theme'
-import Card from '../ui/Card'
+import { dataAPI } from '../../services/api'
 import MinimalTimeSelector from './MinimalTimeSelector'
-import ProgressBar from '../ui/ProgressBar'
 import KeyMetricsGrid from './KeyMetricsGrid'
-import AirQualityGauge from './AirQualityGauge'
+import AQIGraph from './AQIGraph'
+import Co2Graph from './Co2Graph'
 
 import './DeviceDetailView.css'
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  TimeScale,
-  TimeScale
-)
-
-/**
- * Filter series data to only include points within the requested time range
- */
-const filterSeriesInRange = (series, startISO, endISO) => {
-  if (!series || !Array.isArray(series)) return []
-
-  const startTime = new Date(startISO).getTime()
-  const endTime = new Date(endISO).getTime()
-
-  return series.filter(item => {
-    if (!item.bucket_start) return false
-    const pointTime = new Date(item.bucket_start).getTime()
-    return pointTime >= startTime && pointTime <= endTime
-  })
-}
-
-/**
- * CO2 Graph Component
- */
-const Co2Graph = ({ deviceId, timeWindow }) => {
-  const [chartData, setChartData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const chartRef = useRef(null)
-
-  useEffect(() => {
-    const loadChartData = async () => {
-      if (!deviceId) return
-
-      try {
-        setLoading(true)
-        setError(null)
-        setChartData(null)
-        const { start, end } = getTimeWindowRange(timeWindow)
-        const bucket = getBucketSize(timeWindow)
-
-        const response = await historyAPI.getSeries(start, end, bucket, deviceId)
-
-        if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Failed to load data')
-          return
-        }
-
-        const seriesData = response?.data || response
-
-        if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
-          const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
-
-          if (filteredSeries.length > 0) {
-            const data = buildCo2ChartData(filteredSeries, bucket)
-            if (hasValidChartData(data)) {
-              setChartData(data)
-            } else {
-              setError('No data to display')
-            }
-          } else {
-            setError('No data to display')
-          }
-        } else {
-          setError('No data to display')
-        }
-      } catch (err) {
-        console.error('Error loading CO2 graph:', err)
-        setError('Error loading data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadChartData()
-  }, [deviceId, timeWindow])
-
-  const options = getChartOptions('line', {
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.dataset.label}: ${context.parsed.y} ppm`
-        }
-      }
-    }
-  })
-
-  return (
-    <Card className="chart-container">
-      <h3 className="chart-container__title">CO₂ Concentration</h3>
-      <div className="chart-container__content">
-        {loading ? (
-          <div className="chart-container__loading">
-            <ProgressBar indeterminate />
-          </div>
-        ) : error ? (
-          <div className="chart-container__error">
-            <p>{error}</p>
-          </div>
-        ) : chartData ? (
-          <div className="chart-container__chart" style={{ height: '400px' }}>
-            <Line ref={chartRef} data={chartData} options={options} />
-          </div>
-        ) : (
-          <div className="chart-container__empty">
-            <p>No data to display</p>
-          </div>
-        )}
-      </div>
-    </Card>
-  )
-}
-
-/**
- * Climate Graph Component (Temperature + Humidity)
- */
-const ClimateGraph = ({ deviceId, timeWindow }) => {
-  const [chartData, setChartData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const chartRef = useRef(null)
-
-  useEffect(() => {
-    const loadChartData = async () => {
-      if (!deviceId) return
-
-      try {
-        setLoading(true)
-        setError(null)
-        setChartData(null)
-        const { start, end } = getTimeWindowRange(timeWindow)
-        const bucket = getBucketSize(timeWindow)
-
-        const response = await historyAPI.getSeries(start, end, bucket, deviceId)
-
-        if (response?.response?.status >= 400 || response?.status >= 400) {
-          setError('Failed to load data')
-          return
-        }
-
-        const seriesData = response?.data || response
-
-        if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
-          const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
-
-          if (filteredSeries.length > 0) {
-            const data = buildClimateChartData(filteredSeries, bucket)
-            if (hasValidChartData(data)) {
-              setChartData(data)
-            } else {
-              setError('No data to display')
-            }
-          } else {
-            setError('No data to display')
-          }
-        } else {
-          setError('No data to display')
-        }
-      } catch (err) {
-        console.error('Error loading climate graph:', err)
-        setError('Error loading data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadChartData()
-  }, [deviceId, timeWindow])
-
-  const options = getClimateChartOptions()
-
-  return (
-    <Card className="chart-container">
-      <h3 className="chart-container__title">Temperature and Humidity</h3>
-      <div className="chart-container__content">
-        {loading ? (
-          <div className="chart-container__loading">
-            <ProgressBar indeterminate />
-          </div>
-        ) : error ? (
-          <div className="chart-container__error">
-            <p>{error}</p>
-          </div>
-        ) : chartData ? (
-          <div className="chart-container__chart" style={{ height: '400px' }}>
-            <Line ref={chartRef} data={chartData} options={options} />
-          </div>
-        ) : (
-          <div className="chart-container__empty">
-            <p>No data to display</p>
-          </div>
-        )}
-      </div>
-    </Card>
-  )
-}
-
-/**
- * Component removed: QualityPieChart
- */
 
 /**
  * DeviceDetailView Component
@@ -293,18 +57,16 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
       <div className="device-detail-view__content">
         <KeyMetricsGrid deviceId={deviceId} timeWindow={timeWindow} />
 
-        {/* Primary Trends */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
-          <ClimateGraph deviceId={deviceId} timeWindow={timeWindow} />
-        </div>
-
-
-
-        {/* Secondary Distribution */}
+        {/* Primary Trends - AQI Graph */}
         <div className="mb-6">
-          <AirQualityGauge deviceId={deviceId} timeWindow={timeWindow} />
+          <AQIGraph deviceId={deviceId} timeWindow={timeWindow} />
         </div>
+
+        {/* Dev Verification - CO2 Graph */}
+        <div className="mb-6">
+          <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
+        </div>
+
       </div>
     </div>
   )

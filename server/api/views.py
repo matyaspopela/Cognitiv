@@ -1412,12 +1412,15 @@ def history_series(request):
             }, status=400)
 
         bucket = (request.GET.get('bucket') or 'day').lower()
-        if bucket not in ('hour', 'day', 'raw', 'none', '10min'):
-            return JsonResponse({'error': "Parametr 'bucket' podporuje pouze hodnoty 'hour', 'day', 'raw', 'none' nebo '10min'."}, status=400)
+        # Accept both old format (hour, 6h) and new format (1h, 3h)
+        valid_buckets = ('1min', '5min', '10min', '30min', 'hour', '1h', '3h', '6h', '12h', 'day', 'raw', 'none')
+        if bucket not in valid_buckets:
+            return JsonResponse({'error': f"Parametr 'bucket' podporuje pouze hodnoty: {', '.join(valid_buckets)}."}, status=400)
 
         device_id = request.GET.get('device_id')
         mongo_filter = build_history_filter(start_dt, end_dt, device_id)
         bucket_unit = None
+        bucket_size = 1
 
         # Handle raw data (no aggregation)
         if bucket in ('raw', 'none'):
@@ -1442,6 +1445,13 @@ def history_series(request):
                         'avg': doc.get('co2'),
                         'min': doc.get('co2'),
                         'max': doc.get('co2'),
+                    },
+                    'aqi': {
+					    # For raw data, avg/min/max are the same
+                        'avg': calculate_aqi(doc.get('co2')),
+                        'min': calculate_aqi(doc.get('co2')),
+                        'max': calculate_aqi(doc.get('co2')),
+						'status': get_aqi_status(calculate_aqi(doc.get('co2')))
                     }
                 }
                 if not device_id:
@@ -1451,115 +1461,72 @@ def history_series(request):
                 series.append(entry)
         else:
             # Aggregated data
-            if bucket == '10min':
-                # 10-minute buckets: round timestamp down to nearest 10-minute boundary
-                # Calculate milliseconds to subtract: (minute % 10) * 60 + seconds
-                # Then subtract from timestamp in milliseconds
-                pipeline = [
-                    {'$match': mongo_filter},
-                    {
-                        '$addFields': {
-                            'minute_remainder_ms': {
-                                '$multiply': [
-                                    {
-                                        '$mod': [
-                                            {'$minute': '$timestamp'},
-                                            10
-                                        ]
-                                    },
-                                    60000  # minutes to milliseconds
-                                ]
-                            },
-                            'seconds_ms': {
-                                '$multiply': [
-                                    {'$second': '$timestamp'},
-                                    1000  # seconds to milliseconds
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        '$addFields': {
-                            'total_ms_to_subtract': {
-                                '$add': ['$minute_remainder_ms', '$seconds_ms']
-                            }
-                        }
-                    },
-                    {
-                        '$addFields': {
-                            'bucket': {
-                                '$subtract': [
-                                    '$timestamp',
-                                    '$total_ms_to_subtract'
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        '$group': {
-                            '_id': {
-                                'bucket': '$bucket',
-                                **({} if device_id else {'device_id': {'$ifNull': ['$metadata.device_id', '$device_id']}})
-                            },
-                            'count': {'$sum': 1},
-                            'temperature_avg': {'$avg': '$temperature'},
-                            'temperature_min': {'$min': '$temperature'},
-                            'temperature_max': {'$max': '$temperature'},
-                            'humidity_avg': {'$avg': '$humidity'},
-                            'humidity_min': {'$min': '$humidity'},
-                            'humidity_max': {'$max': '$humidity'},
-                            'co2_avg': {'$avg': '$co2'},
-                            'co2_min': {'$min': '$co2'},
-                            'co2_max': {'$max': '$co2'},
-                        }
-                    },
-                    {
-                        '$sort': {
-                            '_id.bucket': 1,
-                            **({'_id.device_id': 1} if not device_id else {})
-                        }
-                    }
-                ]
-                bucket_unit = '10min'
-            else:
-                bucket_unit = 'hour' if bucket == 'hour' else 'day'
+            # Determine unit and binSize
+            if bucket == '1min':
+                bucket_unit = 'minute'
+                bucket_size = 1
+            elif bucket == '5min':
+                bucket_unit = 'minute'
+                bucket_size = 5
+            elif bucket == '10min':
+                bucket_unit = 'minute'
+                bucket_size = 10
+            elif bucket == '30min':
+                bucket_unit = 'minute'
+                bucket_size = 30
+            elif bucket in ('hour', '1h'):
+                bucket_unit = 'hour'
+                bucket_size = 1
+            elif bucket == '3h':
+                bucket_unit = 'hour'
+                bucket_size = 3
+            elif bucket == '6h':
+                bucket_unit = 'hour'
+                bucket_size = 6
+            elif bucket == '12h':
+                bucket_unit = 'hour'
+                bucket_size = 12
+            else: # day or fallback
+                bucket_unit = 'day'
+                bucket_size = 1
 
-                group_id = {
-                    'bucket': {
-                        '$dateTrunc': {
-                            'date': '$timestamp',
-                            'unit': bucket_unit,
-                        }
+            group_id = {
+                'bucket': {
+                    '$dateTrunc': {
+                        'date': '$timestamp',
+                        'unit': bucket_unit,
+                        'binSize': bucket_size
                     }
                 }
-                if not device_id:
-                    # Use metadata.device_id from timeseries, fallback to old format
-                    group_id['device_id'] = {'$ifNull': ['$metadata.device_id', '$device_id']}
+            }
+            if not device_id:
+                # Use metadata.device_id from timeseries, fallback to old format
+                group_id['device_id'] = {'$ifNull': ['$metadata.device_id', '$device_id']}
 
-                pipeline = [
-                    {'$match': mongo_filter},
-                    {
-                        '$group': {
-                            '_id': group_id,
-                            'count': {'$sum': 1},
-                            'temperature_avg': {'$avg': '$temperature'},
-                            'temperature_min': {'$min': '$temperature'},
-                            'temperature_max': {'$max': '$temperature'},
-                            'humidity_avg': {'$avg': '$humidity'},
-                            'humidity_min': {'$min': '$humidity'},
-                            'humidity_max': {'$max': '$humidity'},
-                            'co2_avg': {'$avg': '$co2'},
-                            'co2_min': {'$min': '$co2'},
-                            'co2_max': {'$max': '$co2'},
-                        }
-                    },
-                    {
-                        '$sort': {
-                            '_id.bucket': 1,
-                            **({'_id.device_id': 1} if not device_id else {})
-                        }
+            pipeline = [
+                {'$match': mongo_filter},
+                {
+                    '$group': {
+                        '_id': group_id,
+                        'count': {'$sum': 1},
+                        'temperature_avg': {'$avg': '$temperature'},
+                        'temperature_min': {'$min': '$temperature'},
+                        'temperature_max': {'$max': '$temperature'},
+                        'humidity_avg': {'$avg': '$humidity'},
+                        'humidity_min': {'$min': '$humidity'},
+                        'humidity_max': {'$max': '$humidity'},
+                        'co2_avg': {'$avg': '$co2'},
+                        'co2_min': {'$min': '$co2'},
+                        'co2_max': {'$max': '$co2'},
                     }
-                ]
+                },
+                {
+                    '$sort': {
+                        '_id.bucket': 1,
+                        **({'_id.device_id': 1} if not device_id else {})
+                    }
+                }
+            ]
 
             cursor = get_mongo_collection().aggregate(pipeline, allowDiskUse=True)
             series = []
@@ -1583,6 +1550,12 @@ def history_series(request):
                         'avg': round_or_none(doc.get('co2_avg')),
                         'min': doc.get('co2_min'),
                         'max': doc.get('co2_max'),
+                    },
+                    'aqi': {
+                        'avg': calculate_aqi(doc.get('co2_avg')),
+                        'min': calculate_aqi(doc.get('co2_max')), # Min AQI corresponds to Max CO2
+                        'max': calculate_aqi(doc.get('co2_min')), # Max AQI corresponds to Min CO2
+                        'status': get_aqi_status(calculate_aqi(doc.get('co2_avg')))
                     }
                 }
                 if not device_id:
@@ -1953,7 +1926,25 @@ def get_stats(request):
             },
             'aqi': {
                 'score': current_aqi,
-                'status': current_aqi_status
+                'status': current_aqi_status,
+                'current': {
+                    'score': current_aqi,
+                    'status': current_aqi_status
+                },
+                'avg': {
+                    'score': calculate_aqi(stats_doc.get('co2_avg')),
+                    'status': get_aqi_status(calculate_aqi(stats_doc.get('co2_avg')))
+                },
+                'min': {
+                    # Min AQI corresponds to Max CO2
+                    'score': calculate_aqi(stats_doc.get('co2_max')),
+                    'status': get_aqi_status(calculate_aqi(stats_doc.get('co2_max')))
+                },
+                'max': {
+                    # Max AQI corresponds to Min CO2
+                    'score': calculate_aqi(stats_doc.get('co2_min')),
+                    'status': get_aqi_status(calculate_aqi(stats_doc.get('co2_min')))
+                }
             },
             'data_points': count,
             'time_range_hours': hours

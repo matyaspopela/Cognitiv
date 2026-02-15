@@ -3,12 +3,12 @@
  * Converts API data to Chart.js-compatible format
  */
 
-import { getCo2Color } from './colors'
+import { getCo2Color, getAQIColor } from './colors'
 import { theme } from '../design/theme'
 
 // Monochrome chart palette
 const monochromeColors = {
-  good: theme.colors.safe,       
+  good: theme.colors.safe,
   moderate: theme.colors.warning,
   danger: theme.colors.danger,
   accent: theme.colors.warning,    // Temperature uses "warning" color (Zinc 400) or maybe Safe? Let's use Zinc 400
@@ -95,19 +95,116 @@ export const buildCo2ChartData = (data, bucket = '10min') => {
         const chart = context.chart
         const { ctx, chartArea } = chart
         if (!chartArea) return 'rgba(212, 212, 216, 0.1)' // Zinc 300 with alpha
-        
+
         const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
         gradient.addColorStop(0, 'rgba(212, 212, 216, 0)')
         gradient.addColorStop(1, 'rgba(212, 212, 216, 0.15)')
         return gradient
       },
       fill: true,
-      tension: 0.4,
+      tension: 0.1, // Reduced tension to prevent artifacts
+      spanGaps: true,
       pointRadius: 0,
       pointHoverRadius: 6,
       pointHoverBackgroundColor: (ctx) => {
         const val = ctx.raw
         return getCo2Color(val)
+      },
+      pointHoverBorderColor: '#18181b', // Zinc 900
+      pointHoverBorderWidth: 2,
+    }]
+  }
+}
+
+/**
+ * Get segment color for AQI chart (Green -> Yellow -> Red)
+ */
+export const getAQISegmentColor = (context) => {
+  if (!context || !context.dataset || !context.dataset.data) {
+    return monochromeColors.good
+  }
+
+  const p0Index = context.p0DataIndex
+  const p1Index = context.p1DataIndex
+  const data = context.dataset.data
+
+  if (p0Index === undefined || p1Index === undefined ||
+    p0Index < 0 || p1Index < 0 ||
+    p0Index >= data.length || p1Index >= data.length) {
+    return monochromeColors.good
+  }
+
+  const v0 = data[p0Index]
+  const v1 = data[p1Index]
+
+  if (v0 === null || v0 === undefined || v1 === null || v1 === undefined) {
+    return monochromeColors.good
+  }
+
+  // Segment color is determined by the WORSE value (lower score)
+  const minValue = Math.min(v0, v1)
+
+  return getAQIColor(minValue)
+}
+
+/**
+ * Build AQI chart data for Chart.js
+ */
+export const buildAQIChartData = (data, bucket = '10min') => {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return null
+  }
+
+  const validData = data.filter(item => item && typeof item === 'object' && item.bucket_start)
+  if (validData.length === 0) return null
+
+  const labels = []
+  const values = []
+
+  validData.forEach((item) => {
+    const timestamp = new Date(item.bucket_start)
+    if (isNaN(timestamp.getTime())) return
+
+    // Allow looking up 'aqi.avg', 'aqi.score', or top-levl 'aqi' if simpler
+    const aqiObj = item.aqi
+    const aqiScore = aqiObj?.avg ?? aqiObj?.score ?? aqiObj
+
+    if (aqiScore === null || aqiScore === undefined) return
+
+    labels.push(timestamp)
+    values.push(Number(aqiScore))
+  })
+
+  if (values.length === 0) return null
+
+  return {
+    labels,
+    datasets: [{
+      label: 'AQI (0-100)',
+      data: values,
+      segment: {
+        borderColor: (ctx) => getAQISegmentColor(ctx),
+      },
+      borderColor: monochromeColors.good,
+      borderWidth: 2,
+      backgroundColor: (context) => {
+        const chart = context.chart
+        const { ctx, chartArea } = chart
+        if (!chartArea) return 'rgba(212, 212, 216, 0.1)'
+
+        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
+        gradient.addColorStop(0, 'rgba(212, 212, 216, 0)')
+        gradient.addColorStop(1, 'rgba(212, 212, 216, 0.15)')
+        return gradient
+      },
+      fill: true,
+      tension: 0.1, // Reduced tension to prevent artifacts
+      spanGaps: true,
+      pointRadius: 0,
+      pointHoverRadius: 6,
+      pointHoverBackgroundColor: (ctx) => {
+        const val = ctx.raw
+        return getAQIColor(val)
       },
       pointHoverBorderColor: '#18181b', // Zinc 900
       pointHoverBorderWidth: 2,
@@ -153,7 +250,8 @@ export const buildClimateChartData = (data, bucket = '10min') => {
         borderColor: monochromeColors.accent, // Zinc 400
         backgroundColor: 'transparent',
         fill: false,
-        tension: 0.4,
+        tension: 0.1, // Reduced tension
+        spanGaps: true,
         pointRadius: 0,
         pointHoverRadius: 6,
         pointHoverBackgroundColor: monochromeColors.accent,
@@ -167,7 +265,8 @@ export const buildClimateChartData = (data, bucket = '10min') => {
         borderColor: monochromeColors.good, // Zinc 300
         backgroundColor: 'transparent',
         fill: false,
-        tension: 0.4,
+        tension: 0.1, // Reduced tension
+        spanGaps: true,
         pointRadius: 0,
         pointHoverRadius: 6,
         pointHoverBackgroundColor: monochromeColors.good,
@@ -214,7 +313,7 @@ export const buildQualityChartData = (co2Quality) => {
       // Moderate: Zinc 600
       // High: Zinc 400
       // Critical: Zinc 200/White
-      
+
       // Let's use:
       // Good: #52525b (Zinc 600)
       // Moderate: #71717a (Zinc 500)
@@ -273,7 +372,8 @@ export const buildMiniCo2ChartData = (data) => {
       borderColor: lineColor,
       backgroundColor: 'transparent',
       fill: false,
-      tension: 0.4,
+      tension: 0.1, // Reduced tension
+      spanGaps: true,
       pointRadius: 0,
       borderWidth: 2,
     }]

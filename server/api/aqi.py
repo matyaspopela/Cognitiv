@@ -4,11 +4,12 @@ AQI Calculation Module
 Implements the school-specific Air Quality Index (0-100) based on CO2 levels.
 Logic approved in aqi_proposal.md (Option 2: School-Specific Piecewise).
 
-Scale:
-- 0-1000 ppm: 100 (Excellent)
-- 1000-1500 ppm: 100 -> 90 (Good)
-- 1500-2500 ppm: 90 -> 50 (Fair)
-- 2500-5000 ppm: 50 -> 0 (Poor)
+Stricter Scale (Revised v2):
+- 0-800 ppm: 100 (Excellent)
+- 800-1000 ppm: 100 -> 90 (Good)
+- 1000-2000 ppm: 90 -> 50 (Fair)
+- 2000-4000 ppm: 50 -> 0 (Poor)
+- 4000+ ppm: 0 (Critical)
 """
 
 def calculate_aqi(co2):
@@ -30,24 +31,24 @@ def calculate_aqi(co2):
         return None
 
     # Cap values
-    if co2 <= 1000:
+    if co2 <= 800:
         return 100
-    if co2 >= 5000:
+    if co2 >= 4000:
         return 0
     
     # Piecewise calculation
-    if co2 <= 1500:
-        # Range 1000-1500 maps to 100-90
-        # 500 ppm range -> 10 AQI points
-        score = 100 - ((co2 - 1000) / 500) * 10
-    elif co2 <= 2500:
-        # Range 1500-2500 maps to 90-50
+    if co2 <= 1000:
+        # Range 800-1000 maps to 100-90
+        # 200 ppm range -> 10 AQI points
+        score = 100 - ((co2 - 800) / 200) * 10
+    elif co2 <= 2000:
+        # Range 1000-2000 maps to 90-50
         # 1000 ppm range -> 40 AQI points
-        score = 90 - ((co2 - 1500) / 1000) * 40
+        score = 90 - ((co2 - 1000) / 1000) * 40
     else:
-        # Range 2500-5000 maps to 50-0
-        # 2500 ppm range -> 50 AQI points
-        score = 50 - ((co2 - 2500) / 2500) * 50
+        # Range 2000-4000 maps to 50-0
+        # 2000 ppm range -> 50 AQI points
+        score = 50 - ((co2 - 2000) / 2000) * 50
         
     return int(round(score))
 
