@@ -2152,8 +2152,8 @@ ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
 def check_admin_auth(request):
     """Check if request has valid admin authentication via session only"""
-    # Session-based authentication only - no insecure header bypass
-    return request.session.get('admin_authenticated', False)
+    # Use standard Django authentication
+    return request.user.is_authenticated and request.user.is_staff
 
 
 @csrf_exempt
@@ -3026,50 +3026,7 @@ def admin_delete_device(request, device_id):
         }, status=500)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def ai_chat(request):
-    """AI assistant chat endpoint using Gemini API"""
-    try:
-        data = json.loads(request.body) if request.body else {}
-        user_query = data.get('message', '').strip()
-        device_id = data.get('device_id', None)
-        
-        if not user_query:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Zpráva je povinná'
-            }, status=400)
-        
-        # Import here to avoid circular imports
-        from .ai_service import process_ai_query
-        
-        result = process_ai_query(user_query, device_id)
-        
-        if result['status'] == 'error':
-            return JsonResponse({
-                'status': 'error',
-                'message': result.get('response', 'An error occurred'),
-                'error': result.get('error')
-            }, status=500)
-        
-        return JsonResponse({
-            'status': 'success',
-            'response': result['response'],
-            'dataUsed': result.get('dataUsed', {})
-        }, status=200)
-    
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Neplatný JSON v těle požadavku'
-        }, status=400)
-    except Exception as e:
-        print(f"Error in ai_chat endpoint: {e}")
-        return JsonResponse({
-            'status': 'error',
-            'message': f'Došlo k chybě: {str(e)}'
-        }, status=500)
+
 
 
 # ==================== MAC Address Whitelist Management ====================

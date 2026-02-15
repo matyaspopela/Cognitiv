@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/home/matyaspopela/Repos/Cognitiv/server/reproduce_issue.py", line 7, in <module>
+    from django.contrib.auth.models import User
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/contrib/auth/models.py", line 5, in <module>
+    from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/contrib/auth/base_user.py", line 43, in <module>
+    class AbstractBaseUser(models.Model):
+    ...<120 lines>...
+            )
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/db/models/base.py", line 131, in __new__
+    app_config = apps.get_containing_app_config(module)
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/apps/registry.py", line 260, in get_containing_app_config
+    self.check_apps_ready()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/apps/registry.py", line 137, in check_apps_ready
+    settings.INSTALLED_APPS
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/conf/__init__.py", line 75, in __getattr__
+    self._setup(name)
+    ~~~~~~~~~~~^^^^^^
+  File "/home/matyaspopela/Repos/Cognitiv/server/.venv/lib64/python3.14/site-packages/django/conf/__init__.py", line 55, in _setup
+    raise ImproperlyConfigured(
+    ...<4 lines>...
+    )
+django.core.exceptions.ImproperlyConfigured: Requested setting INSTALLED_APPS, but settings are not configured. You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.

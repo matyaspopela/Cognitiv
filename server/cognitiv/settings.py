@@ -77,10 +77,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',  # For admin session management
     'django.middleware.common.CommonMiddleware',
     'api.middleware.DisableCSRFForAPI',  # Disable CSRF for API endpoints (before CSRF middleware)
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection (views use csrf_exempt where needed)
-    'django.contrib.sessions.middleware.SessionMiddleware',  # For admin session management
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Required for request.user
     'api.middleware.api_key.ApiKeyMiddleware',  # API key authentication for devices
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

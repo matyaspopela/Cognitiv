@@ -72,3 +72,27 @@ A powerful subsystem for historical data retrieval and analysis.
 -   **Authentication:** 
     -   **API:** Session-based (Django Admin) or Token-based (future).
     -   **Devices:** MQTT Credentials + MAC Whitelist.
+
+## 8. Air Quality Logic
+
+The system processes CO2 data using two distinct methods: **Categorical Bracketing** (for status indicators) and **AQI Score** (for the 0-100 index).
+
+### Categorical Bracketing
+Defined in `server/api/views.py`. Used for the "Good", "Moderate", "High", "Critical" status pills in the UI.
+
+| Category | CO2 Range (ppm) | Description |
+| :--- | :--- | :--- |
+| **Good** | **< 1000** | Fresh air, distinct from outdoor air (approx 400ppm). ideal for classrooms. |
+| **Moderate** | **1000 - 1500** | Air starting to get stale. Drowsiness may occur. Ventilation recommended. |
+| **High** (Poor) | **1500 - 2000** | Poor air quality. Headaches, sleepiness, loss of concentration probable. |
+| **Critical** | **> 2000** | Significant fatigue, stale air. Immediate ventilation required. |
+
+### AQI Score (0-100)
+Defined in `server/api/aqi.py`. Used for the Dashboard Gauge.
+Calculated using a piecewise linear function:
+
+- **100 - 90**: 0 - 1000 ppm (Excellent)
+- **90 - 50**: 1000 - 1500 ppm (Good -> Fair)
+- **50 - 0**: 1500 - 5000 ppm (Poor)
+
+This score provides a more granular view than the categories, especially in the 1000-1500 ppm range where action is recommended but not critical.
