@@ -102,3 +102,4 @@ temp/
 
 #gemini files
 .gemini
+server/api/management/commands/whitelist_device.py
