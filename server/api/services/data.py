@@ -58,6 +58,10 @@ class DataService:
             raise KeyError("co2")
         normalized['co2'] = data['co2']
         
+        # Optional voltage field (for battery monitoring)
+        if 'voltage' in data:
+            normalized['voltage'] = data['voltage']
+        
         return normalized
     
     @staticmethod
@@ -135,6 +139,8 @@ class DataService:
                     doc['metadata']['mac_address'] = sensor_data['mac_address']
                 if 'device_id' in sensor_data:
                     doc['metadata']['device_id'] = sensor_data['device_id']
+                if 'voltage' in sensor_data:
+                    doc['voltage'] = sensor_data['voltage']
             else:
                 # Regular format
                 doc = sensor_data.copy()
