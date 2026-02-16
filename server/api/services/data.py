@@ -29,8 +29,20 @@ class DataService:
         """
         normalized = {}
         
+        # Parse timestamp - convert to datetime if needed
         try:
-            normalized['timestamp'] = data['timestamp']
+            timestamp = data['timestamp']
+            if isinstance(timestamp, int):
+                # Convert Unix timestamp (seconds since epoch) to datetime
+                normalized['timestamp'] = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            elif isinstance(timestamp, str):
+                # Parse ISO format string to datetime object
+                # Remove 'Z' suffix and replace with '+00:00' for fromisoformat
+                timestamp_str = timestamp.replace('Z', '+00:00')
+                normalized['timestamp'] = datetime.fromisoformat(timestamp_str)
+            else:
+                # Already a datetime object
+                normalized['timestamp'] = timestamp
         except KeyError as exc:
             raise KeyError(f"Missing required field: {exc.args[0]}")
         

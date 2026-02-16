@@ -17,4 +17,4 @@ plotly>=5.0.0
 kaleido>=0.2.0
 pydantic>=2.0.0
 django-ratelimit>=4.1.0
-
+python-dateutil
