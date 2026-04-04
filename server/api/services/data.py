@@ -5,9 +5,11 @@ Handles data ingestion, validation, normalization, and retrieval
 
 from typing import Dict, Any, Tuple, Optional
 from datetime import datetime, timezone
-import os
+import logging
 
 from ..db import get_mongo_collection
+
+logger = logging.getLogger(__name__)
 
 
 class DataService:
@@ -129,6 +131,11 @@ class DataService:
             Tuple of (success, message)
         """
         try:
+            timestamp = sensor_data.get('timestamp')
+            if timestamp and timestamp.weekday() >= 5:
+                logger.info(f"Weekend data skipped: {timestamp}")
+                return True, "Data omitted (weekend)"
+                
             collection = get_mongo_collection()
             
             # Check if timeseries collection
@@ -161,7 +168,7 @@ class DataService:
             return True, "Data stored successfully"
         
         except Exception as e:
-            print(f"[ERROR] Data ingestion failed: {e}")
+            logger.error(f"Data ingestion failed: {e}")
             return False, f"Storage error: {str(e)}"
     
     @staticmethod
@@ -193,5 +200,5 @@ class DataService:
             
             return reading
         except Exception as e:
-            print(f"[ERROR] Failed to get latest reading: {e}")
+            logger.error(f"Failed to get latest reading: {e}")
             return None
