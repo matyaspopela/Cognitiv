@@ -60,10 +60,13 @@ def on_message(client, userdata, msg):
         _message_count += 1
         print(f'\n[MQTT] Message #{_message_count} received')
         print(f'  Device: {payload.get("mac_address", "unknown")}')
+        print(f'  [DEBUG] Raw payload: {payload}')
         
         # Normalize and validate data
         try:
             normalized_data = DataService.normalize_sensor_data(payload)
+            print(f'  [DEBUG] Normalized timestamp type: {type(normalized_data.get("timestamp"))}')
+            print(f'  [DEBUG] Normalized timestamp value: {normalized_data.get("timestamp")}')
         except KeyError as e:
             print(f'  [ERROR] Missing required field: {e}')
             return

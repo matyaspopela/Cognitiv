@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit:*)",
+      "Bash(ls *.py *.txt)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(source venv/bin/activate)",
+      "Bash(python manage.py check)",
+      "Bash(npm run:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

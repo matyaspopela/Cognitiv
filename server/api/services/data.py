@@ -5,9 +5,11 @@ Handles data ingestion, validation, normalization, and retrieval
 
 from typing import Dict, Any, Tuple, Optional
 from datetime import datetime, timezone
-import os
+import logging
 
 from ..db import get_mongo_collection
+
+logger = logging.getLogger(__name__)
 
 
 class DataService:
@@ -29,8 +31,20 @@ class DataService:
         """
         normalized = {}
         
+        # Parse timestamp - convert to datetime if needed
         try:
-            normalized['timestamp'] = data['timestamp']
+            timestamp = data['timestamp']
+            if isinstance(timestamp, int):
+                # Convert Unix timestamp (seconds since epoch) to datetime
+                normalized['timestamp'] = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            elif isinstance(timestamp, str):
+                # Parse ISO format string to datetime object
+                # Remove 'Z' suffix and replace with '+00:00' for fromisoformat
+                timestamp_str = timestamp.replace('Z', '+00:00')
+                normalized['timestamp'] = datetime.fromisoformat(timestamp_str)
+            else:
+                # Already a datetime object
+                normalized['timestamp'] = timestamp
         except KeyError as exc:
             raise KeyError(f"Missing required field: {exc.args[0]}")
         
@@ -57,6 +71,10 @@ class DataService:
         if 'co2' not in data:
             raise KeyError("co2")
         normalized['co2'] = data['co2']
+        
+        # Optional voltage field (for battery monitoring)
+        if 'voltage' in data:
+            normalized['voltage'] = data['voltage']
         
         return normalized
     
@@ -113,6 +131,11 @@ class DataService:
             Tuple of (success, message)
         """
         try:
+            timestamp = sensor_data.get('timestamp')
+            if timestamp and timestamp.weekday() >= 5:
+                logger.info(f"Weekend data skipped: {timestamp}")
+                return True, "Data omitted (weekend)"
+                
             collection = get_mongo_collection()
             
             # Check if timeseries collection
@@ -135,6 +158,8 @@ class DataService:
                     doc['metadata']['mac_address'] = sensor_data['mac_address']
                 if 'device_id' in sensor_data:
                     doc['metadata']['device_id'] = sensor_data['device_id']
+                if 'voltage' in sensor_data:
+                    doc['voltage'] = sensor_data['voltage']
             else:
                 # Regular format
                 doc = sensor_data.copy()
@@ -143,7 +168,7 @@ class DataService:
             return True, "Data stored successfully"
         
         except Exception as e:
-            print(f"[ERROR] Data ingestion failed: {e}")
+            logger.error(f"Data ingestion failed: {e}")
             return False, f"Storage error: {str(e)}"
     
     @staticmethod
@@ -175,5 +200,5 @@ class DataService:
             
             return reading
         except Exception as e:
-            print(f"[ERROR] Failed to get latest reading: {e}")
+            logger.error(f"Failed to get latest reading: {e}")
             return None

@@ -14,9 +14,10 @@ class ApiConfig(AppConfig):
         if any(cmd in sys.argv for cmd in skip_commands):
             return
         
-        # Also skip if we're not the main process (avoid double-start with runserver auto-reload)
+        # Skip if we're not the main process when using runserver (avoid double-start with auto-reload)
         # RUN_MAIN is set by Django's runserver auto-reloader
-        if os.environ.get('RUN_MAIN') != 'true' and 'runserver' in sys.argv:
+        # Only check this for runserver, not for production servers like Gunicorn
+        if 'runserver' in sys.argv and os.environ.get('RUN_MAIN') != 'true':
             return
             
         try:

@@ -136,8 +136,6 @@ static void handleNormalCycle() {
   delay(100);
 
   // ── Sensor Acquisition ────────────────────────────────────────────
-
-  // ── Sensor Acquisition ────────────────────────────────────────────
   if (!SensorManager::init()) {
     emergencySleep("SCD41 init failed");
     return;
