@@ -10,13 +10,62 @@ A small backend change is also needed: the current `DataService.normalize_sensor
 
 ## Critical Hardware Corrections (vs. initial assumptions)
 
-| Item | Assumed | Actual (from netlist) |
-|------|---------|----------------------|
+| Item | Assumed | Actual (from netlist + EasyEDA schema) |
+|------|---------|---------------------------------------|
 | I2C power gate polarity | GPIO6 HIGH = ON | GPIO6 **LOW = ON** (P-channel AO3401A, Q2) |
 | LED power gate polarity | GPIO7 HIGH = ON | GPIO7 **LOW = ON** (P-channel AO3401A, Q5) |
-| Battery ADC pin | GPIO14 | **GPIO1** (U2 pin 17 = IO1 = ADC1_CH1) |
+| Battery ADC pin | GPIO14 | **GPIO1** (module pin 17 = IO1 = ADC1_CH1) |
 | Battery voltage divider ratio | 4.62 | **2.0** (R18=1M, R19=1M equal divider) |
 | I2C pins | GPIO0/GPIO2 | **GPIO4** (SDA) / **GPIO5** (SCL) |
+| I2C pull-ups on PCB | Populated | **DNP (R3=R4=4.7k not placed)** — rely on LaskaKit module's on-board pull-ups |
+
+---
+
+## Complete GPIO Map (ESP32-C3-WROOM-02, confirmed from EasyEDA schema + netlist)
+
+| Module Pin | GPIO | Net / Signal | Firmware Role |
+|-----------|------|-------------|---------------|
+| 1 | 3V3 | 3V3 | Power input |
+| 2 | EN | EN | Enable (RC + PB2 reset) |
+| 3 | IO4 | SDA | I2C data |
+| 4 | IO5 | SCL | I2C clock |
+| 5 | IO6 | I2CONESP → I2C_ON | I2C rail power gate (LOW=ON) |
+| 6 | IO7 | LEDONESP → LED_ON | SK6812 power gate (LOW=ON) |
+| 7 | IO8 | — | Unused |
+| 8 | IO9 | BOOT | Strapping / H2 header |
+| 9 | GND | GND | Ground |
+| 10 | IO10 | LEDDATAESP → LED_DATA | SK6812 addressable LED data |
+| 11 | IO20/RXD0 | RXD | UART RX (H1 debug header) |
+| 12 | IO21/TXD0 | TXD | UART TX (H1 debug header) |
+| 13 | IO18 | DN | USB D− |
+| 14 | IO19 | DP | USB D+ |
+| 15 | IO3 | INPUTSW1 | SW1 user button |
+| 16 | IO2 | — | Unused |
+| 17 | IO1 | BATT_MONITOR | Battery voltage ADC |
+| 18 | IO0 | PIEZO_CIRC | Buzzer (R15 → BUZZER1) |
+| 19 | GND | GND | Ground (module bottom pad) |
+
+---
+
+## Sensor: LaskaKit SCD41 (CO2 + Temperature + Humidity)
+
+The SCD41 CO2 sensor module by LaskaKit plugs into the **PIN_SCD** 4-pin 2.54mm header.
+
+**PIN_SCD header pinout (left to right on PCB):**
+
+| Pin | Net | Signal |
+|-----|-----|--------|
+| 1 | 3V3_I2C | VCC (power-gated, GPIO6 LOW = ON) |
+| 2 | GND | Ground |
+| 3 | SCL | GPIO5 |
+| 4 | SDA | GPIO4 |
+
+**Critical notes:**
+- I2C address: **0x62** (fixed, cannot be changed)
+- The LaskaKit SCD41 module has **on-board I2C pull-up resistors** — these are **required** because PCB pull-ups R3/R4 (4.7k) are **DNP**. Do not connect SCD41 without the LaskaKit module (bare chip will have no pull-ups).
+- The sensor requires ~1 second stabilization after power-on before issuing commands. SCD41 single-shot measurement takes ~5 seconds additional. Budget **≥6 seconds** between `sensor_power_on()` and data-ready.
+- The 3V3_I2C power rail also feeds PIN_OLED and PIN_EXTRA headers — all three share the same gated rail. Powering on for SCD41 also powers any OLED/extra device on the bus.
+- R7 (0Ω, DNP) is a bypass jumper between 3V3 and 3V3_I2C. Installing R7 permanently enables the I2C rail (bypasses power gate) — keep it DNP for power gating to work.
 
 ---
 
@@ -68,12 +117,22 @@ Change `normalize_sensor_data()` so a missing `timestamp` defaults to `datetime.
 **File:** `include/config.h` — complete rewrite
 
 Contents:
-- Pin definitions: `SDA=4, SCL=5, I2C_POWER=6, LED_POWER=7, LED_DATA=10, BATT_ADC=1`
-- Power gate logic: `I2C_POWER_ON=LOW, I2C_POWER_OFF=HIGH`
+- Pin definitions:
+  ```cpp
+  #define SDA_PIN       4
+  #define SCL_PIN       5
+  #define I2C_POWER     6   // LOW = rail ON (P-ch Q2, AO3401A)
+  #define LED_POWER     7   // LOW = SK6812 ON (P-ch Q5, AO3401A)
+  #define LED_DATA      10  // SK6812 addressable LED data
+  #define BATT_ADC      1   // ADC1_CH1, voltage divider R18/R19 (2×1MΩ, ratio 2.0)
+  #define BUZZER_PIN    0   // Piezo buzzer via R15
+  #define BUTTON_PIN    3   // SW1 user button
+  ```
+- Power gate logic: `I2C_POWER_ON = LOW`, `I2C_POWER_OFF = HIGH`
 - Network credentials with `#ifndef` guards and fallbacks
-- Timing: `SLEEP_INTERVAL_US` (5 min default), `WIFI_TIMEOUT_MS` (10s), `MQTT_TIMEOUT_MS` (5s), `SENSOR_TIMEOUT_MS` (10s)
-- Validation ranges: CO2 400-5000, temp -10 to 50, humidity 0-100
-- Battery: `VOLTAGE_DIVIDER_RATIO=2.0f`, `MIN_VOLTAGE=3.0f`
+- Timing: `SLEEP_INTERVAL_US` (5 min default), `WIFI_TIMEOUT_MS` (10s), `MQTT_TIMEOUT_MS` (5s), `SENSOR_TIMEOUT_MS` (12s — 1s stabilization + up to 6s single-shot + margin)
+- Validation ranges: CO2 400-5000 ppm, temp -10 to 50 °C, humidity 0-100 %RH
+- Battery: `VOLTAGE_DIVIDER_RATIO 2.0f`, `MIN_VOLTAGE 3.0f`
 - Debug macro
 
 **Verification:** Compiles, all constants accessible from `main.cpp`.
@@ -84,17 +143,19 @@ Contents:
 **File:** `include/sensor.h` — inline functions in header
 
 Functions:
-- `sensor_power_on()` — set GPIO6 LOW, `delay(100)` for rail stabilization
+- `sensor_power_on()` — `pinMode(I2C_POWER, OUTPUT)` first, then set GPIO6 LOW, then `delay(1000)` for both rail stabilization **and** SCD41 power-on stabilization (the datasheet requires ~1s before first command)
 - `sensor_power_off()` — set GPIO6 HIGH
-- `sensor_init(Wire)` — call `Wire.begin(SDA, SCL)`, init SCD4x driver
-- `sensor_read(float* temp, float* hum, uint16_t* co2)` — single-shot measurement, poll for data ready (100ms intervals, timeout), read values, validate ranges, return bool success
-- `read_battery_voltage()` — `analogRead(BATT_ADC)`, apply divider ratio, return float
+- `sensor_init(Wire)` — call `Wire.begin(SDA_PIN, SCL_PIN)`, init SCD4x driver. SCD41 I2C address is **0x62** (fixed, no address selection pins on the chip).
+- `sensor_read(float* temp, float* hum, uint16_t* co2)` — single-shot measurement:
+  1. `scd4x.measureSingleShot()` — triggers measurement (~5 s)
+  2. Poll `scd4x.getDataReadyStatus()` every 100ms until ready, up to `SENSOR_TIMEOUT_MS`
+  3. `scd4x.readMeasurement(co2, temp, hum)`
+  4. Validate ranges, return bool success
+- `read_battery_voltage()` — `analogRead(BATT_ADC)`, convert to volts (ADC ref 3.3V, 12-bit = 4095 counts), multiply by `VOLTAGE_DIVIDER_RATIO`, return float
 
 Key details:
-- SCD41 single-shot takes ~5 seconds
-- Use `scd4x.measureSingleShot()` then poll `getDataReadyStatus()`
-- Validate all three readings before returning success
-- Power off sensors after read regardless of success/failure
+- **Do not call `scd4x.begin()` before `Wire.begin()`** — the Sensirion lib wraps the Wire object; Wire must be initialized first with the correct SDA/SCL pins.
+- Power off sensors after read regardless of success/failure (put in `finally`-style code path).
 
 **Verification:** Read sensor with Serial output, confirm values are reasonable.
 
@@ -126,18 +187,19 @@ MQTT details:
 
 ```
 1. Serial.begin(115200)
-2. Read battery voltage
+2. Read battery voltage (analogRead GPIO1)
    - If < MIN_VOLTAGE → deep sleep immediately (emergency)
-3. Power on I2C rail (GPIO6 LOW)
-4. Init and read SCD41 (single-shot)
-5. Power off I2C rail (GPIO6 HIGH)
-6. If sensor read failed → deep sleep (don't waste power on WiFi)
-7. Connect WiFi (with timeout)
-8. If WiFi failed → deep sleep
-9. Get MAC address string
-10. Publish MQTT (with timeout)
-11. Disconnect WiFi
-12. Enter deep sleep for SLEEP_INTERVAL_US
+3. Power on I2C rail (GPIO6 LOW) — includes 1s stabilization delay
+4. Init Wire on GPIO4/GPIO5, init SCD4x driver (address 0x62)
+5. Trigger SCD41 single-shot, poll for data ready (up to SENSOR_TIMEOUT_MS)
+6. Power off I2C rail (GPIO6 HIGH) — regardless of read success/failure
+7. If sensor read failed → deep sleep (don't waste power on WiFi)
+8. Connect WiFi (with timeout)
+9. If WiFi failed → deep sleep
+10. Get MAC address string
+11. Publish MQTT (with timeout)
+12. Disconnect WiFi
+13. Enter deep sleep for SLEEP_INTERVAL_US
 ```
 
 Deep sleep: `esp_deep_sleep(SLEEP_INTERVAL_US)` — device resets on wake, re-enters `setup()`.
@@ -176,3 +238,14 @@ Old firmware headers in `include/managers/` are left untouched (they belong to t
 3. **Backend ingestion:** Check Django server logs for `[MQTT] Message received` with correct payload format
 4. **Deep sleep current:** Verify with multimeter that sleep current is in the microamp range (I2C rail powered off)
 5. **Error paths:** Test with sensor disconnected (should log error, go to sleep), WiFi off (should timeout, go to sleep)
+
+---
+
+## Hardware Notes for Debugging
+
+- **BOOT button (PB2):** Connected to EN pin — this is actually a **reset** button, not BOOT/flash mode. To enter flash mode, hold GPIO9 (H2 header) LOW while resetting.
+- **H1 debug header:** 3-pin, pin1=TXD (GPIO21), pin2=RXD (GPIO20), pin3=GND. Exposes UART0 for serial monitor without USB.
+- **SK6812 RGB LED:** Powered from V_SYS via Q5 (GPIO7 LOW = ON), data on GPIO10. Not needed for v1 firmware but pin is reserved.
+- **Buzzer (BUZZER1):** Piezo, 4100 Hz rated, on GPIO0 via R15 (130Ω). GPIO0 is a regular IO pin on ESP32-C3 (not a strapping pin — that's an ESP8266 leftover concern). Safe to use normally.
+- **BOOT strapping pin is GPIO9** (module pin 8, H2 header). R6 (10k pull-up to 3V3) is DNP — the C3's internal weak pull-up on GPIO9 is sufficient to hold it HIGH for normal boot. If the device ever gets stuck in download mode, short H2 to verify GPIO9 isn't being pulled low externally.
+- **NTC thermistor (R29, 10k):** Connected to TP4056 TEMP pin for battery temperature protection during charging. Not connected to ESP32 ADC — this is NOT an air temperature sensor.
