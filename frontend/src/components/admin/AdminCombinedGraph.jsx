@@ -30,24 +30,35 @@ ChartJS.register(
     Filler
 )
 
-// Stable, resolved color references (no dynamic gradient to avoid canvas lifecycle errors)
-const CO2_COLOR_SAFE    = '#16A34A'   // green-600
-const CO2_COLOR_WARNING = '#D97706'   // amber-600
-const CO2_COLOR_DANGER  = '#DC2626'   // red-600
+// Semantic CO₂ threshold colors — single source of truth
+const CO2_COLORS = {
+    safe:     '#16A34A',  // green-600  (< 800 ppm)
+    fair:     '#D97706',  // amber-600  (< 1200 ppm)
+    poor:     '#EA580C',  // orange-600 (< 1800 ppm)
+    critical: '#DC2626',  // red-600    (≥ 1800 ppm)
+}
 
 /**
- * Returns a stable border color for the CO2 line based on the average of the dataset.
- * Using a dynamic canvas gradient here was causing addColorStop('undefined') crashes
- * whenever Chart.js tried to resolve the color before the canvas was fully mounted.
+ * Returns the semantic color for a single CO₂ reading.
+ * Used by the Chart.js `segment` API for per-segment line coloring.
  */
-const getCo2Color = (data) => {
-    if (!data || data.length === 0) return CO2_COLOR_SAFE
-    const validValues = data.filter(v => v != null && !isNaN(v))
-    if (validValues.length === 0) return CO2_COLOR_SAFE
-    const avg = validValues.reduce((a, b) => a + b, 0) / validValues.length
-    if (avg < 1000) return CO2_COLOR_SAFE
-    if (avg < 1500) return CO2_COLOR_WARNING
-    return CO2_COLOR_DANGER
+const co2SegmentColor = (co2) => {
+    if (co2 == null || isNaN(co2)) return '#D6D3D1' // stone-300 (no data)
+    if (co2 < 800)  return CO2_COLORS.safe
+    if (co2 < 1200) return CO2_COLORS.fair
+    if (co2 < 1800) return CO2_COLORS.poor
+    return CO2_COLORS.critical
+}
+
+/**
+ * Returns a subtle fill color (low opacity) matching the CO₂ state.
+ */
+const co2FillColor = (co2) => {
+    if (co2 == null || isNaN(co2)) return 'rgba(214,211,209,0.05)'
+    if (co2 < 800)  return 'rgba(22,163,74,0.08)'
+    if (co2 < 1200) return 'rgba(217,119,6,0.08)'
+    if (co2 < 1800) return 'rgba(234,88,12,0.08)'
+    return 'rgba(220,38,38,0.08)'
 }
 
 const AdminCombinedGraph = ({ series }) => {
@@ -84,15 +95,24 @@ const AdminCombinedGraph = ({ series }) => {
             {
                 label: 'CO₂ (ppm)',
                 data: co2Values,
-                // Use a stable resolved color — no dynamic canvas gradient (avoids addColorStop crash)
-                borderColor: getCo2Color(co2Values),
-                backgroundColor: 'rgba(161, 161, 170, 0.05)',
+                // Per-segment coloring: each line segment is colored by its endpoint CO₂ value.
+                // segment runs at draw-time, avoiding any canvas lifecycle / addColorStop crashes.
+                segment: {
+                    borderColor: (ctx) => co2SegmentColor(ctx.p1.parsed.y),
+                },
+                // Fill uses the dominant color for the whole dataset (keeps fill stable)
+                backgroundColor: (() => {
+                    const valid = co2Values.filter(v => v != null)
+                    const avg = valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : 0
+                    return co2FillColor(avg)
+                })(),
                 fill: true,
                 tension: 0.4,
                 pointRadius: 0,
-                pointHoverRadius: 6,
+                pointHoverRadius: 5,
                 yAxisID: 'y',
                 borderWidth: 2,
+                spanGaps: true,
             }
         ]
 

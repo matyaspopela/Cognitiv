@@ -18,7 +18,8 @@ import {
     baseOptions,
     createThresholdGradient,
     CO2_THRESHOLDS,
-    chartColors
+    chartColors,
+    semanticColors
 } from '../../utils/chartSystem';
 import { getTimeWindowRange, getBucketSize } from '../../utils/timeWindow';
 import ProgressBar from '../ui/ProgressBar';
@@ -89,12 +90,23 @@ const Co2Graph = ({ deviceId, timeWindow }) => {
                                 label: 'CO₂',
                                 data: values,
                                 fill: true,
-                                borderColor: chartColors.stone[800],
-                                borderWidth: 1.5,
+                                // Segment coloring: each line segment gets colored based on its CO₂ value.
+                                // This runs at draw-time (not during dataset resolution), so no canvas crashes.
+                                segment: {
+                                    borderColor: (ctx) => {
+                                        const v = ctx.p1.parsed.y
+                                        if (v == null) return chartColors.stone[300]
+                                        if (v < 800)  return semanticColors.safe.line
+                                        if (v < 1200) return semanticColors.warning.line
+                                        if (v < 1800) return '#EA580C' // orange-600
+                                        return semanticColors.critical.line
+                                    }
+                                },
+                                borderWidth: 2,
                                 tension: 0.3,
                                 pointRadius: 0,
                                 spanGaps: true,
-                                // backgroundColor will be set via gradient in useEffect
+                                // backgroundColor gradient applied after render (see useEffect below)
                                 backgroundColor: 'transparent',
                             }]
                         });
