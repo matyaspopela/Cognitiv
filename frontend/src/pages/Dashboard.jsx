@@ -5,32 +5,30 @@ import Card from '../components/ui/Card'
 import DashboardBox from '../components/dashboard/DashboardBox'
 import DeviceDetailView from '../components/dashboard/DeviceDetailView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
-import './Dashboard.css'
+import PageHeader from '../components/layout/PageHeader'
 
 const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   if (loading) {
     return (
-      <Card className="dashboard-loading" elevation={2}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--md3-spacing-4)', padding: 'var(--md3-spacing-8)' }}>
-          <LoadingSpinner size="large" />
-          <p style={{ margin: 0, color: 'var(--md3-color-text-secondary)', fontSize: 'var(--md3-font-size-body-medium)' }}>
-            Loading devices...
-          </p>
-        </div>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-20 w-full">
+        <LoadingSpinner size="large" />
+        <p className="mt-4 text-text-muted text-sm font-medium">
+          Loading devices...
+        </p>
+      </div>
     )
   }
 
   if (!devices || devices.length === 0) {
     return (
-      <Card className="dashboard-empty">
-        <p>No devices available.</p>
+      <Card className="w-full py-12 flex flex-col items-center justify-center border-dashed">
+        <p className="text-text-muted">No devices available.</p>
       </Card>
     )
   }
 
   return (
-    <div className="dashboard-box-grid">
+    <div className="flex flex-wrap gap-4">
       {devices.map((device) => {
         const deviceKey = typeof device === 'string'
           ? device
@@ -99,26 +97,32 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="dashboard-page">
+    <div className="flex flex-col min-h-full">
+      <PageHeader />
       {deviceId ? (
-        <DeviceDetailView
-          deviceId={deviceId}
-          timeWindow={timeWindow}
-          onTimeWindowChange={handleTimeWindowChange}
-        />
+        <div className="p-6 pt-0">
+          <DeviceDetailView
+            deviceId={deviceId}
+            timeWindow={timeWindow}
+            onTimeWindowChange={handleTimeWindowChange}
+          />
+        </div>
       ) : (
         <>
-          {error && (
-            <div className="dashboard-error">
-              <p>{error}</p>
-            </div>
-          )}
+          
+          <div className="p-6">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm font-medium">
+                {error}
+              </div>
+            )}
 
-          <DashboardBoxGrid
-            devices={devices}
-            onDeviceSelect={handleDeviceSelect}
-            loading={loading}
-          />
+            <DashboardBoxGrid
+              devices={devices}
+              onDeviceSelect={handleDeviceSelect}
+              loading={loading}
+            />
+          </div>
         </>
       )}
     </div>

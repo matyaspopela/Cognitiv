@@ -22,10 +22,9 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Force dark mode by default */
-html,
-html.dark {
-  background-color: var(--md3-color-background-default);
+/* Bleached Stone - Light Mode Baseline */
+html {
+  background-color: var(--app-bg);
 }
 
 body {
@@ -33,10 +32,8 @@ body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: rgb(244, 244, 245);
-  /* zinc-100 */
-  background: var(--md3-color-background-default);
-  /* zinc-950 */
+  color: var(--text-primary);
+  background: var(--app-bg);
   min-height: 100vh;
   position: relative;
 }

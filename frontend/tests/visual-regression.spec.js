@@ -44,12 +44,12 @@ test.describe('Visual Regression Tests', () => {
     })
   })
 
-  test('Component Screenshots - TopHeader', async ({ page }) => {
+  test('Component Screenshots - PageHeader', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     
-    const header = page.locator('.top-header').first()
-    await expect(header).toHaveScreenshot('component-top-header.png', {
+    const header = page.locator('header').last() // PageHeader is in the content area
+    await expect(header).toHaveScreenshot('component-page-header.png', {
       maxDiffPixels: 50,
     })
   })
@@ -58,7 +58,7 @@ test.describe('Visual Regression Tests', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     
-    const metricCard = page.locator('.metric-card').first()
+    const metricCard = page.locator('[class*="card"]').first()
     if (await metricCard.count() > 0) {
       await expect(metricCard).toHaveScreenshot('component-metric-card.png', {
         maxDiffPixels: 50,
@@ -66,7 +66,7 @@ test.describe('Visual Regression Tests', () => {
     }
   })
 
-  test('Dark Mode Verification', async ({ page }) => {
+  test('Design Language Verification', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     
@@ -75,11 +75,11 @@ test.describe('Visual Regression Tests', () => {
       return window.getComputedStyle(el).backgroundColor
     })
     
-    // Verify dark background
-    expect(bgColor).toContain('rgb(9, 9, 11)')
+    // Verify stone-50 background
+    expect(bgColor).toContain('rgb(250, 250, 249)')
     
-    // Take screenshot for dark mode verification
-    await expect(page).toHaveScreenshot('dark-mode-verification.png', {
+    // Take screenshot for light mode verification
+    await expect(page).toHaveScreenshot('bleached-stone-verification.png', {
       fullPage: true,
       maxDiffPixels: 100,
     })

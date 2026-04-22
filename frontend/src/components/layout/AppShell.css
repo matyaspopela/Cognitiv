@@ -3,23 +3,23 @@
 .app-shell {
   min-height: 100vh;
   display: flex;
-  background: var(--md3-color-background-default);
+  background: var(--app-bg);
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 .app-shell__main {
   flex: 1;
-  margin-left: 240px; /* Sidebar width */
+  margin-left: 200px; /* Sidebar width: 200px */
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--md3-color-background-default);
+  background: var(--app-bg);
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 .app-shell__content {
   flex: 1;
-  padding: 24px 32px;
+  padding: 0 32px 32px 32px;
   max-width: 1280px; /* max-w-7xl */
   width: 100%;
   margin: 0 auto;

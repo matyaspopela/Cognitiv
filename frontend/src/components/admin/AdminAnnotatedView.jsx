@@ -3,7 +3,7 @@ import { Calendar } from 'lucide-react'
 import useAnnotatedData from '../../hooks/useAnnotatedData'
 import LessonDistributionChart from './LessonDistributionChart'
 import WeeklyHeatmap from './WeeklyHeatmap'
-import MinimalTimeSelector from '../dashboard/MinimalTimeSelector'
+import TimePicker from '../ui/TimePicker'
 import ProgressBar from '../ui/ProgressBar'
 
 const AdminAnnotatedView = ({ deviceId }) => {
@@ -20,17 +20,17 @@ const AdminAnnotatedView = ({ deviceId }) => {
         <div className="flex flex-col gap-6">
             {/* Header / Controls */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                {/* Chart Grouping Tabs */}
-                <div className="flex p-1 bg-zinc-900/50 border border-white/10 rounded-lg">
+                {/* Chart Grouping Tabs — underline style */}
+                <div className="flex items-center gap-0 border-b border-stone-200">
                     {['period', 'subject', 'teacher'].map((group) => (
                         <button
                             key={group}
                             onClick={() => setChartGrouping(group)}
                             className={`
-                                px-4 py-1.5 text-sm font-medium rounded-md transition-all capitalize
+                                px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-all capitalize border-b-2 mb-[-1px]
                                 ${chartGrouping === group
-                                    ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                                    : 'text-zinc-500 hover:text-zinc-300'
+                                    ? 'border-amber-600 text-stone-900'
+                                    : 'border-transparent text-stone-400 hover:text-stone-600'
                                 }
                             `}
                         >
@@ -41,25 +41,26 @@ const AdminAnnotatedView = ({ deviceId }) => {
 
                 <div className="flex items-center gap-4 ml-auto">
                     {timeRange === 'daily' && (
-                        <div className="flex items-center gap-2 bg-zinc-900/50 border border-white/10 rounded-lg px-3 py-1.5 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <Calendar size={16} className="text-zinc-400" />
+                        <div className="flex items-center gap-2 border border-stone-200 rounded-md px-3 py-1.5 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <Calendar size={14} className="text-stone-400" />
                             <input
                                 type="date"
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
-                                className="bg-transparent border-none text-zinc-200 text-sm focus:outline-none [color-scheme:dark] p-0"
+                                className="bg-transparent border-none text-stone-700 text-xs focus:outline-none p-0"
                             />
                         </div>
                     )}
 
-                    <MinimalTimeSelector
+                    <TimePicker
+                        compact
                         value={timeRange}
                         onChange={setTimeRange}
                         options={[
-                            { value: 'current_week', label: 'Current Week' },
-                            { value: 'last_week', label: 'Last Week' },
-                            { value: 'last_month', label: 'Last Month' },
-                            { value: 'daily', label: 'Daily' },
+                            { value: 'current_week', label: 'CUR', fullLabel: 'Current Week' },
+                            { value: 'last_week', label: 'LST', fullLabel: 'Last Week' },
+                            { value: 'last_month', label: 'MON', fullLabel: 'Last Month' },
+                            { value: 'daily', label: 'DAY', fullLabel: 'Daily' },
                         ]}
                     />
                 </div>

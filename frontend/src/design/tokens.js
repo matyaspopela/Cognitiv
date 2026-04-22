@@ -3,100 +3,76 @@
  * Updated 2026-02-02 for DataLab Overhaul
  */
 
-// Base Color Palette - High-Fidelity Dark Mode
+// Base Color Palette - Bleached Stone Light Mode Baseline
 export const colors = {
   // Base Backgrounds
   base: {
-    background: '#0B0E14',          // Deep Charcoal (replaces Zinc 950)
-    surface: '#151921',             // Navy-tinted Gray (replaces Zinc 900)
-    surfaceGlass: 'rgba(21, 25, 33, 0.6)',  // For glassmorphism
+    background: '#F9F8F7',          // stone-50
+    surface: '#FFFFFF',             // white
+    surfaceRaised: '#F3F2F1',       // stone-100
   },
 
   // Borders & Dividers
   borders: {
-    subtle: 'rgba(61, 70, 83, 0.2)',   // Cyan-tinted Slate
-    medium: 'rgba(61, 70, 83, 0.4)',
-    strong: 'rgba(61, 70, 83, 0.6)',
+    subtle: '#E7E5E4',              // stone-200
+    strong: '#D6D3D1',              // stone-300
   },
 
   // Interactive Accent Colors
   accent: {
-    primary: '#6366F1',        // Electric Indigo
-    secondary: '#06B6D4',      // Vivid Cyan
-    hover: '#7C7FF5',          // Lightened Indigo
-    focus: 'rgba(99, 102, 241, 0.4)',  // Indigo with opacity for rings
+    primary: '#D97706',             // amber-600
+    soft: '#FEF3C7',                // amber-100
   },
 
   // Semantic CO2 Colors (Traffic Light System)
   semantic: {
-    safe: {
-      color: '#10B981',        // Emerald (< 800 ppm)
-      glow: 'rgba(16, 185, 129, 0.3)',
-      background: 'rgba(16, 185, 129, 0.1)',
+    good: {
+      color: '#16A34A',
+      background: '#DCFCE7',
     },
-    warning: {
-      color: '#F59E0B',        // Amber (800-1200 ppm)
-      glow: 'rgba(245, 158, 11, 0.3)',
-      background: 'rgba(245, 158, 11, 0.1)',
+    fair: {
+      color: '#D97706',
+      background: '#FEF3C7',
+    },
+    poor: {
+      color: '#EA580C',
+      background: '#FFEDD5',
     },
     critical: {
-      color: '#EF4444',        // Crimson (> 1200 ppm)
-      glow: 'rgba(239, 68, 68, 0.4)',
-      background: 'rgba(239, 68, 68, 0.1)',
+      color: '#DC2626',
+      background: '#FEE2E2',
     },
   },
 
   // Typography
   text: {
-    primary: '#F9FAFB',        // Near white
-    secondary: '#D1D5DB',      // Light gray
-    tertiary: '#9CA3AF',       // Medium gray
-    disabled: '#6B7280',       // Dark gray
-  },
-
-  // Status colors (for general UI, not CO2-specific)
-  status: {
-    error: {
-      color: '#EF4444',
-      background: 'rgba(239, 68, 68, 0.1)',
-    },
-    success: {
-      color: '#10B981',
-      background: 'rgba(16, 185, 129, 0.1)',
-    },
-    warning: {
-      color: '#F59E0B',
-      background: 'rgba(245, 158, 11, 0.1)',
-    },
-    info: {
-      color: '#06B6D4',
-      background: 'rgba(6, 182, 212, 0.1)',
-    },
+    primary: '#1C1917',             // stone-900
+    muted: '#78716C',               // stone-500
   },
 }
 
 // Glassmorphism elevation system
 export const elevation = {
   0: 'none',
-  1: '0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  2: '0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  3: '0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04)',
-  4: '0px 25px 50px -12px rgba(0, 0, 0, 0.25)',
-  5: '0px 30px 60px -12px rgba(0, 0, 0, 0.3)',
+  1: '0px 1px 3px 0px rgba(0, 0, 0, 0.05)',
+  2: '0px 4px 6px -1px rgba(0, 0, 0, 0.05)',
+  3: '0px 10px 15px -3px rgba(0, 0, 0, 0.05)',
+  4: '0px 20px 25px -5px rgba(0, 0, 0, 0.05)',
+  5: '0px 25px 50px -12px rgba(0, 0, 0, 0.1)',
 }
 
 // Glassmorphism backdrop blur
 export const glass = {
-  light: 'blur(10px)',
-  medium: 'blur(12px)',
-  strong: 'blur(16px)',
+  light: 'blur(4px)',
+  medium: 'blur(8px)',
+  strong: 'blur(12px)',
 }
 
 // Typography scale - Technical yet Accessible
 export const typography = {
   fontFamily: {
-    ui: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    data: "'JetBrains Mono', 'Courier New', monospace",
+    ui: "'Inter', system-ui, -apple-system, sans-serif",
+    data: "'JetBrains Mono', monospace",
     display: "'Inter', sans-serif",
   },
 

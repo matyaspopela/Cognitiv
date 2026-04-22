@@ -1,19 +1,19 @@
-import { Share2, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import useDeviceAlerts from '../../hooks/useDeviceAlerts'
 
 const AdminStatusBar = ({ devices }) => {
     const { summary, alerts } = useDeviceAlerts(devices)
 
-    // Container style matches the previous header's "gray box"
-    const containerClasses = "bg-zinc-900/50 border border-white/10 rounded-lg p-6 mb-6"
+    // Container style matches "Bleached Stone" Laboratory aesthetic
+    const containerClasses = "bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
 
     // If no alerts, show minimalist gray box
     if (summary.totalAlerts === 0) {
         return (
             <div className={containerClasses}>
-                <div className="flex items-center gap-3 text-zinc-500">
-                    <CheckCircle2 size={20} className="text-zinc-600" />
-                    <span className="text-sm font-medium">All systems normal</span>
+                <div className="flex items-center gap-3 text-stone-500">
+                    <CheckCircle2 size={18} strokeWidth={1.5} className="text-emerald-500" />
+                    <span className="text-sm font-medium">All classroom sensors reporting normally</span>
                 </div>
             </div>
         )
@@ -22,8 +22,9 @@ const AdminStatusBar = ({ devices }) => {
     return (
         <div className={containerClasses}>
             <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-sm font-medium text-zinc-400">
+                <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle size={18} strokeWidth={1.5} className="text-amber-600" />
+                    <h3 className="text-sm font-bold text-stone-900 uppercase tracking-tight">
                         {summary.totalAlerts} Active Alert{summary.totalAlerts !== 1 ? 's' : ''}
                     </h3>
                 </div>
@@ -32,24 +33,20 @@ const AdminStatusBar = ({ devices }) => {
                     {alerts.map((alert, index) => (
                         <div
                             key={`${alert.deviceId}-${index}`}
-                            className="flex items-center justify-between p-3 bg-white/5 rounded-md border border-white/5 hover:bg-white/10 transition-colors"
+                            className="flex items-center justify-between p-3 bg-white rounded-md border border-stone-200 hover:border-stone-300 transition-colors"
                         >
-                            <span className="text-sm font-medium text-zinc-300">
+                            <span className="text-xs font-bold text-stone-900 uppercase tracking-tight">
                                 {alert.deviceName}
                             </span>
 
-                            <div className="text-sm text-zinc-400 text-right flex items-center gap-2">
-                                {alert.type === 'offline' && (
-                                    <span>Offline</span>
-                                )}
-                                {(alert.type === 'co2_critical' || alert.type === 'co2_low') && (
-                                    <span>CO₂ Issue</span>
-                                )}
-                                {alert.type === 'voltage_low' && (
-                                    <span>Low Battery</span>
-                                )}
-                                <span className="text-zinc-700">|</span>
-                                <span className="text-zinc-500">{alert.message}</span>
+                            <div className="text-[10px] text-stone-500 text-right flex items-center gap-2 font-medium">
+                                <span className="uppercase tracking-wider">
+                                    {alert.type === 'offline' ? 'Offline' : 
+                                     alert.type.includes('co2') ? 'CO₂ Level' : 
+                                     'Battery'}
+                                </span>
+                                <span className="text-stone-300">|</span>
+                                <span className="text-stone-400 italic font-normal">{alert.message}</span>
                             </div>
                         </div>
                     ))}

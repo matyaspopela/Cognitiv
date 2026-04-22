@@ -1,61 +1,63 @@
 /**
- * DataLab High-Fidelity Dark Mode Theme
- * Updated 2026-02-02 for DataLab Overhaul
- * Replaces monochrome Zinc palette with semantic color system
+ * Cognitiv Bleached Stone Theme
+ * Updated 2026-04-21 for Laboratory Refactor
+ * Minimalist, high-density light mode theme.
  */
 
 import { colors } from './tokens'
 
 export const theme = {
-  // Background Colors - High-Fidelity Dark Mode
+  // Background Colors - Bleached Stone Baseline
   background: {
-    primary: colors.base.background,       // #0B0E14 Deep Charcoal
-    secondary: colors.base.surface,        // #151921 Navy-tinted Gray
-    glass: colors.base.surfaceGlass,       // rgba(21, 25, 33, 0.6)
+    primary: colors.base.background,       // #F9F8F7 stone-50
+    secondary: colors.base.surface,        // #FFFFFF white
+    raised: colors.base.surfaceRaised,      // #F3F2F1 stone-100
   },
 
-  // CO2 State Colors - Semantic Traffic Light System
+  // CO2 State Colors - Semantic Laboratory System
   colors: {
-    safe: colors.semantic.safe.color,           // #10B981 Emerald
-    warning: colors.semantic.warning.color,     // #F59E0B Amber
-    danger: colors.semantic.critical.color,     // #EF4444 Crimson
+    good: colors.semantic.good.color,           // #16A34A green-600
+    fair: colors.semantic.fair.color,           // #D97706 amber-600
+    poor: colors.semantic.poor.color,           // #EA580C orange-600
+    critical: colors.semantic.critical.color,   // #DC2626 red-600
 
-    // Additional semantic properties
-    safeGlow: colors.semantic.safe.glow,
-    warningGlow: colors.semantic.warning.glow,
-    dangerGlow: colors.semantic.critical.glow,
+    // Additional semantic backgrounds
+    goodBg: colors.semantic.good.background,
+    fairBg: colors.semantic.fair.background,
+    poorBg: colors.semantic.poor.background,
+    criticalBg: colors.semantic.critical.background,
 
     // Graph specific
-    grid: 'rgba(61, 70, 83, 0.2)',        // Subtle borders
-    text: colors.text.secondary,           // #D1D5DB
-    tooltipBg: colors.base.surface,        // #151921
+    grid: colors.borders.subtle,           // #E7E5E4 stone-200
+    text: colors.text.muted,               // #78716C stone-500
+    tooltipBg: '#FFFFFF',
 
     // Interactive accents
-    accent: colors.accent.primary,         // #6366F1 Electric Indigo
-    accentHover: colors.accent.hover,      // #7C7FF5 Lightened Indigo
+    accent: colors.accent.primary,         // #D97706 amber-600
+    accentSoft: colors.accent.soft,        // #FEF3C7 amber-100
   },
 
   // Text Colors
   text: {
-    primary: colors.text.primary,          // #F9FAFB
-    secondary: colors.text.secondary,      // #D1D5DB
-    tertiary: colors.text.tertiary,        // #9CA3AF
-    disabled: colors.text.disabled,        // #6B7280
+    primary: colors.text.primary,          // #1C1917 stone-900
+    muted: colors.text.muted,              // #78716C stone-500
   },
 
-  // CO2 Thresholds (ppm)
+  // CO2 Thresholds (ppm) - Single Source of Truth
   thresholds: {
-    safe: 800,
-    warning: 1200,
-    critical: 1500,  // For pulsing animation
+    good: 800,
+    fair: 1200,
+    poor: 1800,
   },
 
   // Helper function to get color for CO2 value
   getColorForCO2: (co2) => {
-    if (co2 < theme.thresholds.safe) {
-      return colors.semantic.safe.color
-    } else if (co2 < theme.thresholds.warning) {
-      return colors.semantic.warning.color
+    if (co2 < 800) {
+      return colors.semantic.good.color
+    } else if (co2 < 1200) {
+      return colors.semantic.fair.color
+    } else if (co2 < 1800) {
+      return colors.semantic.poor.color
     } else {
       return colors.semantic.critical.color
     }
@@ -63,43 +65,30 @@ export const theme = {
 
   // Helper function to get style object for CO2 value
   getStyleForCO2: (co2) => {
-    if (co2 < theme.thresholds.safe) {
+    if (co2 < 800) {
       return {
-        color: colors.semantic.safe.color,
-        glow: colors.semantic.safe.glow,
-        style: 'solid',
-        shouldPulse: false,
+        color: colors.semantic.good.color,
+        background: colors.semantic.good.background,
+        status: 'good'
       }
-    } else if (co2 < theme.thresholds.warning) {
+    } else if (co2 < 1200) {
       return {
-        color: colors.semantic.warning.color,
-        glow: colors.semantic.warning.glow,
-        style: 'thicker',
-        shouldPulse: false,
+        color: colors.semantic.fair.color,
+        background: colors.semantic.fair.background,
+        status: 'fair'
+      }
+    } else if (co2 < 1800) {
+      return {
+        color: colors.semantic.poor.color,
+        background: colors.semantic.poor.background,
+        status: 'poor'
       }
     } else {
       return {
         color: colors.semantic.critical.color,
-        glow: colors.semantic.critical.glow,
-        style: 'thicker',
-        shouldPulse: co2 >= theme.thresholds.critical,
+        background: colors.semantic.critical.background,
+        status: 'critical'
       }
-    }
-  },
-
-  // Glassmorphism helper
-  getGlassmorphismStyle: (blur = 'medium') => {
-    const blurValues = {
-      light: 'blur(10px)',
-      medium: 'blur(12px)',
-      strong: 'blur(16px)',
-    }
-
-    return {
-      background: colors.base.surfaceGlass,
-      backdropFilter: blurValues[blur],
-      WebkitBackdropFilter: blurValues[blur],
-      border: `1px solid ${colors.borders.subtle}`,
     }
   },
 }

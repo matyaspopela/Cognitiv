@@ -8,9 +8,8 @@ import Login from './pages/Login'
 import AdminPanel from './pages/AdminPanel'
 import AdminDevicePage from './pages/AdminDevicePage'
 import Dashboard from './pages/Dashboard'
-
+import RoomStatusPage from './pages/RoomStatusPage'
 import VentilationGuide from './pages/VentilationGuide'
-import DataLabLayout from './components/DataLab/DataLabLayout'
 
 // Component to handle global keyboard shortcuts
 const KeyboardShortcuts = () => {
@@ -19,13 +18,10 @@ const KeyboardShortcuts = () => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Cmd+Shift+T (Mac) or Ctrl+Shift+T (Windows/Linux) to toggle theme
-      // Note: Ctrl+Shift+T is reserved by browsers for reopening closed tabs,
-      // so we'll use Ctrl+Shift+U instead for Windows/Linux
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const modifier = isMac ? e.metaKey : e.ctrlKey
 
       if (modifier && e.shiftKey && (e.key === 'T' || e.key === 't' || e.key === 'U' || e.key === 'u')) {
-        // Only toggle if not in an input field
         const target = e.target
         const isInput = target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
@@ -54,6 +50,7 @@ function App() {
           <div className="app">
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/room/:deviceId" element={<RoomStatusPage />} />
               <Route
                 path="/*"
                 element={
@@ -62,14 +59,6 @@ function App() {
                       <Routes>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/dashboard" element={<Dashboard />} />
-                        <Route
-                          path="/datalab"
-                          element={
-                            <ProtectedRoute>
-                              <DataLabLayout />
-                            </ProtectedRoute>
-                          }
-                        />
                         <Route path="/ventilation" element={<VentilationGuide />} />
                         <Route
                           path="/admin"
@@ -102,4 +91,3 @@ function App() {
 }
 
 export default App
-

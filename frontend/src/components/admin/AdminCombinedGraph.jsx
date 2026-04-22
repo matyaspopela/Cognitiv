@@ -30,31 +30,24 @@ ChartJS.register(
     Filler
 )
 
-// Helper to create the dynamic gradient
-const getGradient = (context, chartArea) => {
-    if (!context.chart.scales.y) return null
-    const { chart } = context
-    const { ctx, scales: { y } } = chart
+// Stable, resolved color references (no dynamic gradient to avoid canvas lifecycle errors)
+const CO2_COLOR_SAFE    = '#16A34A'   // green-600
+const CO2_COLOR_WARNING = '#D97706'   // amber-600
+const CO2_COLOR_DANGER  = '#DC2626'   // red-600
 
-    // 1. Calculate pixel positions for our specific thresholds
-    // Note: y-axis pixels go from Top (low value) to Bottom (high value) usually,
-    // but getPixelForValue handles the mapping correctly.
-    const yStart = y.getPixelForValue(1500) // Green start
-    const yEnd = y.getPixelForValue(3000)   // Red end
-
-    // 2. Create gradient aligned with these pixels
-    // We extend the gradient slightly beyond to ensure coverage
-    const gradient = ctx.createLinearGradient(0, yStart, 0, yEnd)
-
-    // 3. Define stops.
-    // Since 1500 is "Safe" (Green) and 3000 is "Danger" (Red)
-    // We clamp the colors: below 1500 is green, above 3000 is red.
-    // 0 = at 1500px, 1 = at 3000px
-    gradient.addColorStop(0, theme.colors.safe)    // #10B981
-    gradient.addColorStop(0.5, theme.colors.warning) // #F59E0B (Transition)
-    gradient.addColorStop(1, theme.colors.danger)  // #EF4444
-
-    return gradient
+/**
+ * Returns a stable border color for the CO2 line based on the average of the dataset.
+ * Using a dynamic canvas gradient here was causing addColorStop('undefined') crashes
+ * whenever Chart.js tried to resolve the color before the canvas was fully mounted.
+ */
+const getCo2Color = (data) => {
+    if (!data || data.length === 0) return CO2_COLOR_SAFE
+    const validValues = data.filter(v => v != null && !isNaN(v))
+    if (validValues.length === 0) return CO2_COLOR_SAFE
+    const avg = validValues.reduce((a, b) => a + b, 0) / validValues.length
+    if (avg < 1000) return CO2_COLOR_SAFE
+    if (avg < 1500) return CO2_COLOR_WARNING
+    return CO2_COLOR_DANGER
 }
 
 const AdminCombinedGraph = ({ series }) => {
@@ -91,12 +84,8 @@ const AdminCombinedGraph = ({ series }) => {
             {
                 label: 'CO₂ (ppm)',
                 data: co2Values,
-                borderColor: (context) => {
-                    const chart = context.chart
-                    const { ctx, chartArea } = chart
-                    if (!chartArea) return theme.text.secondary // Fallback
-                    return getGradient(context, chartArea)
-                },
+                // Use a stable resolved color — no dynamic canvas gradient (avoids addColorStop crash)
+                borderColor: getCo2Color(co2Values),
                 backgroundColor: 'rgba(161, 161, 170, 0.05)',
                 fill: true,
                 tension: 0.4,
@@ -111,7 +100,7 @@ const AdminCombinedGraph = ({ series }) => {
             datasets.push({
                 label: 'Temperature (°C)',
                 data: tempValues,
-                borderColor: theme.text.secondary,
+                borderColor: theme.colors.text,     // stone-500
                 backgroundColor: 'transparent',
                 fill: false,
                 tension: 0.4,
@@ -126,7 +115,7 @@ const AdminCombinedGraph = ({ series }) => {
             datasets.push({
                 label: 'Humidity (%)',
                 data: humidityValues,
-                borderColor: theme.text.tertiary,
+                borderColor: theme.colors.grid,     // stone-200
                 backgroundColor: 'transparent',
                 fill: false,
                 tension: 0.4,
@@ -169,7 +158,7 @@ const AdminCombinedGraph = ({ series }) => {
                 display: true,
                 position: 'top',
                 labels: {
-                    color: theme.text.secondary,
+                    color: theme.colors.text,
                     usePointStyle: true,
                     padding: 20,
                     font: { size: 12 }
@@ -179,7 +168,7 @@ const AdminCombinedGraph = ({ series }) => {
                 enabled: true,
                 backgroundColor: theme.colors.tooltipBg,
                 titleColor: theme.text.primary,
-                bodyColor: theme.text.secondary,
+                bodyColor: theme.colors.text,
                 borderColor: theme.colors.grid,
                 borderWidth: 1,
                 padding: 12,
@@ -199,7 +188,7 @@ const AdminCombinedGraph = ({ series }) => {
                     display: false,
                 },
                 ticks: {
-                    color: theme.text.secondary,
+                    color: theme.colors.text,
                     maxRotation: 0,
                     autoSkip: true,
                     maxTicksLimit: 8,
@@ -215,14 +204,14 @@ const AdminCombinedGraph = ({ series }) => {
                 title: {
                     display: true,
                     text: 'CO₂ (ppm)',
-                    color: theme.text.secondary,
+                    color: theme.colors.text,
                 },
                 grid: {
                     color: theme.colors.grid,
                     drawBorder: false,
                 },
                 ticks: {
-                    color: theme.text.secondary,
+                    color: theme.colors.text,
                 },
                 border: {
                     display: false,
@@ -235,13 +224,13 @@ const AdminCombinedGraph = ({ series }) => {
                 title: {
                     display: true,
                     text: 'Temp (°C) / Humidity (%)',
-                    color: theme.text.tertiary,
+                    color: theme.colors.text,
                 },
                 grid: {
                     drawOnChartArea: false,
                 },
                 ticks: {
-                    color: theme.text.tertiary,
+                    color: theme.colors.text,
                 },
                 border: {
                     display: false,

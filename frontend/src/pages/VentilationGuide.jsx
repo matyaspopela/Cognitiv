@@ -1,48 +1,38 @@
 import React from 'react'
 import Card from '../components/ui/Card'
-import './Dashboard.css'
+import { Wind } from 'lucide-react'
+import PageHeader from '../components/layout/PageHeader'
 
 const VentilationGuide = () => {
     return (
-        <div className="dashboard-page">
-            <Card elevation={1}>
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 'var(--md3-spacing-12)',
-                    color: 'var(--md3-color-text-secondary)',
-                    textAlign: 'center',
-                    minHeight: '400px'
-                }}>
-                    <div style={{ marginBottom: 'var(--md3-spacing-4)', opacity: 0.2 }}>
-                        <svg
-                            width="64"
-                            height="64"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
-                            <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
-                            <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
-                        </svg>
+        <div className="flex flex-col gap-6">
+            <PageHeader />
+            <Card className="flex flex-col items-center justify-center py-20 text-center min-h-[400px]">
+                <div className="mb-6 text-stone-200">
+                    <Wind size={64} strokeWidth={1.2} />
+                </div>
+                
+                <h2 className="text-xl font-bold text-stone-900 mb-2 uppercase tracking-tight">
+                    Guide Under Development
+                </h2>
+                
+                <p className="text-stone-500 max-w-md mx-auto text-sm leading-relaxed">
+                    We are currently refining our ventilation recommendations to provide you with the most accurate and helpful guidance for maintaining optimal classroom air quality.
+                </p>
+                
+                <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl px-4">
+                    <div className="p-4 rounded-lg bg-stone-50 border border-stone-100">
+                        <div className="text-[10px] font-bold text-stone-400 uppercase mb-1">Standard</div>
+                        <div className="text-xs text-stone-600 font-medium">Regular intervals</div>
                     </div>
-                    <h2 style={{
-                        fontSize: 'var(--md3-font-size-headline-small)',
-                        fontWeight: 'var(--md3-font-weight-medium)',
-                        color: 'var(--md3-color-text-primary)',
-                        marginBottom: 'var(--md3-spacing-2)'
-                    }}>
-                        Guide Under Development
-                    </h2>
-                    <p style={{ maxWidth: '400px', margin: '0 auto' }}>
-                        We are currently refining our ventilation recommendations to provide you with the most accurate and helpful guidance.
-                    </p>
+                    <div className="p-4 rounded-lg bg-stone-50 border border-stone-100">
+                        <div className="text-[10px] font-bold text-stone-400 uppercase mb-1">Cross-flow</div>
+                        <div className="text-xs text-stone-600 font-medium">Multiple openings</div>
+                    </div>
+                    <div className="p-4 rounded-lg bg-stone-50 border border-stone-100">
+                        <div className="text-[10px] font-bold text-stone-400 uppercase mb-1">Purification</div>
+                        <div className="text-xs text-stone-600 font-medium">Filtration systems</div>
+                    </div>
                 </div>
             </Card>
         </div>
@@ -50,4 +40,3 @@ const VentilationGuide = () => {
 }
 
 export default VentilationGuide
-

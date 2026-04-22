@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Download } from 'lucide-react'
 import { adminAPI } from '../services/api'
 import Button from '../components/ui/Button'
 import Skeleton from '../components/ui/Skeleton'
@@ -10,6 +10,8 @@ import AdminStatusBar from '../components/admin/AdminStatusBar'
 import DeviceRenameModal from '../components/admin/DeviceRenameModal'
 import DeviceCustomizationModal from '../components/admin/DeviceCustomizationModal'
 import DeviceDetailsModal from '../components/admin/DeviceDetailsModal'
+import ExportDrawer from '../components/admin/ExportDrawer'
+import PageHeader from '../components/layout/PageHeader'
 
 const AdminPanel = () => {
   const navigate = useNavigate()
@@ -18,11 +20,16 @@ const AdminPanel = () => {
   const [detailsDevice, setDetailsDevice] = useState(null)
   const [renameDevice, setRenameDevice] = useState(null)
   const [customizeDevice, setCustomizeDevice] = useState(null)
+  const [isExportDrawerOpen, setIsExportDrawerOpen] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     loadDevices()
   }, [])
+
+  const handleExportClick = () => {
+    setIsExportDrawerOpen(true)
+  }
 
   const loadDevices = async () => {
     try {
@@ -128,22 +135,27 @@ const AdminPanel = () => {
     {
       key: 'co2',
       label: 'CO₂',
+      render: (value) => <span className="font-data">{value}</span>,
     },
     {
       key: 'temp',
       label: 'Temp',
+      render: (value) => <span className="font-data">{value}</span>,
     },
     {
       key: 'humidity',
       label: 'Humidity',
+      render: (value) => <span className="font-data">{value}</span>,
     },
     {
       key: 'voltage',
       label: 'Voltage',
+      render: (value) => <span className="font-data">{value}</span>,
     },
     {
       key: 'lastSeen',
       label: 'Last Seen',
+      render: (value) => <span className="font-data text-[11px] uppercase">{value}</span>,
     },
   ]
 
@@ -180,13 +192,24 @@ const AdminPanel = () => {
   return (
     <div className="flex-1 flex flex-col w-full">
       <div className="flex flex-col gap-6">
-        {/* Header */}
-
+        <PageHeader
+          actions={
+            <Button
+              variant="outline"
+              size="medium"
+              onClick={handleExportClick}
+              className="flex items-center gap-2 border-stone-200 text-stone-900 hover:bg-stone-50"
+            >
+              <Download size={16} strokeWidth={2} />
+              Export Data
+            </Button>
+          }
+        />
 
         {/* Error State */}
         {error && (
-          <div className="p-4 bg-red-900/20 border border-red-700/30 rounded-lg">
-            <div className="text-sm font-medium text-red-400">{error}</div>
+          <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
+            <div className="text-sm font-medium text-red-700">{error}</div>
           </div>
         )}
 
@@ -200,20 +223,20 @@ const AdminPanel = () => {
 
 
               {loading ? (
-                <div className="flex flex-col gap-4 p-12 bg-zinc-900/50 border border-white/10 rounded-lg">
+                <div className="flex flex-col gap-4 p-12 bg-stone-50 border border-stone-200 rounded-lg">
                   {/* Skeleton table rows */}
                   {[...Array(5)].map((_, i) => (
                     <div key={i} className="flex items-center gap-4">
-                      <Skeleton variant="circular" width={10} height={10} />
-                      <Skeleton variant="text" width="20%" />
-                      <Skeleton variant="text" width="25%" />
-                      <Skeleton variant="text" width="15%" className="ml-auto" />
-                      <Skeleton variant="text" width="15%" />
-                      <Skeleton variant="text" width="20%" />
+                      <Skeleton variant="circular" width={10} height={10} className="bg-stone-200" />
+                      <Skeleton variant="text" width="20%" className="bg-stone-200" />
+                      <Skeleton variant="text" width="25%" className="bg-stone-200" />
+                      <Skeleton variant="text" width="15%" className="ml-auto bg-stone-200" />
+                      <Skeleton variant="text" width="15%" className="bg-stone-200" />
+                      <Skeleton variant="text" width="20%" className="bg-stone-200" />
                     </div>
                   ))}
-                  <p className="text-sm text-zinc-500 text-center mt-2">
-                    Loading devices...
+                  <p className="text-sm text-stone-500 text-center mt-2 font-bold uppercase tracking-widest">
+                    Synchronizing Device Registry...
                   </p>
                 </div>
               ) : (
@@ -263,6 +286,12 @@ const AdminPanel = () => {
             onCustomizeSuccess={handleCustomizeSuccess}
           />
         )}
+
+        <ExportDrawer
+          isOpen={isExportDrawerOpen}
+          onClose={() => setIsExportDrawerOpen(false)}
+          devices={devices}
+        />
       </div>
     </div>
   )

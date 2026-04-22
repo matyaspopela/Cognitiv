@@ -44,9 +44,9 @@ import Card from '../ui/Card'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import ProgressBar from '../ui/ProgressBar'
-import { BarChart2, BookOpen, TrendingUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import './BoardAnalysisView.css'
-import MinimalTimeSelector from '../dashboard/MinimalTimeSelector'
+import TimePicker from '../ui/TimePicker'
 
 // Import analytics components
 import {
@@ -325,40 +325,39 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
           className={`board-analysis-view__tab ${activeTab === 'analysis' ? 'board-analysis-view__tab--active' : ''}`}
           onClick={() => setActiveTab('analysis')}
         >
-          <BarChart2 size={16} />
-          <span>Data</span>
+          Data
         </button>
         <button
           className={`board-analysis-view__tab ${activeTab === 'lessons' ? 'board-analysis-view__tab--active' : ''}`}
           onClick={() => setActiveTab('lessons')}
         >
-          <BookOpen size={16} />
-          <span>Lessons</span>
+          Lessons
         </button>
         <button
           className={`board-analysis-view__tab ${activeTab === 'trends' ? 'board-analysis-view__tab--active' : ''}`}
           onClick={() => setActiveTab('trends')}
         >
-          <TrendingUp size={16} />
-          <span>Trends</span>
+          Trends
         </button>
       </div>
 
       {/* Analysis Tab */}
       {activeTab === 'analysis' && (
         <div className="board-analysis-view__tab-content">
+          {/* Time range control row */}
           <div className="flex flex-col gap-4 mb-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-zinc-100">Data Analysis</h3>
-              <MinimalTimeSelector
+            <div className="flex justify-end items-center">
+              <TimePicker
+                compact
                 value={analysisPreset}
                 onChange={setAnalysisPreset}
                 options={[
-                  { value: '24h', label: '24 Hours' },
-                  { value: '7d', label: '7 Days' },
-                  { value: '30d', label: '30 Days' },
-                  { value: '90d', label: '90 Days' },
-                  { value: 'custom', label: 'Custom' }
+                  { value: '24h', label: '24H', fullLabel: '24 Hours' },
+                  { value: '7d', label: '7D', fullLabel: '7 Days' },
+                  { value: '30d', label: '30D', fullLabel: '30 Days' },
+                  { value: '90d', label: '90D', fullLabel: '90 Days' },
+                  { value: 'ytd', label: 'YTD', fullLabel: 'Year to Date' },
+                  { value: 'custom', label: 'CUS', fullLabel: 'Custom' },
                 ]}
               />
             </div>
@@ -412,45 +411,7 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
 
           {!loading && !error && (
             <>
-              {/* Summary Statistics */}
-              {summary && (
-                <Card className="board-analysis-view__summary" elevation={2}>
-                  <div className="board-analysis-view__summary-grid">
-                    <Card className="board-analysis-view__summary-item" elevation={1}>
-                      <div className="board-analysis-view__summary-label">CO₂ (ppm)</div>
-                      <div className="board-analysis-view__summary-value">{safeValue(summary.co2?.avg)}</div>
-                      <div className="board-analysis-view__summary-footer">
-                        Min {safeValue(summary.co2?.min)} · Max {safeValue(summary.co2?.max)}
-                      </div>
-                    </Card>
-                    <Card className="board-analysis-view__summary-item" elevation={1}>
-                      <div className="board-analysis-view__summary-label">Temperature (°C)</div>
-                      <div className="board-analysis-view__summary-value">{safeValue(summary.temperature?.avg)}</div>
-                      <div className="board-analysis-view__summary-footer">
-                        Min {safeValue(summary.temperature?.min)} · Max {safeValue(summary.temperature?.max)}
-                      </div>
-                    </Card>
-                    <Card className="board-analysis-view__summary-item" elevation={1}>
-                      <div className="board-analysis-view__summary-label">Humidity (%)</div>
-                      <div className="board-analysis-view__summary-value">{safeValue(summary.humidity?.avg)}</div>
-                      <div className="board-analysis-view__summary-footer">
-                        Min {safeValue(summary.humidity?.min)} · Max {safeValue(summary.humidity?.max)}
-                      </div>
-                    </Card>
-                    <Card className="board-analysis-view__summary-item" elevation={1}>
-                      <div className="board-analysis-view__summary-label">Samples</div>
-                      <div className="board-analysis-view__summary-value">{safeValue(summary.samples)}</div>
-                      <div className="board-analysis-view__summary-footer">
-                        From: {summary.range?.data_start || '–'}
-                        <br />
-                        To: {summary.range?.data_end || '–'}
-                      </div>
-                    </Card>
-                  </div>
-                </Card>
-              )}
-
-              {/* Trend Graphs */}
+              {/* Charts — primary focus, shown first */}
               <div className="board-analysis-view__charts">
                 <Card className="board-analysis-view__chart-card" elevation={2}>
                   <div className="board-analysis-view__chart-header">
@@ -499,8 +460,46 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                 </Card>
               </div>
 
+              {/* Summary Statistics — secondary, shown below charts */}
+              {summary && (
+                <Card className="board-analysis-view__summary" elevation={2} style={{ marginTop: '1.5rem' }}>
+                  <div className="board-analysis-view__summary-grid">
+                    <Card className="board-analysis-view__summary-item" elevation={1}>
+                      <div className="board-analysis-view__summary-label">CO₂ (ppm)</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.co2?.avg)}</div>
+                      <div className="board-analysis-view__summary-footer">
+                        Min {safeValue(summary.co2?.min)} · Max {safeValue(summary.co2?.max)}
+                      </div>
+                    </Card>
+                    <Card className="board-analysis-view__summary-item" elevation={1}>
+                      <div className="board-analysis-view__summary-label">Temperature (°C)</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.temperature?.avg)}</div>
+                      <div className="board-analysis-view__summary-footer">
+                        Min {safeValue(summary.temperature?.min)} · Max {safeValue(summary.temperature?.max)}
+                      </div>
+                    </Card>
+                    <Card className="board-analysis-view__summary-item" elevation={1}>
+                      <div className="board-analysis-view__summary-label">Humidity (%)</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.humidity?.avg)}</div>
+                      <div className="board-analysis-view__summary-footer">
+                        Min {safeValue(summary.humidity?.min)} · Max {safeValue(summary.humidity?.max)}
+                      </div>
+                    </Card>
+                    <Card className="board-analysis-view__summary-item" elevation={1}>
+                      <div className="board-analysis-view__summary-label">Samples</div>
+                      <div className="board-analysis-view__summary-value">{safeValue(summary.samples)}</div>
+                      <div className="board-analysis-view__summary-footer">
+                        From: {summary.range?.data_start || '–'}
+                        <br />
+                        To: {summary.range?.data_end || '–'}
+                      </div>
+                    </Card>
+                  </div>
+                </Card>
+              )}
+
+              {/* Distribution & Breakdown */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-                {/* Distribution Graph */}
                 <Card className="board-analysis-view__distribution-card" elevation={2} style={{ margin: 0 }}>
                   <div className="board-analysis-view__distribution-header">
                     <h3 className="board-analysis-view__distribution-title">Distribution</h3>
@@ -533,7 +532,6 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
                   </div>
                 </Card>
 
-                {/* Quality Breakdown Table */}
                 <Card className="board-analysis-view__quality-table-card" elevation={2} style={{ margin: 0 }}>
                   <div className="board-analysis-view__quality-header">
                     <h3 className="board-analysis-view__quality-title">Breakdown</h3>
@@ -585,15 +583,15 @@ const BoardAnalysisView = ({ deviceId, onClose }) => {
       {/* Lessons Tab */}
       {activeTab === 'lessons' && (
         <div className="board-analysis-view__tab-content">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-zinc-100">Lesson Analytics</h3>
-            <MinimalTimeSelector
+          <div className="flex justify-end items-center mb-4">
+            <TimePicker
+              compact
               value={lessonsPreset}
               onChange={setLessonsPreset}
               options={[
-                { value: 'current_week', label: 'Current Week' },
-                { value: 'last_week', label: 'Last Week' },
-                { value: 'last_month', label: 'Last Month' }
+                { value: 'current_week', label: 'CUR', fullLabel: 'Current Week' },
+                { value: 'last_week', label: 'LST', fullLabel: 'Last Week' },
+                { value: 'last_month', label: 'MON', fullLabel: 'Last Month' }
               ]}
             />
           </div>

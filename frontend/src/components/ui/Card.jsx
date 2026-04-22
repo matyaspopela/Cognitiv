@@ -1,64 +1,40 @@
-import './Card.css'
+import React from 'react';
 
-const Card = ({
-  children,
-  variant = 'elevated',
-  elevation = 1,
-  className = '',
-  onClick,
-  ...props
+/**
+ * Card - Minimalist high-density container component (Bleached Stone)
+ * Enforces 8px radius, 1px Stone-200 border, and white surface background.
+ * 
+ * @param {React.ReactNode} children - Card content
+ * @param {string} [className] - Additional CSS classes
+ * @param {function} [onClick] - Click handler
+ */
+const Card = ({ 
+  children, 
+  className = '', 
+  onClick, 
+  // Destructure legacy props to prevent them from being passed to the div
+  variant,
+  elevation,
+  ...props 
 }) => {
-  const baseClass = 'md3-card'
-  const variantClass = `md3-card--${variant}`
-  const elevationClass = `md3-card--elevation-${elevation}`
-  const clickableClass = onClick ? 'md3-card--clickable' : ''
-
   return (
     <div
-      className={`${baseClass} ${variantClass} ${elevationClass} ${clickableClass} ${className}`}
+      className={`
+        bg-surface 
+        border border-border-subtle 
+        rounded-[8px] 
+        p-6
+        transition-all 
+        duration-200
+        ${onClick ? 'cursor-pointer hover:border-stone-300 hover:bg-stone-50/50 active:bg-stone-100' : ''} 
+        ${className}
+      `}
       onClick={onClick}
       {...props}
     >
       {children}
     </div>
-  )
-}
+  );
+};
 
-export default Card
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export default Card;

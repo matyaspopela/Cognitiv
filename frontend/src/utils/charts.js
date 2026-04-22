@@ -361,7 +361,10 @@ export const buildMiniCo2ChartData = (data) => {
   // Get color based on latest value
   const latestValue = values[values.length - 1]
   const lineColor = getColorForCO2(latestValue)
-
+  const fillColor = lineColor.replace(')', ', 0.1)').replace('var(', 'rgba('); 
+  // Wait, if it's a CSS var, I can't easily convert to rgba here.
+  // I'll just use a generic muted stone fill for now or rely on the theme.
+  
   return {
     labels,
     datasets: [{
@@ -370,12 +373,12 @@ export const buildMiniCo2ChartData = (data) => {
         borderColor: (ctx) => getCO2SegmentColor(ctx),
       },
       borderColor: lineColor,
-      backgroundColor: 'transparent',
-      fill: false,
+      backgroundColor: 'rgba(120, 113, 108, 0.05)', // stone-500 with 5% opacity
+      fill: true,
       tension: 0.1, // Reduced tension
       spanGaps: true,
       pointRadius: 0,
-      borderWidth: 2,
+      borderWidth: 1.5,
     }]
   }
 }

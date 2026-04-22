@@ -10,11 +10,12 @@ import {
 import { Line } from 'react-chartjs-2'
 import { historyAPI } from '../../services/api'
 import { buildMiniCo2ChartData, hasValidChartData, getMiniChartOptions } from '../../utils/charts'
+import { getCO2Status } from '../../utils/co2'
 
 import Card from '../ui/Card'
-import Badge from '../ui/Badge'
-import ProgressBar from '../ui/ProgressBar'
-import './DashboardBox.css'
+import StatusBadge from '../ui/StatusBadge'
+import DataValue from '../ui/DataValue'
+import LoadingSpinner from '../ui/LoadingSpinner'
 
 // Register Chart.js components
 ChartJS.register(
@@ -26,13 +27,18 @@ ChartJS.register(
 )
 
 /**
- * DashboardBox Component
- * Public dashboard box component for displaying device cards.
+ * DashboardBox Component - High-density device overview card
+ * Bleached Stone - Laboratory Style
  */
 const DashboardBox = ({ device, onClick }) => {
   const [miniChartData, setMiniChartData] = useState(null)
   const [loadingMiniChart, setLoadingMiniChart] = useState(false)
-  const [currentCo2, setCurrentCo2] = useState(null)
+  const [currentReadings, setCurrentReadings] = useState({
+    co2: null,
+    temp: null,
+    humidity: null,
+    battery: null
+  })
 
   const getDeviceIdentifier = () => {
     if (typeof device === 'string') return device
@@ -48,41 +54,37 @@ const DashboardBox = ({ device, onClick }) => {
   const getIsOffline = () => {
     if (!device) return true
     if (typeof device === 'string') return true
-
     if (device.status === 'offline') return true
-
     if (device.last_seen) {
       try {
         const lastSeenDate = new Date(device.last_seen)
         if (!isNaN(lastSeenDate.getTime())) {
           const now = new Date()
           const minutesAgo = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60)
-          if (minutesAgo > 5) {
-            return true
-          }
+          if (minutesAgo > 5) return true
         }
-      } catch (error) {
-        // If parsing fails, fall back to status
-      }
+      } catch (error) {}
     }
-
     return device.status !== 'online'
   }
 
   const isOffline = getIsOffline()
 
   useEffect(() => {
-    if (device?.current_readings?.co2 != null) {
-      setCurrentCo2(Math.round(device.current_readings.co2))
+    if (device?.current_readings) {
+      setCurrentReadings({
+        co2: device.current_readings.co2 != null ? Math.round(device.current_readings.co2) : null,
+        temp: device.current_readings.temperature != null ? device.current_readings.temperature.toFixed(1) : null,
+        humidity: device.current_readings.humidity != null ? Math.round(device.current_readings.humidity) : null,
+        battery: device.current_readings.battery != null ? device.current_readings.battery.toFixed(2) : null
+      })
     }
   }, [device])
 
   useEffect(() => {
     const loadMiniChartData = async () => {
-      if (!deviceIdentifier) return
-      if (isOffline) {
+      if (!deviceIdentifier || isOffline) {
         setMiniChartData(null)
-        setLoadingMiniChart(false)
         return
       }
 
@@ -90,61 +92,29 @@ const DashboardBox = ({ device, onClick }) => {
         setLoadingMiniChart(true)
         const now = new Date()
         const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000))
-        const startIso = oneHourAgo.toISOString()
-        const endIso = now.toISOString()
+        const response = await historyAPI.getSeries(
+          oneHourAgo.toISOString(), 
+          now.toISOString(), 
+          '10min', 
+          deviceIdentifier
+        )
 
-        const bucketOptions = ['10min', 'hour', 'raw']
-        let chartLoaded = false
-
-        for (const bucket of bucketOptions) {
-          try {
-            const response = await historyAPI.getSeries(startIso, endIso, bucket, deviceIdentifier)
-
-            if (response?.response?.status >= 400 || response?.status >= 400) {
-              continue
-            }
-
-            const seriesData = response?.data || response
-
-            if (seriesData?.status === 'error' || !seriesData) {
-              continue
-            }
-
-            if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
-              let seriesToUse = seriesData.series
-              if (bucket === 'raw' && seriesToUse.length > 200) {
-                const step = Math.ceil(seriesToUse.length / 200)
-                seriesToUse = seriesToUse.filter((_, index) => index % step === 0)
-              }
-
-              const chartData = buildMiniCo2ChartData(seriesToUse)
-              if (hasValidChartData(chartData)) {
-                setMiniChartData(chartData)
-                chartLoaded = true
-                break
-              }
-            }
-          } catch (error) {
-            continue
+        const seriesData = response?.data || response
+        if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
+          const chartData = buildMiniCo2ChartData(seriesData.series)
+          if (hasValidChartData(chartData)) {
+            setMiniChartData(chartData)
           }
         }
-
-        if (!chartLoaded && device?.current_readings?.co2 != null) {
-          setCurrentCo2(Math.round(device.current_readings.co2))
-        }
       } catch (error) {
-        if (device?.current_readings?.co2 != null) {
-          setCurrentCo2(Math.round(device.current_readings.co2))
-        }
+        console.error('Failed to load mini chart:', error)
       } finally {
         setLoadingMiniChart(false)
       }
     }
 
-    if (!isOffline) {
-      loadMiniChartData()
-    }
-  }, [deviceIdentifier, isOffline, device])
+    loadMiniChartData()
+  }, [deviceIdentifier, isOffline])
 
   const handleClick = () => {
     if (onClick && deviceIdentifier) {
@@ -152,62 +122,59 @@ const DashboardBox = ({ device, onClick }) => {
     }
   }
 
+  const co2Status = isOffline ? 'unknown' : getCO2Status(currentReadings.co2 || 0)
+
   return (
     <Card
-      className={`dashboard-box ${isOffline ? 'dashboard-box--offline' : ''}`}
-      elevation={2}
+      className="w-[240px] p-4 flex flex-col gap-3 group"
       onClick={handleClick}
     >
-      <div className="dashboard-box__header">
-        <h3 className="dashboard-box__name">{deviceName}</h3>
-        <div className="dashboard-box__header-actions">
-          <Badge
-            variant="standard"
-            color={isOffline ? 'offline' : 'success'}
-          >
-            {isOffline ? 'Offline' : 'Online'}
-          </Badge>
-        </div>
+      <div className="flex justify-between items-start">
+        <h3 className="text-[13px] font-bold text-text-primary truncate max-w-[140px]" title={deviceName}>
+          {deviceName}
+        </h3>
+        <StatusBadge status={isOffline ? 'offline' : co2Status}>
+          {isOffline ? 'Offline' : null}
+        </StatusBadge>
       </div>
 
-      <div className="dashboard-box__body">
-        {!isOffline && (
-          <div className="dashboard-box__graph-container">
-            {loadingMiniChart ? (
-              <div className="dashboard-box__graph-loading">
-                <ProgressBar indeterminate />
-              </div>
-            ) : miniChartData ? (
-              <div className="dashboard-box__graph" style={{ height: '100px' }}>
-                <Line data={miniChartData} options={getMiniChartOptions()} />
-              </div>
-            ) : currentCo2 !== null && currentCo2 !== undefined ? (
-              <div className="dashboard-box__graph-placeholder">
-                <div className="dashboard-box__graph-placeholder-value">{currentCo2}</div>
-                <div className="dashboard-box__graph-placeholder-label">ppm</div>
-              </div>
-            ) : (
-              <div className="dashboard-box__graph-empty">
-                <span>No data</span>
-              </div>
-            )}
+      <div className="flex items-end justify-between">
+        <DataValue 
+          value={isOffline ? '--' : (currentReadings.co2 || '--')} 
+          unit="ppm" 
+          label="CO2" 
+        />
+      </div>
+
+      <div className="h-[32px] w-full relative">
+        {loadingMiniChart ? (
+          <div className="absolute inset-0 flex items-center justify-center opacity-30">
+            <LoadingSpinner size="small" />
+          </div>
+        ) : miniChartData && !isOffline ? (
+          <Line 
+            data={miniChartData} 
+            options={getMiniChartOptions()} 
+          />
+        ) : (
+          <div className="h-full w-full border-b border-stone-100 flex items-end opacity-20">
+             {/* Empty trend line placeholder */}
           </div>
         )}
+      </div>
 
-        {!isOffline && (
-          <div className="dashboard-box__current-value">
-            <span className="dashboard-box__current-label">Current CO₂:</span>
-            <span className="dashboard-box__current-number">
-              {currentCo2 !== null && currentCo2 !== undefined
-                ? `${currentCo2} ppm`
-                : '--'}
-            </span>
-          </div>
-        )}
-
-        {isOffline && (
-          <div className="dashboard-box__offline-message">
-            <span>This device is offline</span>
+      <div className="flex items-center gap-3 text-[10px] font-medium text-text-muted tabular-nums">
+        <div className="flex items-center gap-1">
+          <span className="opacity-60">TEMP</span>
+          <span className="text-text-primary">{currentReadings.temp || '--'}°C</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="opacity-60">HUM</span>
+          <span className="text-text-primary">{currentReadings.humidity || '--'}%</span>
+        </div>
+        {currentReadings.battery && (
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="opacity-60 italic">{currentReadings.battery}V</span>
           </div>
         )}
       </div>

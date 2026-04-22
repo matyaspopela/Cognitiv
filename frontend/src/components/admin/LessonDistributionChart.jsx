@@ -80,15 +80,13 @@ const LessonDistributionChart = ({ lessons, summary, grouping = 'period' }) => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: {
-                display: false
-            },
+            legend: { display: false },
             tooltip: {
                 enabled: true,
-                backgroundColor: '#18181b',
-                titleColor: '#f4f4f5',
-                bodyColor: '#a1a1aa',
-                borderColor: '#27272a',
+                backgroundColor: '#ffffff',
+                titleColor: '#1c1917',
+                bodyColor: '#78716c',
+                borderColor: '#e7e5e4',
                 borderWidth: 1,
                 padding: 12,
                 cornerRadius: 8,
@@ -112,20 +110,18 @@ const LessonDistributionChart = ({ lessons, summary, grouping = 'period' }) => {
         scales: {
             x: {
                 grid: { display: false },
-                ticks: { color: '#71717a' },
+                ticks: { color: '#78716c', font: { size: 11 } },
                 border: { display: false }
             },
             y: {
                 title: {
                     display: true,
                     text: 'Avg CO₂ (ppm)',
-                    color: '#a1a1aa',
+                    color: '#a8a29e',
+                    font: { size: 11 }
                 },
-                grid: {
-                    color: '#27272a',
-                    drawBorder: false,
-                },
-                ticks: { color: '#a1a1aa' },
+                grid: { color: '#f5f5f4' },
+                ticks: { color: '#a8a29e', font: { size: 11 } },
                 border: { display: false }
             }
         }
@@ -138,15 +134,12 @@ const LessonDistributionChart = ({ lessons, summary, grouping = 'period' }) => {
     }
 
     return (
-        <Card className="min-h-[400px] p-6 flex flex-col" elevation={2}>
-            <div className="mb-6">
-                <h3 className="text-lg font-semibold text-zinc-100">{titleMap[grouping]}</h3>
-            </div>
+        <Card className="min-h-[400px] p-6 flex flex-col" elevation={1}>
             <div className="flex-1 w-full relative min-h-[300px]">
                 {chartData ? (
                     <Bar data={chartData} options={chartOptions} />
                 ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">
+                    <div className="absolute inset-0 flex items-center justify-center text-stone-400 text-sm">
                         No data available for this grouping
                     </div>
                 )}

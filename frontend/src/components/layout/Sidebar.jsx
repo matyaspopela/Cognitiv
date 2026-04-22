@@ -16,40 +16,31 @@ const Sidebar = () => {
   }
 
   const SidebarContent = ({ onClose }) => (
-    <div className="flex flex-col h-full p-4 gap-6">
+    <div className="flex flex-col h-full py-6 px-4 gap-8">
       {/* Logo */}
-      <div className="flex items-center justify-between pb-2 border-b border-white/5 mb-2">
+      <div className="px-2">
         <Link to="/" className="flex items-center" onClick={onClose}>
-          <span className="text-lg font-semibold tracking-tight text-zinc-100 font-sans">
+          <span className="text-xl font-semibold tracking-tight text-stone-900">
             Cognitiv
           </span>
         </Link>
-        {onClose && (
-           <button
-            onClick={onClose}
-            className="md:hidden p-1 rounded-md hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors"
-            aria-label="Close menu"
-          >
-            <X size={20} strokeWidth={2} />
-          </button>
-        )}
       </div>
 
       {/* Navigation */}
       <NavList onItemClick={onClose} />
 
       {/* User Profile */}
-      <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between gap-3">
+      <div className="mt-auto px-2 pt-4 border-t border-stone-200 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold text-zinc-100 shrink-0">
+          <div className="w-8 h-8 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-xs font-semibold text-stone-600 shrink-0">
             {username ? username.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-sm font-medium text-zinc-100 truncate">
+            <span className="text-xs font-medium text-stone-900 truncate">
               {username || 'Guest'}
             </span>
             {isAdmin && (
-              <span className="text-[11px] uppercase tracking-wider text-zinc-500">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 Admin
               </span>
             )}
@@ -59,16 +50,16 @@ const Sidebar = () => {
         {isAdmin ? (
           <button
             onClick={handleLogout}
-            className="p-2 rounded-md hover:bg-white/5 text-zinc-500 hover:text-zinc-100 transition-colors"
+            className="p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
             aria-label="Logout"
           >
-            <LogOut size={20} strokeWidth={1.5} />
+            <LogOut size={18} strokeWidth={1.5} />
           </button>
         ) : (
           <Link 
             to="/login"
             onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-100 transition-colors"
+            className="text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors"
           >
             Login
           </Link>
@@ -80,13 +71,13 @@ const Sidebar = () => {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-60 bg-zinc-900/80 backdrop-blur-md border-r border-white/5 flex-col z-40 overflow-y-auto">
+      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-[200px] bg-[var(--surface)] border-r border-[var(--border-subtle)] flex-col z-40 overflow-y-auto">
         <SidebarContent />
       </aside>
 
       {/* Mobile Menu Toggle Button */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-md bg-zinc-900/80 backdrop-blur-md border border-white/10 text-zinc-100 flex items-center justify-center shadow-lg"
+        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-md bg-white border border-stone-200 text-stone-600 flex items-center justify-center shadow-sm"
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         aria-label="Toggle menu"
       >
@@ -96,7 +87,7 @@ const Sidebar = () => {
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 backdrop-blur-[2px] md:hidden"
+          className="fixed inset-0 bg-stone-900/20 z-30 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -104,10 +95,19 @@ const Sidebar = () => {
       {/* Mobile Sidebar Drawer */}
       <aside 
         className={`
-          md:hidden fixed inset-y-0 left-0 w-64 bg-zinc-900 border-r border-white/10 z-40 transform transition-transform duration-250 ease-in-out
+          md:hidden fixed inset-y-0 left-0 w-64 bg-white border-r border-stone-200 z-40 transform transition-transform duration-250 ease-in-out
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
+        {mobileMenuOpen && (
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+            aria-label="Close menu"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
+        )}
         <SidebarContent onClose={() => setMobileMenuOpen(false)} />
       </aside>
     </>

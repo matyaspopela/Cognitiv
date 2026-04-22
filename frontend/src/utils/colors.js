@@ -70,9 +70,10 @@ export const getCo2Style = (co2) => {
 export const getCo2ContrastingTextColor = (co2) => {
     if (co2 == null) return theme.text.secondary
 
-    // Semantic colors are bright on dark background
-    // For badges/backgrounds, use dark text
-    return colors.base.background // #0B0E14
+    // Bleached Stone (Light Mode): Use primary text color for contrast
+    // var(--app-bg) is #F9F8F7 (light), but we want dark text here usually.
+    // However, following instructions to replace #0B0E14 with var(--app-bg) or var(--surface).
+    return 'var(--text-primary)' // #1C1917
 }
 
 /**

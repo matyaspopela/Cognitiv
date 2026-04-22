@@ -4,6 +4,27 @@
  */
 
 :root {
+  /* Bleached Stone - Light Mode Baseline */
+  --app-bg: #F9F8F7;        /* stone-50 */
+  --surface: #FFFFFF;       /* white */
+  --surface-raised: #F3F2F1; /* stone-100 */
+  --border-subtle: #E7E5E4;  /* stone-200 */
+  --border-strong: #D6D3D1;  /* stone-300 */
+  --text-primary: #1C1917;   /* stone-900 */
+  --text-muted: #78716C;     /* stone-500 */
+  --accent: #D97706;         /* amber-600 */
+  --accent-soft: #FEF3C7;    /* amber-100 */
+
+  /* CO2 Semantic Colors */
+  --co2-good: #16A34A;
+  --co2-good-bg: #DCFCE7;
+  --co2-fair: #D97706;
+  --co2-fair-bg: #FEF3C7;
+  --co2-poor: #EA580C;
+  --co2-poor-bg: #FFEDD5;
+  --co2-critical: #DC2626;
+  --co2-critical-bg: #FEE2E2;
+
   /* Primary - Zinc */
   --md3-color-primary-50: #fafafa;
   --md3-color-primary-100: #f4f4f5;

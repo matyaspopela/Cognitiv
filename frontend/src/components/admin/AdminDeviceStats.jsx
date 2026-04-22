@@ -2,7 +2,7 @@ import { useState } from 'react'
 import useDeviceHistory from '../../hooks/useDeviceHistory'
 import AdminStatsCards from './AdminStatsCards'
 import AdminCombinedGraph from './AdminCombinedGraph'
-import MinimalTimeSelector from '../dashboard/MinimalTimeSelector'
+import TimePicker from '../ui/TimePicker'
 import ProgressBar from '../ui/ProgressBar'
 import Card from '../ui/Card'
 
@@ -14,13 +14,16 @@ const AdminDeviceStats = ({ deviceId }) => {
         <div className="flex flex-col gap-6">
             {/* Time Range Selector */}
             <div className="flex justify-end items-center">
-                <MinimalTimeSelector
+                <TimePicker
+                    compact
                     value={timeRange}
                     onChange={setTimeRange}
                     options={[
-                        { value: '24h', label: '24 Hours' },
-                        { value: '7d', label: '7 Days' },
-                        { value: '30d', label: '30 Days' },
+                        { value: '24h', label: '24H', fullLabel: '24 Hours' },
+                        { value: '7d', label: '7D', fullLabel: '7 Days' },
+                        { value: '30d', label: '30D', fullLabel: '30 Days' },
+                        { value: '90d', label: '90D', fullLabel: '90 Days' },
+                        { value: 'ytd', label: 'YTD', fullLabel: 'Year to Date' },
                     ]}
                 />
             </div>

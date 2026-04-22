@@ -1,77 +1,76 @@
-@import '../design/tokens.css';
-
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--md3-spacing-4);
-  background: var(--md3-color-background-secondary);
-  margin-top: 0;
+  padding: 1rem;
+  background: var(--app-bg);
 }
 
 .login-page__container {
   width: 100%;
-  max-width: 440px;
+  max-width: 400px;
 }
 
 .login-page__card {
-  padding: var(--md3-spacing-10);
-  background: var(--md3-color-surface-default);
-  border: 1px solid var(--md3-color-border);
-  box-shadow: var(--md3-elevation-2);
+  padding: 2.5rem;
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .login-page__header {
   text-align: center;
-  margin-bottom: var(--md3-spacing-8);
+  margin-bottom: 2rem;
 }
 
 .login-page__title {
-  font-size: var(--md3-font-size-headline-medium);
-  font-weight: var(--md3-font-weight-bold);
-  color: var(--md3-color-text-primary);
-  margin: 0 0 var(--md3-spacing-3) 0;
-  letter-spacing: -0.01em;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
 }
 
 .login-page__subtitle {
-  font-size: var(--md3-font-size-body-medium);
-  color: var(--md3-color-text-secondary);
+  font-size: 0.875rem;
+  color: var(--text-muted);
   margin: 0;
 }
 
 .login-page__form {
   display: flex;
   flex-direction: column;
-  gap: var(--md3-spacing-6);
-  margin-bottom: var(--md3-spacing-6);
+  gap: 1.5rem;
 }
 
 .login-page__submit {
-  margin-top: var(--md3-spacing-4);
+  margin-top: 1rem;
   width: 100%;
 }
 
 .login-page__footer {
   text-align: center;
-  padding-top: var(--md3-spacing-6);
-  border-top: 1px solid var(--md3-color-border);
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .login-page__footer a {
-  color: var(--md3-color-primary-600);
-  font-size: var(--md3-font-size-body-medium);
-  font-weight: var(--md3-font-weight-medium);
-  transition: color var(--md3-animation-short4) var(--md3-easing-standard);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: opacity 0.2s;
 }
 
 .login-page__footer a:hover {
-  color: var(--md3-color-primary-700);
+  opacity: 0.8;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .login-page__card {
-    padding: var(--md3-spacing-6);
+    padding: 1.5rem;
   }
 }

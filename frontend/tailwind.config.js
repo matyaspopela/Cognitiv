@@ -8,27 +8,40 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Soften aggressive white
-        white: '#ebebeb', // Zinc-200ish, much softer than #ffffff
+        // Soften aggressive white as per Bleached Stone plan
+        white: '#F9F8F7', 
 
-        // Monochrome / Zinc palette
+        // Bleached Stone Baseline Palette
+        'app-bg': '#F9F8F7',
+        'surface': '#FFFFFF',
+        'surface-raised': '#F3F2F1',
+        'border-subtle': '#E7E5E4',
+        'border-strong': '#D6D3D1',
+        'text-primary': '#1C1917',
+        'text-muted': '#78716C',
+        'accent': '#D97706',
+        'accent-soft': '#FEF3C7',
+
+        // CO2 Semantic Colors
+        'co2-good': '#16A34A',
+        'co2-good-bg': '#DCFCE7',
+        'co2-fair': '#D97706',
+        'co2-fair-bg': '#FEF3C7',
+        'co2-poor': '#EA580C',
+        'co2-poor-bg': '#FFEDD5',
+        'co2-critical': '#DC2626',
+        'co2-critical-bg': '#FEE2E2',
+
+        // Legacy compatibility / Background colors
         background: {
-          DEFAULT: '#09090b', // Zinc 950
-          surface: '#18181b', // Zinc 900
+          DEFAULT: '#F9F8F7',
+          surface: '#FFFFFF',
         },
-        border: {
-          subtle: '#27272a', // Zinc 800
-          muted: '#3f3f46',  // Zinc 700
-        },
-        // Zinc Scale (Explicitly needed if using zinc-* classes, but Tailwind includes them by default. 
-        // We add them here to map 'primary' etc if needed, but let's stick to 'zinc' in code or variables)
-
-        // Remove 'scifi' object completely.
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
-      // Remove scifi-gradient
     },
   },
   plugins: [],

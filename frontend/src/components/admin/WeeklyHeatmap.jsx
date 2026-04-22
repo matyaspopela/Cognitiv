@@ -33,11 +33,8 @@ const WeeklyHeatmap = ({ heatmap }) => {
 
     if (!heatmapData) {
         return (
-            <Card className="p-6" elevation={2}>
-                <div className="flex justify-between items-center mb-5">
-                    <h3 className="text-lg font-semibold text-zinc-100">Weekly Heatmap</h3>
-                </div>
-                <div className="flex items-center justify-center h-[200px] text-zinc-500 text-sm">
+            <Card className="p-6" elevation={1}>
+                <div className="flex items-center justify-center h-[200px] text-stone-400 text-sm">
                     No heatmap data available
                 </div>
             </Card>
@@ -47,24 +44,23 @@ const WeeklyHeatmap = ({ heatmap }) => {
     const { days, hours, grid } = heatmapData
 
     return (
-        <Card className="p-6" elevation={2}>
+        <Card className="p-6" elevation={1}>
             <div className="flex justify-between items-center mb-5">
-                <h3 className="text-lg font-semibold text-zinc-100">Weekly CO₂ Heatmap</h3>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-stone-500">CO₂ Heatmap</span>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-500">Low</span>
-                    <div className="w-[100px] h-3 rounded-sm bg-gradient-to-r from-zinc-600 via-zinc-500 to-white opactiy-80"></div>
-                    <span className="text-xs text-zinc-500">High</span>
+                    <span className="text-[10px] text-stone-400 uppercase tracking-wider">Low</span>
+                    <div className="w-[80px] h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #16a34a, #d97706, #dc2626)' }} />
+                    <span className="text-[10px] text-stone-400 uppercase tracking-wider">High</span>
                 </div>
             </div>
 
             <div className="overflow-x-auto">
                 <div className="min-w-[600px]">
                     {/* Hour labels */}
-                    <div className="grid grid-cols-[60px_repeat(9,1fr)] gap-1 mb-1">
-                        <div className="h-4"></div>
-                        {hours.map((hour, i) => (
-                            <div key={hour} className="text-[11px] text-zinc-500 text-center">
-                                {/* Show label only for start, middle, end to reduce clutter, or show all if space permits */}
+                    <div className="grid grid-cols-[48px_repeat(9,1fr)] gap-1 mb-1">
+                        <div className="h-4" />
+                        {hours.map((hour) => (
+                            <div key={hour} className="text-[10px] text-stone-400 text-center font-medium">
                                 {hour.toString().padStart(2, '0')}
                             </div>
                         ))}
@@ -73,19 +69,19 @@ const WeeklyHeatmap = ({ heatmap }) => {
                     {/* Grid rows */}
                     <div className="flex flex-col gap-1">
                         {days.map((day, dayIndex) => (
-                            <div key={day} className="grid grid-cols-[60px_repeat(9,1fr)] gap-1 items-center">
-                                <div className="text-xs font-medium text-zinc-400 flex items-center">
+                            <div key={day} className="grid grid-cols-[48px_repeat(9,1fr)] gap-1 items-center">
+                                <div className="text-[11px] font-medium text-stone-500">
                                     {day}
                                 </div>
                                 {grid[dayIndex].map((co2, hourIndex) => (
                                     <div
                                         key={hourIndex}
-                                        className="h-10 w-full rounded-sm cursor-pointer transition-transform duration-100 hover:scale-105 hover:z-10"
+                                        className="h-9 w-full rounded-sm cursor-default transition-transform duration-100 hover:scale-105 hover:z-10"
                                         style={{
-                                            backgroundColor: co2 !== null ? getCo2Color(co2) : '#27272a',
-                                            opacity: co2 !== null ? 0.8 : 0.3
+                                            backgroundColor: co2 !== null ? getCo2Color(co2) : '#f5f5f4',
+                                            opacity: co2 !== null ? 0.85 : 1
                                         }}
-                                        title={co2 !== null ? `${day} ${hours[hourIndex]}:00 - ${Math.round(co2)} ppm` : 'No data'}
+                                        title={co2 !== null ? `${day} ${hours[hourIndex]}:00 — ${Math.round(co2)} ppm` : 'No data'}
                                     />
                                 ))}
                             </div>

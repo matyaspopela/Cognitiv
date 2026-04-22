@@ -5,11 +5,21 @@
 
 /**
  * Calculate time range for given window
- * @param {string} window - '1h', '24h', '7d', or '30d'
+ * @param {string} window - '1h', '24h', '7d', '30d', '90d', or 'ytd'
  * @returns {Object} {start: ISOString, end: ISOString}
  */
 export const getTimeWindowRange = (window) => {
   const now = new Date()
+
+  // Year to Date: from Jan 1 00:00:00 of the current year
+  if (window === 'ytd') {
+    const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+    return {
+      start: start.toISOString(),
+      end: now.toISOString()
+    }
+  }
+
   let hoursBack = 24 // default 24h
 
   if (window === '1h') {
@@ -59,6 +69,8 @@ export const getBucketSize = (window) => {
     return '3h' // 3-hour aggregation for 30 days
   } else if (window === '90d') {
     return '6h' // 6-hour aggregation for 90 days
+  } else if (window === 'ytd') {
+    return 'day' // Daily aggregation for Year to Date
   }
   return '10min' // default fallback
 }
@@ -116,6 +128,13 @@ export const getHoursForStats = (window) => {
     return 168 // 7 * 24
   } else if (window === '30d') {
     return 720 // 30 * 24
+  } else if (window === '90d') {
+    return 2160 // 90 * 24
+  } else if (window === 'ytd') {
+    // Calculate elapsed hours since Jan 1st of current year
+    const now = new Date()
+    const jan1 = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+    return Math.ceil((now.getTime() - jan1.getTime()) / (1000 * 60 * 60))
   }
   return 24 // default
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, BarChart2, BookOpen } from 'lucide-react'
 import { adminAPI } from '../services/api'
 import Button from '../components/ui/Button'
 import AdminDeviceHeader from '../components/admin/AdminDeviceHeader'
@@ -8,7 +7,7 @@ import AdminDeviceStats from '../components/admin/AdminDeviceStats'
 import AdminAnnotatedView from '../components/admin/AdminAnnotatedView'
 import DeviceRenameModal from '../components/admin/DeviceRenameModal'
 import DeviceCustomizationModal from '../components/admin/DeviceCustomizationModal'
-import './AdminDevicePage.css'
+import PageHeader from '../components/layout/PageHeader'
 
 const AdminDevicePage = () => {
     const { deviceId } = useParams()
@@ -75,8 +74,10 @@ const AdminDevicePage = () => {
         return (
             <div className="flex-1 flex flex-col w-full">
                 <div className="flex flex-col gap-6">
-                    <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-12 text-center">
-                        <p className="text-zinc-400">Loading device...</p>
+                    <div className="bg-stone-50 border border-stone-200 rounded-lg p-12 text-center">
+                        <p className="text-stone-400 font-bold uppercase tracking-widest text-xs">
+                          Synchronizing Device Stats...
+                        </p>
                     </div>
                 </div>
             </div>
@@ -87,17 +88,9 @@ const AdminDevicePage = () => {
         return (
             <div className="flex-1 flex flex-col w-full">
                 <div className="flex flex-col gap-6">
-                    <Button
-                        variant="ghost"
-                        size="medium"
-                        onClick={() => navigate('/admin')}
-                        className="flex items-center gap-2 self-start"
-                    >
-                        <ArrowLeft size={18} />
-                        Back to Device List
-                    </Button>
-                    <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-6">
-                        <p className="text-red-400">{error}</p>
+                    <PageHeader showBack={true} />
+                    <div className="bg-red-50 border border-red-100 rounded-lg p-6">
+                        <p className="text-red-700 text-sm font-medium">{error}</p>
                     </div>
                 </div>
             </div>
@@ -107,15 +100,7 @@ const AdminDevicePage = () => {
     return (
         <div className="flex-1 flex flex-col w-full">
             <div className="flex flex-col gap-6">
-                {/* Back Button */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate('/admin')}
-                    className="self-start text-zinc-500 hover:text-zinc-100 transition-colors"
-                >
-                    <ArrowLeft size={20} />
-                </Button>
+                <PageHeader showBack={true} />
 
                 {/* Device Header */}
                 <AdminDeviceHeader
@@ -124,26 +109,34 @@ const AdminDevicePage = () => {
                 />
 
                 {/* Tab Navigation */}
-                <div className="flex items-center gap-2 border-b border-white/10 mb-2">
+                <div className="flex items-center gap-1 border-b border-stone-200 mb-2">
                     <button
-                        className={`p-3 text-zinc-400 hover:text-zinc-100 transition-colors border-b-2 ${activeTab === 'time_series' ? 'border-zinc-100 text-zinc-100' : 'border-transparent'}`}
+                        className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition-all border-b-2 ${
+                          activeTab === 'time_series' 
+                            ? 'border-amber-600 text-stone-900' 
+                            : 'border-transparent text-stone-400 hover:text-stone-600'
+                        }`}
                         onClick={() => setActiveTab('time_series')}
-                        title="Time Series"
                     >
-                        <BarChart2 size={20} />
+                        Data
                     </button>
                     <button
-                        className={`p-3 text-zinc-400 hover:text-zinc-100 transition-colors border-b-2 ${activeTab === 'annotated' ? 'border-zinc-100 text-zinc-100' : 'border-transparent'}`}
+                        className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition-all border-b-2 ${
+                          activeTab === 'annotated' 
+                            ? 'border-amber-600 text-stone-900' 
+                            : 'border-transparent text-stone-400 hover:text-stone-600'
+                        }`}
                         onClick={() => setActiveTab('annotated')}
-                        title="Annotated Data"
                     >
-                        <BookOpen size={20} />
+                        Lessons
                     </button>
                 </div>
 
                 {/* Tab Content */}
-                {activeTab === 'time_series' && <AdminDeviceStats deviceId={deviceId} />}
-                {activeTab === 'annotated' && <AdminAnnotatedView deviceId={deviceId} />}
+                <div className="mt-2">
+                  {activeTab === 'time_series' && <AdminDeviceStats deviceId={deviceId} />}
+                  {activeTab === 'annotated' && <AdminAnnotatedView deviceId={deviceId} />}
+                </div>
 
                 {/* Modals */}
                 {showRenameModal && device && (

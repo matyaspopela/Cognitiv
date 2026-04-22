@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -10,17 +10,18 @@ import {
     Legend,
     Filler,
     TimeScale,
-} from 'chart.js'
-import { Line } from 'react-chartjs-2'
-import 'chartjs-adapter-date-fns'
-import { historyAPI } from '../../services/api'
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
+import { historyAPI } from '../../services/api';
 import {
-    buildCo2ChartData,
-    hasValidChartData,
-    getChartOptions,
-} from '../../utils/charts'
-import { getTimeWindowRange, getBucketSize } from '../../utils/timeWindow'
-import ProgressBar from '../ui/ProgressBar'
+    baseOptions,
+    createThresholdGradient,
+    CO2_THRESHOLDS,
+    chartColors
+} from '../../utils/chartSystem';
+import { getTimeWindowRange, getBucketSize } from '../../utils/timeWindow';
+import ProgressBar from '../ui/ProgressBar';
 
 // Register Chart.js components
 ChartJS.register(
@@ -33,179 +34,201 @@ ChartJS.register(
     Legend,
     Filler,
     TimeScale
-)
+);
 
 /**
  * Filter series data to only include points within the requested time range
  */
 const filterSeriesInRange = (series, startISO, endISO) => {
-    if (!series || !Array.isArray(series)) return []
+    if (!series || !Array.isArray(series)) return [];
 
-    const startTime = new Date(startISO).getTime()
-    const endTime = new Date(endISO).getTime()
+    const startTime = new Date(startISO).getTime();
+    const endTime = new Date(endISO).getTime();
 
     return series.filter(item => {
-        if (!item.bucket_start) return false
-        const pointTime = new Date(item.bucket_start).getTime()
-        return pointTime >= startTime && pointTime <= endTime
-    })
-}
+        if (!item.bucket_start) return false;
+        const pointTime = new Date(item.bucket_start).getTime();
+        return pointTime >= startTime && pointTime <= endTime;
+    });
+};
 
 const Co2Graph = ({ deviceId, timeWindow }) => {
-    const [chartData, setChartData] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
-    const chartRef = useRef(null)
+    const [chartData, setChartData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const chartRef = useRef(null);
 
     useEffect(() => {
         const loadChartData = async () => {
-            if (!deviceId) return
+            if (!deviceId) return;
 
             try {
-                setLoading(true)
-                setError(null)
-                setChartData(null)
-                const { start, end } = getTimeWindowRange(timeWindow)
-                const bucket = getBucketSize(timeWindow)
+                setLoading(true);
+                setError(null);
+                setChartData(null);
+                const { start, end } = getTimeWindowRange(timeWindow);
+                const bucket = getBucketSize(timeWindow);
 
-                const response = await historyAPI.getSeries(start, end, bucket, deviceId)
+                const response = await historyAPI.getSeries(start, end, bucket, deviceId);
 
-                if (response?.response?.status >= 400 || response?.status >= 400) {
-                    setError('Failed to load data')
-                    return
-                }
+                const seriesData = response?.data || response;
 
-                const seriesData = response?.data || response
-
-                if (seriesData?.status === 'success' && Array.isArray(seriesData.series) && seriesData.series.length > 0) {
-                    const filteredSeries = filterSeriesInRange(seriesData.series, start, end)
+                if (seriesData?.status === 'success' && Array.isArray(seriesData.series)) {
+                    const filteredSeries = filterSeriesInRange(seriesData.series, start, end);
 
                     if (filteredSeries.length > 0) {
-                        const data = buildCo2ChartData(filteredSeries, bucket)
-                        if (hasValidChartData(data)) {
-                            setChartData(data)
-                        } else {
-                            setError('No data to display')
-                        }
+                        const labels = filteredSeries.map(item => new Date(item.bucket_start));
+                        const values = filteredSeries.map(item => {
+                            const val = item.co2?.avg ?? item.co2;
+                            return val !== null && val !== undefined ? Number(val) : null;
+                        });
+
+                        setChartData({
+                            labels,
+                            datasets: [{
+                                label: 'CO₂',
+                                data: values,
+                                fill: true,
+                                borderColor: chartColors.stone[800],
+                                borderWidth: 1.5,
+                                tension: 0.3,
+                                pointRadius: 0,
+                                spanGaps: true,
+                                // backgroundColor will be set via gradient in useEffect
+                                backgroundColor: 'transparent',
+                            }]
+                        });
                     } else {
-                        setError('No data to display')
+                        setError('No data points found for selected range');
                     }
                 } else {
-                    setError('No data to display')
+                    setError('No data available');
                 }
             } catch (err) {
-                console.error('Error loading CO2 graph:', err)
-                setError('Error loading data')
+                console.error('Error loading CO2 graph:', err);
+                setError('Failed to connect to laboratory data');
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
-        }
+        };
 
-        loadChartData()
-    }, [deviceId, timeWindow])
+        loadChartData();
+    }, [deviceId, timeWindow]);
 
-    const options = getChartOptions('line', {
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    label: (context) => `${context.dataset.label}: ${context.parsed.y} ppm`
-                }
-            },
-            legend: {
-                display: false
-            }
-        },
+    // Apply gradient after chart rendering
+    useEffect(() => {
+        const chart = chartRef.current;
+        if (!chart || !chartData) return;
+
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.y) return;
+
+        const gradient = createThresholdGradient(ctx, chartArea, scales);
+        chart.data.datasets[0].backgroundColor = gradient;
+        chart.update('none');
+    }, [chartData]);
+
+    const options = useMemo(() => ({
+        ...baseOptions,
         scales: {
-            y: {
-                // Auto scale for CO2
-                grid: {
-                    color: 'rgba(255, 255, 255, 0.05)',
-                },
-                ticks: {
-                    color: '#71717a',
-                    font: { size: 10 },
-                },
-                border: { display: false }
-            },
+            ...baseOptions.scales,
             x: {
+                ...baseOptions.scales.x,
                 type: 'time',
                 time: {
-                    unit: 'hour',
+                    unit: timeWindow === '1h' || timeWindow === '6h' ? 'minute' : 'hour',
                     displayFormats: {
-                        hour: 'MMM d HH:mm',
+                        minute: 'HH:mm',
+                        hour: 'HH:mm',
                         day: 'MMM d'
                     },
-                    tooltipFormat: 'MMM d, yyyy HH:mm'
-                },
-                grid: {
-                    display: true,
-                    color: 'rgba(255, 255, 255, 0.05)'
+                    tooltipFormat: 'MMM d, HH:mm'
                 },
                 ticks: {
-                    color: '#71717a',
-                    font: { size: 10 },
+                    ...baseOptions.scales.x.ticks,
                     maxTicksLimit: 6,
-                    maxRotation: 0,
-                    autoSkip: true,
-                    align: 'start'
-                },
-                border: { display: false }
+                }
+            },
+            y: {
+                ...baseOptions.scales.y,
+                min: 400, // Typical outdoor CO2 level
+                suggestedMax: 1500,
+                ticks: {
+                    ...baseOptions.scales.y.ticks,
+                    callback: (value) => `${value} ppm`
+                }
             }
         },
-        maintainAspectRatio: false,
-        elements: {
-            point: {
-                radius: 0,
-                hitRadius: 10,
-                hoverRadius: 4
+        plugins: {
+            ...baseOptions.plugins,
+            tooltip: {
+                ...baseOptions.plugins.tooltip,
+                callbacks: {
+                    label: (context) => ` ${context.parsed.y} ppm`
+                }
             }
         }
-    })
-
-    // Setting: Toggle average display here
-    const SHOW_AVG_CO2 = true
+    }), [timeWindow]);
 
     // Calculate Average from displayed data
-    let averageCo2 = null
-    if (chartData && chartData.datasets && chartData.datasets[0] && chartData.datasets[0].data) {
-        const values = chartData.datasets[0].data.filter(v => v !== null && v !== undefined)
-        if (values.length > 0) {
-            const sum = values.reduce((a, b) => a + b, 0)
-            averageCo2 = Math.round(sum / values.length)
-        }
-    }
+    const averageCo2 = useMemo(() => {
+        if (!chartData?.datasets?.[0]?.data) return null;
+        const values = chartData.datasets[0].data.filter(v => v !== null && v !== undefined);
+        if (values.length === 0) return null;
+        const sum = values.reduce((a, b) => a + b, 0);
+        return Math.round(sum / values.length);
+    }, [chartData]);
 
     return (
-        <div className="w-full h-full mt-8">
-            <div className="flex items-center gap-2 mb-2 px-2">
-                <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">CO₂ Levels (Dev Verification)</span>
-                {SHOW_AVG_CO2 && averageCo2 !== null && (
-                    <span className="text-xs font-bold text-zinc-400 ml-2">
-                        Avg: {averageCo2} ppm
+        <div className="w-full h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4 px-1">
+                <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500">
+                        Historical CO₂ Distribution
                     </span>
-                )}
+                    {averageCo2 !== null && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-stone-100 border border-stone-200">
+                            <span className="text-[10px] font-medium text-stone-400">AVG</span>
+                            <span className="text-[10px] font-mono font-bold text-stone-600">{averageCo2} PPM</span>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                        <span className="text-[10px] font-medium text-stone-400">Safe</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                        <span className="text-[10px] font-medium text-stone-400">Warning</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                        <span className="text-[10px] font-medium text-stone-400">Critical</span>
+                    </div>
+                </div>
             </div>
-            <div className="w-full h-[200px]">
+
+            <div className="flex-1 min-h-[240px] relative">
                 {loading ? (
-                    <div className="flex items-center justify-center h-full">
+                    <div className="absolute inset-0 flex items-center justify-center">
                         <ProgressBar indeterminate />
                     </div>
                 ) : error ? (
-                    <div className="flex items-center justify-center h-full text-zinc-500">
-                        <p>{error}</p>
+                    <div className="absolute inset-0 flex items-center justify-center text-stone-400">
+                        <p className="text-xs font-medium">{error}</p>
                     </div>
                 ) : chartData ? (
-                    <div className="w-full h-full">
-                        <Line ref={chartRef} data={chartData} options={options} />
-                    </div>
+                    <Line ref={chartRef} data={chartData} options={options} />
                 ) : (
-                    <div className="flex items-center justify-center h-full text-zinc-500">
-                        <p>No data to display</p>
+                    <div className="absolute inset-0 flex items-center justify-center text-stone-400">
+                        <p className="text-xs font-medium">Insufficient data points</p>
                     </div>
                 )}
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default Co2Graph
+export default Co2Graph;

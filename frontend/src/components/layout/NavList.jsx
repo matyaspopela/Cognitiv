@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { LayoutDashboard, Smartphone, Settings, LineChart, Wind } from 'lucide-react'
+import { LayoutDashboard, Smartphone, Settings, Wind } from 'lucide-react'
 
 const NavList = ({ onItemClick }) => {
   const location = useLocation()
@@ -13,7 +13,6 @@ const NavList = ({ onItemClick }) => {
   ]
 
   const adminNavItems = [
-    { path: '/datalab', label: 'Export', icon: LineChart },
     { path: '/admin', label: 'Management', icon: Settings },
   ]
 
@@ -34,28 +33,32 @@ const NavList = ({ onItemClick }) => {
         to={item.path}
         onClick={onItemClick}
         className={`
-          flex items-center gap-3 px-4 py-3 mx-2 rounded-xl text-sm font-medium transition-all duration-200 ease-in-out
+          group relative flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors
           ${active
-            ? 'bg-zinc-800 text-white shadow-md translate-x-1'
-            : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-200 hover:translate-x-1'
+            ? 'bg-stone-100 text-stone-900'
+            : 'text-stone-500 hover:bg-stone-50/50 hover:text-stone-700'
           }
         `}
       >
-        <IconComponent size={20} strokeWidth={1.5} className="shrink-0" />
-        <span>{item.label}</span>
+        <IconComponent size={16} strokeWidth={active ? 2 : 1.5} className="shrink-0" />
+        <span className="flex-1">{item.label}</span>
+        
+        {active && (
+          <span className="absolute right-2 w-1 h-1 rounded-full bg-amber-600 shadow-[0_0_8px_rgba(217,119,6,0.4)]" />
+        )}
       </Link>
     )
   }
 
   return (
-    <nav className="flex flex-col gap-3 flex-1 px-2 py-4">
+    <nav className="flex flex-col gap-1 flex-1">
       {navItems.map(renderItem)}
 
       {isAdmin && (
         <>
-          <div className="my-4 mx-4 h-px bg-white/5" />
-          <div className="px-4 py-1 text-xs font-semibold uppercase tracking-wider text-zinc-600 mb-1">
-            Admin
+          <div className="my-4 mx-2 h-px bg-stone-100" />
+          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">
+            System
           </div>
           {adminNavItems.map(renderItem)}
         </>
