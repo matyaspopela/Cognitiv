@@ -124,71 +124,69 @@ def preview_query(request):
 def export_data(request):
     """
     Stream export data in specified format.
-    
-    GET /api/datalab/export?start=2026-01-01&end=2026-01-31&rooms=b4,b5&format=csv&bucketing=1h
-    
+
+    GET /api/datalab/export?start=2026-01-01&end=2026-01-31&format=csv&bucketing=1h&source=annotated
+    GET /api/datalab/export?start=2026-01-01&end=2026-01-31&format=csv&source=raw&devices=ESP8266A2
+
     Query Parameters:
-        - start: Start date (ISO format)
-        - end: End date (ISO format)
-        - rooms: Comma-separated room IDs (optional)
-        - format: Export format (csv|jsonl)
+        - start:     Start date (ISO format)
+        - end:       End date (ISO format)
+        - format:    Export format (csv|jsonl)
+        - source:    Data source — 'annotated' (default) or 'raw'
+        Annotated-only params:
+        - rooms:     Comma-separated room IDs (optional)
         - bucketing: Aggregation (raw|15m|1h|1d)
-    
+        Raw-only params:
+        - devices:   Comma-separated device_id / mac_address values (optional)
+
     Response: Streaming file download
     """
     try:
-        # Parse query parameters
+        # Common params
         start_date = request.GET.get('start')
         end_date = request.GET.get('end')
-        rooms_param = request.GET.get('rooms', '')
         export_format = request.GET.get('format', 'csv')
-        bucketing = request.GET.get('bucketing')
-        
-        if bucketing == 'raw':
-            bucketing = None
-        
+        source = request.GET.get('source', 'annotated')
+
         if not start_date or not end_date:
             return JsonResponse({'error': 'start and end dates are required'}, status=400)
-        
-        # Parse rooms
-        rooms = [r.strip() for r in rooms_param.split(',') if r.strip()] if rooms_param else []
-        
-        filters = {
-            'start': start_date,
-            'end': end_date,
-            'rooms': rooms,
-        }
-        
-        # Validate format
+
         if export_format not in ['csv', 'jsonl']:
             return JsonResponse({'error': 'Invalid format. Must be csv or jsonl'}, status=400)
-        
-        # Create export engine
+
+        if source not in ['annotated', 'raw']:
+            return JsonResponse({'error': 'Invalid source. Must be annotated or raw'}, status=400)
+
+        # Source-specific params
+        bucketing = None
+        filters = {'start': start_date, 'end': end_date}
+
+        if source == 'annotated':
+            rooms_param = request.GET.get('rooms', '')
+            bucketing_param = request.GET.get('bucketing')
+            if bucketing_param and bucketing_param != 'raw':
+                bucketing = bucketing_param
+            filters['rooms'] = [r.strip() for r in rooms_param.split(',') if r.strip()] if rooms_param else []
+        else:  # raw
+            devices_param = request.GET.get('devices', '')
+            filters['devices'] = [d.strip() for d in devices_param.split(',') if d.strip()] if devices_param else []
+
         engine = ExportEngine()
-        
-        # Determine content type and filename
-        content_types = {
-            'csv': 'text/csv',
-            'jsonl': 'application/x-ndjson',
-        }
-        
-        extensions = {
-            'csv': 'csv',
-            'jsonl': 'jsonl',
-        }
-        
+
+        content_types = {'csv': 'text/csv', 'jsonl': 'application/x-ndjson'}
+        extensions = {'csv': 'csv', 'jsonl': 'jsonl'}
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        bucketing_suffix = f"_{bucketing}" if bucketing else ""
-        filename = f'cognitiv_export{bucketing_suffix}_{timestamp}.{extensions[export_format]}'
-        
-        # Create streaming response
+        source_suffix = '_raw' if source == 'raw' else ''
+        bucketing_suffix = f'_{bucketing}' if bucketing else ''
+        filename = f'cognitiv_export{source_suffix}{bucketing_suffix}_{timestamp}.{extensions[export_format]}'
+
         response = StreamingHttpResponse(
-            engine.export_stream(filters, export_format, bucketing),
+            engine.export_stream(filters, export_format, bucketing, source=source),
             content_type=content_types[export_format]
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
         return response
-        
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

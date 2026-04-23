@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import useDeviceHistory from '../../hooks/useDeviceHistory'
 import AdminStatsCards from './AdminStatsCards'
-import AdminCombinedGraph from './AdminCombinedGraph'
+import Co2Graph from '../dashboard/Co2Graph'
 import TimePicker from '../ui/TimePicker'
 import ProgressBar from '../ui/ProgressBar'
 import Card from '../ui/Card'
 
 const AdminDeviceStats = ({ deviceId }) => {
     const [timeRange, setTimeRange] = useState('24h')
-    const { series, summary, loading, error } = useDeviceHistory(deviceId, timeRange)
+    const { summary, loading, error } = useDeviceHistory(deviceId, timeRange)
 
     return (
         <div className="flex flex-col gap-6">
@@ -47,16 +47,12 @@ const AdminDeviceStats = ({ deviceId }) => {
             {!loading && !error && (
                 <>
                     <AdminStatsCards summary={summary} />
-                    <AdminCombinedGraph series={series} />
+                    <Card className="p-6 h-[450px]">
+                        <Co2Graph deviceId={deviceId} timeWindow={timeRange} />
+                    </Card>
                 </>
             )}
 
-            {/* No Data State */}
-            {!loading && !error && !summary && !series.length && (
-                <Card className="p-12 text-center" elevation={2}>
-                    <p className="text-zinc-400">No data available for this time range</p>
-                </Card>
-            )}
         </div>
     )
 }

@@ -39,6 +39,18 @@ def get_annotated_readings_collection():
     db = client[get_mongo_db_name()]
     return db['annotated_readings']
 
+def get_sensor_data_collection():
+    """Get raw sensor_data_ timeseries collection."""
+    client = MongoClient(
+        get_mongo_uri(),
+        serverSelectionTimeoutMS=5000,
+        tlsCAFile=certifi.where(),
+        tz_aware=True,
+        tzinfo=UTC,
+    )
+    db = client[get_mongo_db_name()]
+    return db['sensor_data_']
+
 class ExportEngine:
     def __init__(self):
         self.weather_svc = WeatherService()
@@ -101,25 +113,139 @@ class ExportEngine:
         
         return enriched_readings
     
-    def export_stream(self, filters: Dict, format: str = 'csv', bucketing: str = None) -> Generator[bytes, None, None]:
+    def export_stream(self, filters: Dict, format: str = 'csv', bucketing: str = None, source: str = 'annotated') -> Generator[bytes, None, None]:
         """
         Stream exported data in specified format.
-        
+
         Args:
-            filters: Dict with 'start', 'end', 'rooms' (optional)
+            filters: Dict with 'start', 'end', 'rooms' (optional, annotated) or 'devices' (optional, raw)
             format: 'csv' or 'jsonl'
-            bucketing: '15m', '1h', '1d' or None
-            
+            bucketing: '15m', '1h', '1d' or None (ignored for raw source)
+            source: 'annotated' (annotated_readings) or 'raw' (sensor_data_ timeseries)
+
         Yields:
             Bytes of exported data
         """
-        # Dispatch to format-specific method
-        if format == 'csv':
-            yield from self._export_csv(filters, bucketing)
-        elif format == 'jsonl':
-            yield from self._export_jsonl(filters, bucketing)
+        if source == 'raw':
+            if format == 'csv':
+                yield from self._export_raw_csv(filters)
+            elif format == 'jsonl':
+                yield from self._export_raw_jsonl(filters)
+            else:
+                raise ValueError(f"Unsupported export format: {format}")
         else:
-            raise ValueError(f"Unsupported export format: {format}")
+            if format == 'csv':
+                yield from self._export_csv(filters, bucketing)
+            elif format == 'jsonl':
+                yield from self._export_jsonl(filters, bucketing)
+            else:
+                raise ValueError(f"Unsupported export format: {format}")
+
+    # ─── Raw sensor_data_ export ─────────────────────────────────────────────
+
+    def _build_raw_cursor(self, filters: Dict):
+        """Build a MongoDB cursor over sensor_data_ for the given time range + device filter."""
+        start_str = filters.get('start')
+        end_str = filters.get('end')
+        device_ids = filters.get('devices', [])  # list of device_id / mac_address values
+
+        try:
+            start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00')).replace(tzinfo=UTC)
+            end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00')).replace(tzinfo=UTC)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid date format: {exc}") from exc
+
+        match: Dict = {'timestamp': {'$gte': start_dt, '$lte': end_dt}}
+
+        if device_ids:
+            # sensor_data_ timeseries stores identifiers in metadata sub-document.
+            # Accept both device_id and mac_address values so either selector works.
+            match['$or'] = [
+                {'metadata.device_id': {'$in': device_ids}},
+                {'metadata.mac_address': {'$in': device_ids}},
+            ]
+
+        collection = get_sensor_data_collection()
+        return collection.find(match, sort=[('timestamp', 1)])
+
+    def _export_raw_csv(self, filters: Dict) -> Generator[bytes, None, None]:
+        """Export raw sensor_data_ as CSV."""
+        try:
+            cursor = self._build_raw_cursor(filters)
+        except ValueError:
+            return
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Manifest comment block
+        output.write("# Cognitiv DataLab Export — Raw Sensor Data\n")
+        output.write(f"# Generated: {datetime.now(UTC).isoformat()}\n")
+        output.write(f"# Range: {filters.get('start')} → {filters.get('end')}\n")
+        devices = filters.get('devices', [])
+        if devices:
+            output.write(f"# Devices: {', '.join(devices)}\n")
+        output.write("#\n")
+        yield output.getvalue().encode('utf-8')
+        output.seek(0); output.truncate(0)
+
+        # Header
+        writer.writerow(['timestamp', 'device_id', 'mac_address', 'co2', 'temperature', 'humidity', 'voltage'])
+        yield output.getvalue().encode('utf-8')
+        output.seek(0); output.truncate(0)
+
+        for doc in cursor:
+            ts = doc.get('timestamp')
+            meta = doc.get('metadata', {})
+            row = [
+                ts.isoformat() if isinstance(ts, datetime) else ts,
+                meta.get('device_id') or doc.get('device_id'),
+                meta.get('mac_address') or doc.get('mac_address'),
+                doc.get('co2'),
+                doc.get('temperature'),
+                doc.get('humidity'),
+                doc.get('voltage'),
+            ]
+            writer.writerow(row)
+            yield output.getvalue().encode('utf-8')
+            output.seek(0); output.truncate(0)
+
+    def _export_raw_jsonl(self, filters: Dict) -> Generator[bytes, None, None]:
+        """Export raw sensor_data_ as JSON Lines."""
+        try:
+            cursor = self._build_raw_cursor(filters)
+        except ValueError:
+            return
+
+        # Manifest line
+        manifest = {
+            'manifest': {
+                'source': 'raw',
+                'generation_timestamp': datetime.now(UTC).isoformat(),
+                'query_params': {
+                    'start_date': filters.get('start'),
+                    'end_date': filters.get('end'),
+                    'devices': filters.get('devices', []),
+                },
+                'version': '1.0',
+                'exported_by': 'Cognitiv DataLab',
+            }
+        }
+        yield (json.dumps(manifest) + '\n').encode('utf-8')
+
+        for doc in cursor:
+            ts = doc.get('timestamp')
+            meta = doc.get('metadata', {})
+            record = {
+                'timestamp': ts.isoformat() if isinstance(ts, datetime) else ts,
+                'device_id': meta.get('device_id') or doc.get('device_id'),
+                'mac_address': meta.get('mac_address') or doc.get('mac_address'),
+                'co2': doc.get('co2'),
+                'temperature': doc.get('temperature'),
+                'humidity': doc.get('humidity'),
+                'voltage': doc.get('voltage'),
+            }
+            yield (json.dumps(record) + '\n').encode('utf-8')
     
     def _export_csv(self, filters: Dict, bucketing: str = None) -> Generator[bytes, None, None]:
         """Export data as CSV with manifest header."""

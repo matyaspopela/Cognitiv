@@ -13,23 +13,33 @@ export const datalabService = {
 
   /**
    * Trigger data export and download
-   * @param {Object} filters
-   * @param {string} format 'csv', 'jsonl'
-   * @param {string} bucketing 'raw', '15m', '1h', '1d'
+   * @param {Object} filters  { start, end, rooms?, devices?, source? }
+   * @param {string} format   'csv' | 'jsonl'
+   * @param {string} bucketing 'raw' | '15m' | '1h' | '1d'  (annotated only)
    */
   downloadExport: async (filters, format, bucketing) => {
     try {
+      const source = filters.source || 'annotated';
+
       // Build query parameters
       const params = new URLSearchParams({
         start: filters.start || filters.dateRange?.start,
         end: filters.end || filters.dateRange?.end,
         format: format || 'csv',
-        bucketing: bucketing || 'raw'
+        source,
       });
 
-      // Add rooms if specified
-      if (filters.rooms && filters.rooms.length > 0) {
-        params.append('rooms', filters.rooms.join(','));
+      if (source === 'raw') {
+        // Raw: filter by device identifiers
+        if (filters.devices && filters.devices.length > 0) {
+          params.append('devices', filters.devices.join(','));
+        }
+      } else {
+        // Annotated: filter by rooms + bucketing
+        params.append('bucketing', bucketing || 'raw');
+        if (filters.rooms && filters.rooms.length > 0) {
+          params.append('rooms', filters.rooms.join(','));
+        }
       }
 
       // Make request with blob response type

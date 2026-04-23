@@ -18,12 +18,9 @@ const AdminDeviceHeader = ({ device, onSettingsClick }) => {
         <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
             <div className="flex items-center justify-between gap-4 mb-6">
                 <div className="flex-1">
-                    <h1 className="text-xl font-bold tracking-tight text-stone-900 mb-1">
+                    <h1 className="text-xl font-bold tracking-tight text-stone-900">
                         {deviceName}
                     </h1>
-                    <p className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-widest">
-                      {device.mac_address || device.device_id}
-                    </p>
                 </div>
                 <Button
                     variant="outline"

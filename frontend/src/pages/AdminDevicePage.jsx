@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
 import { adminAPI } from '../services/api'
-import Button from '../components/ui/Button'
 import AdminDeviceHeader from '../components/admin/AdminDeviceHeader'
 import AdminDeviceStats from '../components/admin/AdminDeviceStats'
 import AdminAnnotatedView from '../components/admin/AdminAnnotatedView'
@@ -11,13 +10,11 @@ import PageHeader from '../components/layout/PageHeader'
 
 const AdminDevicePage = () => {
     const { deviceId } = useParams()
-    const navigate = useNavigate()
     const location = useLocation()
 
     const [device, setDevice] = useState(location.state?.device || null)
     const [loading, setLoading] = useState(!location.state?.device)
     const [error, setError] = useState('')
-    const [activeTab, setActiveTab] = useState('time_series')
 
     // Modal states
     const [showRenameModal, setShowRenameModal] = useState(false)
@@ -108,34 +105,16 @@ const AdminDevicePage = () => {
                     onSettingsClick={() => setShowCustomizeModal(true)}
                 />
 
-                {/* Tab Navigation */}
-                <div className="flex items-center gap-1 border-b border-stone-200 mb-2">
-                    <button
-                        className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition-all border-b-2 ${
-                          activeTab === 'time_series' 
-                            ? 'border-amber-600 text-stone-900' 
-                            : 'border-transparent text-stone-400 hover:text-stone-600'
-                        }`}
-                        onClick={() => setActiveTab('time_series')}
-                    >
-                        Data
-                    </button>
-                    <button
-                        className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition-all border-b-2 ${
-                          activeTab === 'annotated' 
-                            ? 'border-amber-600 text-stone-900' 
-                            : 'border-transparent text-stone-400 hover:text-stone-600'
-                        }`}
-                        onClick={() => setActiveTab('annotated')}
-                    >
-                        Lessons
-                    </button>
-                </div>
+                {/* Data Section */}
+                <AdminDeviceStats deviceId={deviceId} />
 
-                {/* Tab Content */}
-                <div className="mt-2">
-                  {activeTab === 'time_series' && <AdminDeviceStats deviceId={deviceId} />}
-                  {activeTab === 'annotated' && <AdminAnnotatedView deviceId={deviceId} />}
+                {/* Lessons Section */}
+                <div className="flex flex-col gap-6 pt-2">
+                    <div className="flex items-center gap-4">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">Lessons</span>
+                        <div className="flex-1 h-px bg-stone-200" />
+                    </div>
+                    <AdminAnnotatedView deviceId={deviceId} />
                 </div>
 
                 {/* Modals */}
