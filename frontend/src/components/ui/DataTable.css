@@ -1,8 +1,9 @@
 .data-table {
   width: 100%;
-  background: rgba(24, 24, 27, 0.5); /* bg-zinc-900/50 */
-  border: 1px solid rgba(255, 255, 255, 0.05); /* border-white/5 */
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
+  overflow: hidden;
 }
 
 .data-table__table {
@@ -12,15 +13,15 @@
 }
 
 .data-table__header {
-  padding: 12px 16px;
+  padding: 10px 20px;
   text-align: left;
-  font-size: 11px;
-  letter-spacing: 0.05em;
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: rgb(113, 113, 122); /* zinc-500 */
-  font-weight: 500;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* border-white/5 */
-  background: rgba(24, 24, 27, 0.8);
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle);
+  background: #F9F8F7; /* stone-50 / app-bg */
   white-space: nowrap;
 }
 
@@ -30,15 +31,13 @@
 }
 
 .data-table__row {
-  height: 56px; /* Increased from 48px for relaxed density */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  transition: background-color 150ms ease;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 120ms ease;
   cursor: pointer;
 }
 
-.data-table__row:hover,
-.data-table__row--hovered {
-  background: rgba(255, 255, 255, 0.02); /* hover:bg-white/[0.02] */
+.data-table__row:hover {
+  background: #F9F8F7; /* stone-50 */
 }
 
 .data-table__row:last-child {
@@ -46,17 +45,22 @@
 }
 
 .data-table__cell {
-  padding: 16px 24px; /* Increased padding-y for relaxed density */
-  color: rgb(244, 244, 245); /* zinc-100 */
-  font-size: 14px;
+  padding: 13px 20px;
+  color: #78716C; /* stone-500 / text-muted */
+  font-size: 13px;
   white-space: nowrap;
 }
 
+.data-table__cell--name {
+  color: #1C1917; /* stone-900 / text-primary */
+  font-weight: 500;
+  font-size: 14px;
+}
+
 .data-table__cell--status {
-  width: 60px;
-  padding: 0;
+  width: 52px;
+  padding: 0 16px;
   text-align: center;
-  display: table-cell;
   vertical-align: middle;
 }
 
@@ -66,27 +70,43 @@
   padding: 8px;
 }
 
+/* Status indicators */
 .data-table__status-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
+  position: relative;
 }
 
 .data-table__status-dot--online {
-  background-color: rgb(16, 185, 129); /* emerald-500 */
-  box-shadow: 0 0 4px rgba(16, 185, 129, 0.25); /* Reduced glow */
+  background-color: #10B981; /* emerald-500 */
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+}
+
+.data-table__status-dot--online::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  animation: status-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0; transform: scale(1.7); }
 }
 
 .data-table__status-dot--warning {
-  background-color: rgb(251, 191, 36); /* amber-400 */
-  box-shadow: 0 0 4px rgba(251, 191, 36, 0.2); /* Reduced glow */
+  background-color: #F59E0B; /* amber-500 */
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }
 
 .data-table__status-dot--offline {
-  width: 10px;
-  height: 10px;
-  border: 2px solid rgb(82, 82, 91); /* zinc-600 */
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid #D6D3D1; /* stone-300 */
   background: transparent;
   border-radius: 50%;
 }
@@ -96,8 +116,8 @@
   height: 32px;
   border-radius: 4px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgb(113, 113, 122); /* zinc-500 */
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
   font-size: 16px;
   cursor: pointer;
   display: flex;
@@ -109,36 +129,31 @@
 }
 
 .data-table__action-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgb(244, 244, 245); /* zinc-100 */
-  border-color: rgba(255, 255, 255, 0.15);
+  background: #F3F2F1; /* stone-100 */
+  color: #1C1917;
+  border-color: #D6D3D1;
 }
 
 .data-table__empty {
   padding: 48px 16px;
   text-align: center;
-  color: rgb(113, 113, 122); /* zinc-500 */
+  color: var(--text-muted);
   font-size: 14px;
 }
 
-/* Mobile responsiveness - allow horizontal scroll only on mobile for wide tables */
 @media (max-width: 768px) {
   .data-table {
-    overflow-x: auto; /* Allow horizontal scroll only on mobile */
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   .data-table__table {
-    min-width: 800px; /* Ensure minimum width for scrollability */
+    min-width: 700px;
   }
 
   .data-table__header,
   .data-table__cell {
     padding: 10px 12px;
     font-size: 12px;
-  }
-
-  .data-table__row {
-    height: 40px; /* Slightly smaller on mobile */
   }
 }

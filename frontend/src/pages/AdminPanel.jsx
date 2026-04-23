@@ -135,7 +135,16 @@ const AdminPanel = () => {
     {
       key: 'co2',
       label: 'CO₂',
-      render: (value) => <span className="font-data">{value}</span>,
+      render: (value) => {
+        const num = parseInt(value)
+        let color = 'text-zinc-500'
+        if (!isNaN(num)) {
+          if (num < 800) color = 'text-emerald-600'
+          else if (num < 1200) color = 'text-amber-600'
+          else color = 'text-rose-600'
+        }
+        return <span className={`font-data ${color}`}>{value}</span>
+      },
     },
     {
       key: 'temp',
@@ -155,7 +164,7 @@ const AdminPanel = () => {
     {
       key: 'lastSeen',
       label: 'Last Seen',
-      render: (value) => <span className="font-data text-[11px] uppercase">{value}</span>,
+      render: (value) => <span className="font-data text-[11px] text-zinc-600 tracking-wide">{value}</span>,
     },
   ]
 

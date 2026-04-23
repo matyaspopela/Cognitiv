@@ -1,22 +1,13 @@
-import { useState } from 'react'
 import './DataTable.css'
 
 const DataTable = ({ columns, data, onRowClick, actions }) => {
-  const [hoveredRow, setHoveredRow] = useState(null)
-
   const getStatusDot = (status) => {
     if (status === 'online') {
-      return (
-        <div className="data-table__status-dot data-table__status-dot--online" />
-      )
+      return <div className="data-table__status-dot data-table__status-dot--online" />
     } else if (status === 'warning') {
-      return (
-        <div className="data-table__status-dot data-table__status-dot--warning" />
-      )
+      return <div className="data-table__status-dot data-table__status-dot--warning" />
     } else {
-      return (
-        <div className="data-table__status-dot data-table__status-dot--offline" />
-      )
+      return <div className="data-table__status-dot data-table__status-dot--offline" />
     }
   }
 
@@ -48,9 +39,7 @@ const DataTable = ({ columns, data, onRowClick, actions }) => {
             data.map((row, index) => (
               <tr
                 key={row.id || index}
-                className={`data-table__row ${hoveredRow === index ? 'data-table__row--hovered' : ''}`}
-                onMouseEnter={() => setHoveredRow(index)}
-                onMouseLeave={() => setHoveredRow(null)}
+                className="data-table__row"
                 onClick={() => onRowClick && onRowClick(row)}
               >
                 {columns.map((column) => {
@@ -69,7 +58,7 @@ const DataTable = ({ columns, data, onRowClick, actions }) => {
                   return (
                     <td
                       key={column.key}
-                      className="data-table__cell"
+                      className={`data-table__cell${column.key === 'name' ? ' data-table__cell--name' : ''}`}
                       style={{ textAlign: column.align || 'left' }}
                     >
                       {cellValue}
