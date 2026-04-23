@@ -67,7 +67,7 @@ const PageHeader = ({ title, actions, showBack = false }) => {
   if (!pageTitle && !actions && !showBack) return null;
 
   return (
-    <header className="flex items-center justify-between py-6 mb-2">
+    <header className="flex items-center justify-between py-4 sm:py-6 mb-1">
       <div className="flex items-center gap-4">
         {showBack && (
           <button 

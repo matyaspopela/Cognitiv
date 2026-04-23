@@ -5,7 +5,7 @@ const AdminStatusBar = ({ devices }) => {
     const { summary, alerts } = useDeviceAlerts(devices)
 
     // Container style matches "Bleached Stone" Laboratory aesthetic
-    const containerClasses = "bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+    const containerClasses = "bg-stone-50 border border-stone-200 rounded-lg p-4 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
 
     // If no alerts, show minimalist gray box
     if (summary.totalAlerts === 0) {
@@ -33,19 +33,19 @@ const AdminStatusBar = ({ devices }) => {
                     {alerts.map((alert, index) => (
                         <div
                             key={`${alert.deviceId}-${index}`}
-                            className="flex items-center justify-between p-3 bg-white rounded-md border border-stone-200 hover:border-stone-300 transition-colors"
+                            className="flex items-start sm:items-center justify-between gap-2 p-3 bg-white rounded-md border border-stone-200 hover:border-stone-300 transition-colors"
                         >
-                            <span className="text-xs font-bold text-stone-900 uppercase tracking-tight">
+                            <span className="text-xs font-bold text-stone-900 uppercase tracking-tight shrink-0">
                                 {alert.deviceName}
                             </span>
 
-                            <div className="text-[10px] text-stone-500 text-right flex items-center gap-2 font-medium">
+                            <div className="text-[10px] text-stone-500 text-right flex items-center gap-1.5 font-medium flex-wrap justify-end">
                                 <span className="uppercase tracking-wider">
-                                    {alert.type === 'offline' ? 'Offline' : 
-                                     alert.type.includes('co2') ? 'CO₂ Level' : 
+                                    {alert.type === 'offline' ? 'Offline' :
+                                     alert.type.includes('co2') ? 'CO₂' :
                                      'Battery'}
                                 </span>
-                                <span className="text-stone-300">|</span>
+                                <span className="text-stone-300">·</span>
                                 <span className="text-stone-400 italic font-normal">{alert.message}</span>
                             </div>
                         </div>

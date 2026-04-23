@@ -47,7 +47,7 @@ const AdminDeviceStats = ({ deviceId }) => {
             {!loading && !error && (
                 <>
                     <AdminStatsCards summary={summary} />
-                    <Card className="p-6 h-[450px]">
+                    <Card className="p-3 sm:p-6 h-[300px] sm:h-[420px]">
                         <Co2Graph deviceId={deviceId} timeWindow={timeRange} />
                     </Card>
                 </>

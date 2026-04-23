@@ -15,10 +15,10 @@ const AdminDeviceHeader = ({ device, onSettingsClick }) => {
     const deviceName = device.display_name || device.device_id || device.mac_address || 'Unknown Device'
 
     return (
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="flex-1">
-                    <h1 className="text-xl font-bold tracking-tight text-stone-900">
+        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-base sm:text-xl font-bold tracking-tight text-stone-900 truncate">
                         {deviceName}
                     </h1>
                 </div>
@@ -34,7 +34,7 @@ const AdminDeviceHeader = ({ device, onSettingsClick }) => {
             </div>
 
             {/* Live Stats Strip */}
-            <div className="flex flex-wrap items-center gap-6">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                 {device.current_readings?.co2 != null && (
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">CO₂</span>

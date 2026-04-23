@@ -126,11 +126,12 @@ const DashboardBox = ({ device, onClick }) => {
 
   return (
     <Card
-      className="w-[240px] p-4 flex flex-col gap-3 group"
+      className="w-full p-4 flex flex-col gap-3 group cursor-pointer"
       onClick={handleClick}
     >
-      <div className="flex justify-between items-start">
-        <h3 className="text-[13px] font-bold text-text-primary truncate max-w-[140px]" title={deviceName}>
+      {/* Header row: name + status badge */}
+      <div className="flex justify-between items-start gap-2">
+        <h3 className="text-sm font-bold text-text-primary truncate leading-snug" title={deviceName}>
           {deviceName}
         </h3>
         <StatusBadge status={isOffline ? 'offline' : co2Status}>
@@ -138,45 +139,32 @@ const DashboardBox = ({ device, onClick }) => {
         </StatusBadge>
       </div>
 
-      <div className="flex items-end justify-between">
-        <DataValue 
-          value={isOffline ? '--' : (currentReadings.co2 || '--')} 
-          unit="ppm" 
-          label="CO2" 
-        />
-      </div>
+      {/* CO₂ reading */}
+      <DataValue
+        value={isOffline ? '--' : (currentReadings.co2 || '--')}
+        unit="ppm"
+        label="CO₂"
+      />
 
-      <div className="h-[32px] w-full relative">
+      {/* Mini trend chart */}
+      <div className="h-8 w-full relative">
         {loadingMiniChart ? (
           <div className="absolute inset-0 flex items-center justify-center opacity-30">
             <LoadingSpinner size="small" />
           </div>
         ) : miniChartData && !isOffline ? (
-          <Line 
-            data={miniChartData} 
-            options={getMiniChartOptions()} 
-          />
+          <Line data={miniChartData} options={getMiniChartOptions()} />
         ) : (
-          <div className="h-full w-full border-b border-stone-100 flex items-end opacity-20">
-             {/* Empty trend line placeholder */}
-          </div>
+          <div className="h-full w-full border-b border-stone-100 opacity-20" />
         )}
       </div>
 
-      <div className="flex items-center gap-3 text-[10px] font-medium text-text-muted tabular-nums">
-        <div className="flex items-center gap-1">
-          <span className="opacity-60">TEMP</span>
-          <span className="text-text-primary">{currentReadings.temp || '--'}°C</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="opacity-60">HUM</span>
-          <span className="text-text-primary">{currentReadings.humidity || '--'}%</span>
-        </div>
-        {currentReadings.battery && (
-          <div className="flex items-center gap-1 ml-auto">
-            <span className="opacity-60 italic">{currentReadings.battery}V</span>
-          </div>
-        )}
+      {/* Secondary readings */}
+      <div className="flex items-center gap-3 text-[11px] font-medium text-text-muted tabular-nums">
+        <span className="opacity-50 uppercase text-[9px] tracking-wider">Temp</span>
+        <span className="text-text-primary">{currentReadings.temp || '--'}°C</span>
+        <span className="opacity-50 uppercase text-[9px] tracking-wider">Hum</span>
+        <span className="text-text-primary">{currentReadings.humidity || '--'}%</span>
       </div>
     </Card>
   )

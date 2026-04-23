@@ -19,7 +19,7 @@ const DataTable = ({ columns, data, onRowClick, actions }) => {
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="data-table__header"
+                className={`data-table__header data-table__col--${column.key}`}
                 style={{ textAlign: column.align || 'left' }}
               >
                 {column.label}
@@ -49,7 +49,7 @@ const DataTable = ({ columns, data, onRowClick, actions }) => {
 
                   if (column.key === 'status') {
                     return (
-                      <td key={column.key} className="data-table__cell data-table__cell--status">
+                      <td key={column.key} className="data-table__cell data-table__cell--status data-table__col--status">
                         {getStatusDot(cellValue)}
                       </td>
                     )
@@ -58,7 +58,7 @@ const DataTable = ({ columns, data, onRowClick, actions }) => {
                   return (
                     <td
                       key={column.key}
-                      className={`data-table__cell${column.key === 'name' ? ' data-table__cell--name' : ''}`}
+                      className={`data-table__cell data-table__col--${column.key}${column.key === 'name' ? ' data-table__cell--name' : ''}`}
                       style={{ textAlign: column.align || 'left' }}
                     >
                       {cellValue}

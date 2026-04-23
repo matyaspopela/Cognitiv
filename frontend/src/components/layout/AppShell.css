@@ -26,13 +26,14 @@
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
-/* Mobile: Sidebar is hidden by default, main takes full width */
+/* Mobile: full-width main, clear fixed top bar */
 @media (max-width: 768px) {
   .app-shell__main {
     margin-left: 0;
+    padding-top: 56px; /* height of mobile top bar */
   }
 
   .app-shell__content {
-    padding: 16px;
+    padding: 16px 16px 32px 16px;
   }
 }

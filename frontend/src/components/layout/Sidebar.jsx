@@ -75,39 +75,38 @@ const Sidebar = () => {
         <SidebarContent />
       </aside>
 
-      {/* Mobile Menu Toggle Button */}
-      <button
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-md bg-white border border-stone-200 text-stone-600 flex items-center justify-center shadow-sm"
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        aria-label="Toggle menu"
-      >
-        {mobileMenuOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
-      </button>
+      {/* Mobile Top Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-stone-200 flex items-center px-4 z-40">
+        <button
+          className="w-10 h-10 -ml-2 rounded-md text-stone-600 flex items-center justify-center"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
+        </button>
+        <span className="flex-1 text-center text-base font-semibold tracking-tight text-stone-900 select-none">
+          Cognitiv
+        </span>
+        {/* Right spacer keeps the title centered */}
+        <div className="w-10" />
+      </div>
 
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-stone-900/20 z-30 md:hidden"
+          className="fixed inset-0 bg-stone-900/30 z-30 md:hidden backdrop-blur-[1px]"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Mobile Sidebar Drawer */}
-      <aside 
+      <aside
         className={`
-          md:hidden fixed inset-y-0 left-0 w-64 bg-white border-r border-stone-200 z-40 transform transition-transform duration-250 ease-in-out
+          md:hidden fixed top-14 bottom-0 left-0 w-[220px] bg-white border-r border-stone-200 z-40
+          transform transition-transform duration-200 ease-in-out overflow-y-auto
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        {mobileMenuOpen && (
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
-            aria-label="Close menu"
-          >
-            <X size={18} strokeWidth={2} />
-          </button>
-        )}
         <SidebarContent onClose={() => setMobileMenuOpen(false)} />
       </aside>
     </>

@@ -193,36 +193,41 @@ const Co2Graph = ({ deviceId, timeWindow }) => {
 
     return (
         <div className="w-full h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4 px-1">
-                <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500">
+            {/* Chart header — label left, legend right (hidden on mobile) */}
+            <div className="flex items-center justify-between mb-3 px-0.5">
+                <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500 hidden sm:inline">
                         Historical CO₂ Distribution
                     </span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500 sm:hidden">
+                        CO₂
+                    </span>
                     {averageCo2 !== null && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-stone-100 border border-stone-200">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-100 border border-stone-200">
                             <span className="text-[10px] font-medium text-stone-400">AVG</span>
-                            <span className="text-[10px] font-mono font-bold text-stone-600">{averageCo2} PPM</span>
+                            <span className="text-[10px] font-mono font-bold text-stone-600">{averageCo2}</span>
                         </div>
                     )}
                 </div>
-                
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/40"></div>
+
+                {/* Legend — only on sm+ */}
+                <div className="hidden sm:flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/40" />
                         <span className="text-[10px] font-medium text-stone-400">Safe</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-amber-500/20 border border-amber-500/40" />
                         <span className="text-[10px] font-medium text-stone-400">Warning</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/40" />
                         <span className="text-[10px] font-medium text-stone-400">Critical</span>
                     </div>
                 </div>
             </div>
 
-            <div className="flex-1 min-h-[240px] relative">
+            <div className="flex-1 min-h-[180px] relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center">
                         <ProgressBar indeterminate />

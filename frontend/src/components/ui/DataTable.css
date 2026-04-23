@@ -141,19 +141,35 @@
   font-size: 14px;
 }
 
-@media (max-width: 768px) {
-  .data-table {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+@media (max-width: 640px) {
+  .data-table__header,
+  .data-table__cell {
+    padding: 10px 10px;
+    font-size: 12px;
   }
 
-  .data-table__table {
-    min-width: 700px;
+  .data-table__cell--name {
+    font-size: 13px;
   }
 
+  /* Hide low-priority columns on mobile — keep Status, Name, CO₂, Last Seen */
+  .data-table__col--humidity,
+  .data-table__col--voltage,
+  .data-table__col--temp {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
   .data-table__header,
   .data-table__cell {
     padding: 10px 12px;
     font-size: 12px;
+  }
+
+  /* Hide lowest-priority columns on small tablets */
+  .data-table__col--humidity,
+  .data-table__col--voltage {
+    display: none;
   }
 }

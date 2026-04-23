@@ -55,17 +55,17 @@ const AdminAnnotatedView = ({ deviceId }) => {
         : 'Pick range'
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6">
             {/* Header / Controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
                 {/* Chart Grouping Tabs */}
-                <div className="flex items-center gap-0 border-b border-stone-200">
+                <div className="flex items-center gap-0 border-b border-stone-200 overflow-x-auto">
                     {['period', 'subject', 'teacher'].map((group) => (
                         <button
                             key={group}
                             onClick={() => setChartGrouping(group)}
                             className={`
-                                px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-all capitalize border-b-2 mb-[-1px]
+                                px-3 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest transition-all capitalize border-b-2 mb-[-1px] whitespace-nowrap
                                 ${chartGrouping === group
                                     ? 'border-amber-600 text-stone-900'
                                     : 'border-transparent text-stone-400 hover:text-stone-600'
@@ -77,15 +77,15 @@ const AdminAnnotatedView = ({ deviceId }) => {
                     ))}
                 </div>
 
-                <div className="flex items-center gap-3 ml-auto">
+                <div className="flex items-center gap-2 sm:gap-3 ml-auto">
                     {timeRange === 'daily' && (
-                        <div className="flex items-center gap-2 border border-stone-200 rounded-md px-3 py-1.5 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <Calendar size={14} className="text-stone-400" />
+                        <div className="flex items-center gap-1.5 border border-stone-200 rounded-md px-2.5 py-1.5 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <Calendar size={13} className="text-stone-400 shrink-0" />
                             <input
                                 type="date"
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
-                                className="bg-transparent border-none text-stone-700 text-xs focus:outline-none p-0"
+                                className="bg-transparent border-none text-stone-700 text-[11px] focus:outline-none p-0 min-w-0"
                             />
                         </div>
                     )}

@@ -28,7 +28,7 @@ const DashboardBoxGrid = ({ devices, onDeviceSelect, loading }) => {
   }
 
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {devices.map((device) => {
         const deviceKey = typeof device === 'string'
           ? device
@@ -100,29 +100,23 @@ const Dashboard = () => {
     <div className="flex flex-col min-h-full">
       <PageHeader />
       {deviceId ? (
-        <div className="p-6 pt-0">
-          <DeviceDetailView
-            deviceId={deviceId}
-            timeWindow={timeWindow}
-            onTimeWindowChange={handleTimeWindowChange}
-          />
-        </div>
+        <DeviceDetailView
+          deviceId={deviceId}
+          timeWindow={timeWindow}
+          onTimeWindowChange={handleTimeWindowChange}
+        />
       ) : (
         <>
-          
-          <div className="p-6">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm font-medium">
-                {error}
-              </div>
-            )}
-
-            <DashboardBoxGrid
-              devices={devices}
-              onDeviceSelect={handleDeviceSelect}
-              loading={loading}
-            />
-          </div>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm font-medium">
+              {error}
+            </div>
+          )}
+          <DashboardBoxGrid
+            devices={devices}
+            onDeviceSelect={handleDeviceSelect}
+            loading={loading}
+          />
         </>
       )}
     </div>

@@ -76,10 +76,10 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         />
       </div>
 
-      {/* Metric cards — 4-column bento grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Metric cards — 2-column on mobile, 4-column on md+ */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* CO₂ Level */}
-        <Card className="p-4 flex flex-col justify-center min-h-[100px]">
+        <Card className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]">
           <DataValue
             label="CO2 Level"
             value={readings.co2 != null ? Math.round(readings.co2) : '--'}
@@ -88,7 +88,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         </Card>
 
         {/* Temperature */}
-        <Card className="p-4 flex flex-col justify-center min-h-[100px]">
+        <Card className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]">
           <DataValue
             label="Temperature"
             value={readings.temperature != null ? readings.temperature.toFixed(1) : '--'}
@@ -98,7 +98,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
 
         {/* Air Quality Status */}
         <Card
-          className="p-4 flex flex-col justify-center min-h-[100px]"
+          className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]"
           style={{ borderLeft: `3px solid ${status.border}` }}
         >
           <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">
@@ -114,7 +114,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         </Card>
 
         {/* Today at Risk */}
-        <Card className="p-4 flex flex-col justify-center min-h-[100px]">
+        <Card className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]">
           <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">
             At Risk
           </span>
@@ -126,7 +126,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
       </div>
 
       {/* Primary chart */}
-      <Card className="p-6 h-[450px]">
+      <Card className="p-3 sm:p-6 h-[300px] sm:h-[420px]">
         <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
       </Card>
     </div>

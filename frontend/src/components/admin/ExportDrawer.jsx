@@ -81,9 +81,9 @@ const ExportDrawer = ({ isOpen, onClose, devices }) => {
 
       {/* Drawer */}
       <div className="relative w-full max-w-sm bg-white border-l border-stone-200 shadow-xl flex flex-col">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-stone-100 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-stone-900 uppercase tracking-tight">Export Data</h2>
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 uppercase tracking-tight">Export Data</h2>
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-0.5">Laboratory Records</p>
           </div>
           <button
@@ -94,7 +94,7 @@ const ExportDrawer = ({ isOpen, onClose, devices }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6 sm:gap-8">
 
           {/* Data Source */}
           <section className="flex flex-col gap-3">
@@ -102,24 +102,24 @@ const ExportDrawer = ({ isOpen, onClose, devices }) => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setSource('annotated')}
-                className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${
+                className={`p-3 rounded-lg border flex flex-col items-center gap-1.5 transition-all ${
                   source === 'annotated'
                     ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
                     : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
                 }`}
               >
-                <BookOpen size={22} strokeWidth={1.5} />
+                <BookOpen size={20} strokeWidth={1.5} />
                 <span className="text-xs font-bold uppercase text-center leading-tight">Annotated<br/>+ Lessons</span>
               </button>
               <button
                 onClick={() => setSource('raw')}
-                className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${
+                className={`p-3 rounded-lg border flex flex-col items-center gap-1.5 transition-all ${
                   source === 'raw'
                     ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
                     : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
                 }`}
               >
-                <Database size={22} strokeWidth={1.5} />
+                <Database size={20} strokeWidth={1.5} />
                 <span className="text-xs font-bold uppercase text-center leading-tight">Raw<br/>Timeseries</span>
               </button>
             </div>
@@ -138,24 +138,24 @@ const ExportDrawer = ({ isOpen, onClose, devices }) => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setFormat('csv')}
-                className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${
+                className={`p-3 rounded-lg border flex flex-col items-center gap-1.5 transition-all ${
                   format === 'csv'
                     ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
                     : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
                 }`}
               >
-                <FileText size={24} strokeWidth={1.5} />
+                <FileText size={20} strokeWidth={1.5} />
                 <span className="text-xs font-bold uppercase">CSV (Excel)</span>
               </button>
               <button
                 onClick={() => setFormat('jsonl')}
-                className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${
+                className={`p-3 rounded-lg border flex flex-col items-center gap-1.5 transition-all ${
                   format === 'jsonl'
                     ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
                     : 'bg-white border-stone-200 text-stone-500 hover:border-stone-300'
                 }`}
               >
-                <Code size={24} strokeWidth={1.5} />
+                <Code size={20} strokeWidth={1.5} />
                 <span className="text-xs font-bold uppercase">JSON Lines</span>
               </button>
             </div>
@@ -215,11 +215,11 @@ const ExportDrawer = ({ isOpen, onClose, devices }) => {
           </section>
         </div>
 
-        <div className="p-6 border-t border-stone-100 bg-stone-50/50">
+        <div className="p-4 sm:p-6 border-t border-stone-100 bg-stone-50/50">
           <button
             onClick={handleExport}
             disabled={isExporting || success}
-            className={`w-full py-4 rounded-lg flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest transition-all ${
+            className={`w-full py-3 sm:py-4 rounded-lg flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest transition-all ${
               success
                 ? 'bg-emerald-500 text-white'
                 : 'bg-amber-600 text-white hover:bg-amber-700 shadow-md active:shadow-sm active:translate-y-0.5'

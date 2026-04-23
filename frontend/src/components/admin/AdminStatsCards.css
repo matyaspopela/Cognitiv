@@ -1,16 +1,31 @@
 /* AdminStatsCards — light-mode aware */
 .admin-stats-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+@media (min-width: 640px) {
+    .admin-stats-cards {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
 }
 
 .admin-stats-card {
-    padding: 20px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+}
+
+@media (min-width: 640px) {
+    .admin-stats-card {
+        padding: 20px;
+        gap: 8px;
+    }
 }
 
 /* Label: muted stone, not invisible gray */
@@ -24,10 +39,16 @@
 
 /* Value: near-black, high contrast */
 .admin-stats-card__value {
-    font-size: 32px;
+    font-size: 26px;
     font-weight: 600;
     color: #1c1917;       /* stone-900 */
     line-height: 1;
+}
+
+@media (min-width: 640px) {
+    .admin-stats-card__value {
+        font-size: 32px;
+    }
 }
 
 /* Footer: clearly readable secondary */

@@ -96,7 +96,7 @@ const AdminDevicePage = () => {
 
     return (
         <div className="flex-1 flex flex-col w-full">
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:gap-6">
                 <PageHeader showBack={true} />
 
                 {/* Device Header */}
@@ -109,9 +109,9 @@ const AdminDevicePage = () => {
                 <AdminDeviceStats deviceId={deviceId} />
 
                 {/* Lessons Section */}
-                <div className="flex flex-col gap-6 pt-2">
-                    <div className="flex items-center gap-4">
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">Lessons</span>
+                <div className="flex flex-col gap-4 sm:gap-6 pt-1 sm:pt-2">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-stone-400">Lessons</span>
                         <div className="flex-1 h-px bg-stone-200" />
                     </div>
                     <AdminAnnotatedView deviceId={deviceId} />
