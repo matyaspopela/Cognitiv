@@ -41,6 +41,7 @@ urlpatterns = [
     path('annotated/summary', views.annotated_summary, name='annotated_summary'),
     path('annotated/lessons', views.annotated_lessons, name='annotated_lessons'),
     path('annotated/heatmap', views.annotated_heatmap, name='annotated_heatmap'),
+    path('annotated/available-dates', views.annotated_available_dates, name='annotated_available_dates'),
     # DataLab endpoints (delegated to datalab.urls module)
     path('datalab/', include('api.datalab.urls')),
     # Debug endpoint (remove in production if needed)

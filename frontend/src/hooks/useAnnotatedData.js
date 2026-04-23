@@ -59,10 +59,12 @@ const getLessonDateRange = (mode) => {
 /**
  * Custom hook to fetch annotated lesson data
  * @param {string} deviceId - Device MAC address or ID
- * @param {string} preset - Time range preset ('current_week', 'last_week', 'last_month')
+ * @param {string} preset - Time range preset ('current_week', 'last_week', 'last_month', 'custom')
+ * @param {string|null} customStart - ISO date string when preset === 'custom'
+ * @param {string|null} customEnd   - ISO date string when preset === 'custom'
  * @returns {Object} { summary, lessons, heatmap, loading, error }
  */
-const useAnnotatedData = (deviceId, preset = 'current_week') => {
+const useAnnotatedData = (deviceId, preset = 'current_week', customStart = null, customEnd = null) => {
     const [summary, setSummary] = useState(null)
     const [lessons, setLessons] = useState([])
     const [heatmap, setHeatmap] = useState(null)
@@ -76,6 +78,12 @@ const useAnnotatedData = (deviceId, preset = 'current_week') => {
                 return
             }
 
+            // Wait until custom dates are both provided
+            if (preset === 'custom' && (!customStart || !customEnd)) {
+                setLoading(false)
+                return
+            }
+
             setLoading(true)
             setError('')
             setSummary(null)
@@ -83,7 +91,9 @@ const useAnnotatedData = (deviceId, preset = 'current_week') => {
             setHeatmap(null)
 
             try {
-                const { start, end } = getLessonDateRange(preset)
+                const { start, end } = preset === 'custom'
+                    ? { start: customStart, end: customEnd }
+                    : getLessonDateRange(preset)
 
                 // Fetch all data in parallel
                 const [summaryResponse, lessonsResponse, heatmapResponse] = await Promise.all([
@@ -124,7 +134,7 @@ const useAnnotatedData = (deviceId, preset = 'current_week') => {
         }
 
         fetchData()
-    }, [deviceId, preset])
+    }, [deviceId, preset, customStart, customEnd])
 
     return { summary, lessons, heatmap, loading, error }
 }

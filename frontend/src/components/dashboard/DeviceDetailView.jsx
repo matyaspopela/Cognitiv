@@ -6,7 +6,7 @@ import DataValue from '../ui/DataValue'
 import Co2Graph from './Co2Graph'
 import Card from '../ui/Card'
 
-/** Derive a status label + colors from a raw CO₂ reading */
+/** Derive a status label + colors from an average CO₂ value */
 const getCO2Status = (co2) => {
   if (co2 == null) return { label: '--', color: '#78716C', bg: 'transparent', border: '#E7E5E4' }
   if (co2 < 800)  return { label: 'Good',     color: '#16A34A', bg: '#DCFCE7', border: '#16A34A' }
@@ -15,7 +15,7 @@ const getCO2Status = (co2) => {
   return             { label: 'Critical',  color: '#DC2626', bg: '#FEE2E2', border: '#DC2626' }
 }
 
-/** % of series buckets with CO₂ above the warning threshold (2000 ppm) */
+/** % of series buckets with CO₂ above 2000 ppm */
 const computeRiskPercent = (series) => {
   if (!series || series.length === 0) return null
   const risky = series.filter(p => {
@@ -32,7 +32,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
   const [device, setDevice] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Fetch current device info (live readings)
+  // Fetch current device info (for CO₂ and Temperature live values)
   useEffect(() => {
     const fetchDeviceData = async () => {
       try {
@@ -54,12 +54,16 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
     if (deviceId) fetchDeviceData()
   }, [deviceId])
 
-  // Always fetch today's 24h series to compute "at risk" percentage
-  const { series: todaySeries } = useDeviceHistory(deviceId, '24h')
+  // Fetch history for the selected timeWindow — drives Status and At Risk cards
+  const { series, summary } = useDeviceHistory(deviceId, timeWindow)
 
   const readings = device?.current_readings || {}
-  const status = getCO2Status(readings.co2 != null ? readings.co2 : null)
-  const riskPct = useMemo(() => computeRiskPercent(todaySeries), [todaySeries])
+
+  // Status derived from period average CO₂ (falls back to live reading while summary loads)
+  const avgCo2 = summary?.co2?.avg ?? readings.co2 ?? null
+  const status = getCO2Status(avgCo2)
+
+  const riskPct = useMemo(() => computeRiskPercent(series), [series])
 
   return (
     <div className="flex flex-col gap-8">
@@ -112,7 +116,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         {/* Today at Risk */}
         <Card className="p-4 flex flex-col justify-center min-h-[100px]">
           <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">
-            Today at Risk
+            At Risk
           </span>
           <span className="text-2xl font-bold text-stone-900 leading-none">
             {riskPct != null ? `${riskPct}%` : '--'}

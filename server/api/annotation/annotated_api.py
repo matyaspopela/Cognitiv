@@ -170,6 +170,57 @@ def annotated_series(request):
 
 
 @require_http_methods(["GET"])
+def annotated_available_dates(request):
+    """
+    Return the distinct calendar dates that have annotated readings for a device.
+    Used by the frontend date-range picker to highlight days with data.
+
+    Query params:
+        device_id: Device MAC address or ID (optional)
+
+    Returns:
+        JSON { status, dates: ['YYYY-MM-DD', ...] }  (sorted ascending)
+    """
+    try:
+        device_id = request.GET.get('device_id')
+        collection = _get_annotated_collection()
+
+        match_filter = {}
+        if device_id:
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                return JsonResponse({'status': 'success', 'dates': []})
+
+        tz_name = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+
+        pipeline = [
+            *([{'$match': match_filter}] if match_filter else []),
+            {
+                '$group': {
+                    '_id': {
+                        '$dateToString': {
+                            'format': '%Y-%m-%d',
+                            'date': '$bucket_start',
+                            'timezone': tz_name,
+                        }
+                    }
+                }
+            },
+            {'$sort': {'_id': 1}},
+        ]
+
+        results = list(collection.aggregate(pipeline))
+        dates = [doc['_id'] for doc in results if doc.get('_id')]
+
+        return JsonResponse({'status': 'success', 'dates': dates})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
 def annotated_summary(request):
     """
     Get statistical summary of annotated readings.
@@ -304,6 +355,57 @@ def annotated_summary(request):
 
 
 @require_http_methods(["GET"])
+def annotated_available_dates(request):
+    """
+    Return the distinct calendar dates that have annotated readings for a device.
+    Used by the frontend date-range picker to highlight days with data.
+
+    Query params:
+        device_id: Device MAC address or ID (optional)
+
+    Returns:
+        JSON { status, dates: ['YYYY-MM-DD', ...] }  (sorted ascending)
+    """
+    try:
+        device_id = request.GET.get('device_id')
+        collection = _get_annotated_collection()
+
+        match_filter = {}
+        if device_id:
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                return JsonResponse({'status': 'success', 'dates': []})
+
+        tz_name = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+
+        pipeline = [
+            *([{'$match': match_filter}] if match_filter else []),
+            {
+                '$group': {
+                    '_id': {
+                        '$dateToString': {
+                            'format': '%Y-%m-%d',
+                            'date': '$bucket_start',
+                            'timezone': tz_name,
+                        }
+                    }
+                }
+            },
+            {'$sort': {'_id': 1}},
+        ]
+
+        results = list(collection.aggregate(pipeline))
+        dates = [doc['_id'] for doc in results if doc.get('_id')]
+
+        return JsonResponse({'status': 'success', 'dates': dates})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
 def annotated_lessons(request):
     """
     Get lesson-by-lesson analysis.
@@ -419,6 +521,57 @@ def annotated_lessons(request):
             'status': 'error',
             'error': str(e)
         }, status=500)
+
+
+@require_http_methods(["GET"])
+def annotated_available_dates(request):
+    """
+    Return the distinct calendar dates that have annotated readings for a device.
+    Used by the frontend date-range picker to highlight days with data.
+
+    Query params:
+        device_id: Device MAC address or ID (optional)
+
+    Returns:
+        JSON { status, dates: ['YYYY-MM-DD', ...] }  (sorted ascending)
+    """
+    try:
+        device_id = request.GET.get('device_id')
+        collection = _get_annotated_collection()
+
+        match_filter = {}
+        if device_id:
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                return JsonResponse({'status': 'success', 'dates': []})
+
+        tz_name = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+
+        pipeline = [
+            *([{'$match': match_filter}] if match_filter else []),
+            {
+                '$group': {
+                    '_id': {
+                        '$dateToString': {
+                            'format': '%Y-%m-%d',
+                            'date': '$bucket_start',
+                            'timezone': tz_name,
+                        }
+                    }
+                }
+            },
+            {'$sort': {'_id': 1}},
+        ]
+
+        results = list(collection.aggregate(pipeline))
+        dates = [doc['_id'] for doc in results if doc.get('_id')]
+
+        return JsonResponse({'status': 'success', 'dates': dates})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -566,3 +719,54 @@ def annotated_heatmap(request):
             'status': 'error',
             'error': str(e)
         }, status=500)
+
+
+@require_http_methods(["GET"])
+def annotated_available_dates(request):
+    """
+    Return the distinct calendar dates that have annotated readings for a device.
+    Used by the frontend date-range picker to highlight days with data.
+
+    Query params:
+        device_id: Device MAC address or ID (optional)
+
+    Returns:
+        JSON { status, dates: ['YYYY-MM-DD', ...] }  (sorted ascending)
+    """
+    try:
+        device_id = request.GET.get('device_id')
+        collection = _get_annotated_collection()
+
+        match_filter = {}
+        if device_id:
+            resolved_mac = resolve_device_identifier(device_id)
+            if resolved_mac:
+                match_filter['device_mac'] = resolved_mac
+            else:
+                return JsonResponse({'status': 'success', 'dates': []})
+
+        tz_name = os.getenv('LOCAL_TIMEZONE', 'Europe/Prague')
+
+        pipeline = [
+            *([{'$match': match_filter}] if match_filter else []),
+            {
+                '$group': {
+                    '_id': {
+                        '$dateToString': {
+                            'format': '%Y-%m-%d',
+                            'date': '$bucket_start',
+                            'timezone': tz_name,
+                        }
+                    }
+                }
+            },
+            {'$sort': {'_id': 1}},
+        ]
+
+        results = list(collection.aggregate(pipeline))
+        dates = [doc['_id'] for doc in results if doc.get('_id')]
+
+        return JsonResponse({'status': 'success', 'dates': dates})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)

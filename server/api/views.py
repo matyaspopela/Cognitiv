@@ -45,6 +45,7 @@ from .annotation.annotated_api import (
     annotated_summary,
     annotated_lessons,
     annotated_heatmap,
+    annotated_available_dates,
 )
 
 from .aqi import calculate_aqi, get_aqi_status

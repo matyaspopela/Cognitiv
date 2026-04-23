@@ -249,6 +249,21 @@ export const annotatedAPI = {
       return { data: { status: 'error', error: error.message } }
     }
   },
+
+  /**
+   * Get dates that have annotated data (for calendar highlighting)
+   * @param {string} deviceId - Device filter (optional)
+   * @returns {{ dates: string[] }}  array of 'YYYY-MM-DD' strings
+   */
+  getAvailableDates: async (deviceId = null) => {
+    const params = new URLSearchParams()
+    if (deviceId) params.append('device_id', deviceId)
+    try {
+      return await apiClient.get(`/annotated/available-dates?${params.toString()}`)
+    } catch (error) {
+      return { data: { status: 'error', dates: [] } }
+    }
+  },
 }
 
 export default apiClient

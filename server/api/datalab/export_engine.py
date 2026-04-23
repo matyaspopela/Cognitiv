@@ -169,27 +169,19 @@ class ExportEngine:
         return collection.find(match, sort=[('timestamp', 1)])
 
     def _export_raw_csv(self, filters: Dict) -> Generator[bytes, None, None]:
-        """Export raw sensor_data_ as CSV."""
+        """Export raw sensor_data_ as clean RFC-4180 CSV with UTF-8 BOM for Excel compatibility."""
         try:
             cursor = self._build_raw_cursor(filters)
         except ValueError:
             return
 
+        # UTF-8 BOM so Excel auto-detects encoding
+        yield b'\xef\xbb\xbf'
+
         output = io.StringIO()
-        writer = csv.writer(output)
+        writer = csv.writer(output, lineterminator='\r\n')
 
-        # Manifest comment block
-        output.write("# Cognitiv DataLab Export — Raw Sensor Data\n")
-        output.write(f"# Generated: {datetime.now(UTC).isoformat()}\n")
-        output.write(f"# Range: {filters.get('start')} → {filters.get('end')}\n")
-        devices = filters.get('devices', [])
-        if devices:
-            output.write(f"# Devices: {', '.join(devices)}\n")
-        output.write("#\n")
-        yield output.getvalue().encode('utf-8')
-        output.seek(0); output.truncate(0)
-
-        # Header
+        # Header — plain CSV, no comment lines
         writer.writerow(['timestamp', 'device_id', 'mac_address', 'co2', 'temperature', 'humidity', 'voltage'])
         yield output.getvalue().encode('utf-8')
         output.seek(0); output.truncate(0)
@@ -248,39 +240,28 @@ class ExportEngine:
             yield (json.dumps(record) + '\n').encode('utf-8')
     
     def _export_csv(self, filters: Dict, bucketing: str = None) -> Generator[bytes, None, None]:
-        """Export data as CSV with manifest header."""
+        """Export annotated data as clean RFC-4180 CSV with UTF-8 BOM for Excel compatibility."""
         try:
             pipeline = self.qb.build_export_pipeline(filters, bucketing=bucketing)
-            
             collection = get_annotated_readings_collection()
             cursor = collection.aggregate(pipeline)
-            
         except ValueError:
             return
 
+        # UTF-8 BOM so Excel auto-detects encoding
+        yield b'\xef\xbb\xbf'
+
         output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Generate and write manifest as comments
-        manifest = self._generate_manifest(filters, bucketing)
-        output.write(f"# Cognitiv DataLab Export\n")
-        output.write(f"# Generated: {manifest['generation_timestamp']}\n")
-        output.write(f"# Query: {json.dumps(manifest['query_params'])}\n")
-        output.write(f"#\n")
-        
-        yield output.getvalue().encode('utf-8')
-        output.seek(0)
-        output.truncate(0)
-        
-        # Header
+        writer = csv.writer(output, lineterminator='\r\n')
+
+        # Header — plain CSV, no comment lines
         header = [
-            'timestamp', 'room_id', 'device_mac', 
+            'timestamp', 'room_id', 'device_mac',
             'co2', 'temp', 'humidity',
             'delta_co2', 'mold_factor',
             'weather_temp_c', 'weather_humidity',
             'subject', 'teacher', 'class_name', 'occupancy'
         ]
-        
         writer.writerow(header)
         yield output.getvalue().encode('utf-8')
         output.seek(0)
