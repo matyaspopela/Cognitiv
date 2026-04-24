@@ -7,11 +7,11 @@
 #include "config.h"
 
 bool wifi_connect() {
-    // persistent(false) prevents writing credentials to NVS flash every cycle.
+    // persistent(false) --> aby to nepsalo do NVS flash. Kdyby to delalo dlouho tak to vypali, zbytecny to mit zaply
     WiFi.persistent(false);
     WiFi.setAutoReconnect(false);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD); //def in config.h
 
     DBG_FMT("[wifi] connecting to %s", WIFI_SSID);
     unsigned long deadline = millis() + WIFI_TIMEOUT_MS;
@@ -35,7 +35,7 @@ void wifi_disconnect() {
     WiFi.mode(WIFI_OFF);
 }
 
-static bool build_payload(char* buf, size_t buf_size,
+static bool build_payload(char* buf, size_t buf_size, //vibecoded stuff (nechal jsem clauda prepsat podle django data parseru)
                            const char* mac,
                            float temp, float humidity,
                            uint16_t co2, uint32_t vbatt_mv) {
@@ -66,7 +66,7 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
 
     PubSubClient mqtt(tls_client);
     mqtt.setServer(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
-    mqtt.setBufferSize(512);  // default varies by PubSubClient version; be explicit
+    mqtt.setBufferSize(512);  // default varies by PubSubClient version, moznato bude chtit predelat idk jak ale
 
     String client_id = "cognitiv_";
     client_id += mac;
@@ -74,7 +74,7 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
 
     for (int attempt = 1; attempt <= MQTT_RETRY_COUNT; attempt++) {
         DBG_FMT("[mqtt] attempt %d/%d\n", attempt, MQTT_RETRY_COUNT);
-
+        //MQTT retry loop - shrimple
         bool connected = mqtt.connect(
             client_id.c_str(),
             MQTT_PUBLISH_USERNAME,

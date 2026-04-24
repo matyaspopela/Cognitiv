@@ -12,15 +12,15 @@ void led_power_on() {
     delay(LED_POWER_SETTLE_MS);  // let P-ch gate and decoupling caps settle
 
     led_strip.begin();
-    led_strip.setBrightness(LED_BRIGHTNESS);
-    led_strip.clear();
-    led_strip.show();
+    led_strip.setBrightness(LED_BRIGHTNESS); //max brightness jestli to mam dobre
+    led_strip.clear(); //cisticka
+    led_strip.show(); //zapne (0,0,0) -> tzn zhasne
 }
 
 void led_power_off() {
-    led_strip.clear();
-    led_strip.show();
-    digitalWrite(PIN_LED_POWER, LED_RAIL_OFF);
+    led_strip.clear(); //cisticka
+    led_strip.show(); //rosviti (0,0,0)
+    digitalWrite(PIN_LED_POWER, LED_RAIL_OFF); //vypne power
 }
 
 void led_show_co2(uint16_t co2) {
@@ -35,6 +35,6 @@ void led_show_co2(uint16_t co2) {
     }
 
     DBG_FMT("[led] co2=%u ppm\n", co2);
-    led_strip.setPixelColor(0, colour);
-    led_strip.show();
+    led_strip.setPixelColor(0, colour); //prvni parametr rika kolikaka ledka (mame jen nultou)
+    led_strip.show(); //kaboom shaboom
 }
