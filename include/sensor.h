@@ -12,52 +12,41 @@ void sensor_power_on() {
     delay(SENSOR_STABILIZE_MS);  // SCD41 requires ≥1 s before first I2C command
 }
 
-void sensor_power_off() {
-    digitalWrite(PIN_I2C_POWER, I2C_RAIL_OFF);
-}
-
 bool sensor_init() {
     Wire.begin(PIN_SDA, PIN_SCL);
     scd4x.begin(Wire);
 
-    // Sensor may be in periodic mode from a previous firmware — stop it before
-    // issuing a single-shot command. Error here is non-fatal.
-    uint16_t err = scd4x.stopPeriodicMeasurement();
+    // Sensor may be in periodic mode from a previous run — stop it before
+    // restarting. Error here is non-fatal.
+    scd4x.stopPeriodicMeasurement();
+    delay(500);  // datasheet §3.8: 500 ms required between stop and next command
+
+    uint16_t err = scd4x.startPeriodicMeasurement();
     if (err) {
-        DBG_FMT("[sensor] stopPeriodicMeasurement: err=%u\n", err);
+        DBG_FMT("[sensor] start error: %u\n", err);
+        return false;
     }
+    DBG("[sensor] periodic mode started");
     return true;
 }
 
-bool sensor_read(uint16_t* co2, float* temp, float* humidity) {
-    uint16_t err = scd4x.measureSingleShot();
-    if (err) {
-        DBG_FMT("[sensor] measureSingleShot error: %u\n", err);
-        return false;
-    }
-
-    // Single-shot takes ~5 s; poll rather than a fixed delay so we exit early
-    // if the sensor is ready sooner.
-    unsigned long deadline = millis() + SENSOR_TIMEOUT_MS;
+// Returns true when the SCD41 has a fresh sample buffered and ready to read.
+bool sensor_is_ready() {
     bool ready = false;
-    while (millis() < deadline) {
-        delay(SENSOR_POLL_MS);
-        err = scd4x.getDataReadyFlag(ready);
-        if (err) {
-            DBG_FMT("[sensor] getDataReadyFlag error: %u\n", err);
-            continue;
-        }
-        if (ready) break;
-    }
-
-    if (!ready) {
-        DBG("[sensor] timeout");
+    uint16_t err = scd4x.getDataReadyFlag(ready);
+    if (err) {
+        DBG_FMT("[sensor] ready flag error: %u\n", err);
         return false;
     }
+    return ready;
+}
 
-    err = scd4x.readMeasurement(*co2, *temp, *humidity);
+// Must only be called after sensor_is_ready() returns true.
+// SCD41 will NACK a read when no sample is buffered.
+bool sensor_read(uint16_t* co2, float* temp, float* humidity) {
+    uint16_t err = scd4x.readMeasurement(*co2, *temp, *humidity);
     if (err) {
-        DBG_FMT("[sensor] readMeasurement error: %u\n", err);
+        DBG_FMT("[sensor] read error: %u\n", err);
         return false;
     }
 
@@ -72,14 +61,12 @@ bool sensor_read(uint16_t* co2, float* temp, float* humidity) {
         return false;
     }
 
-    DBG_FMT("[sensor] co2=%u ppm  temp=%.1f°C  hum=%.1f%%\n",
+    DBG_FMT("[sensor] co2=%u ppm  temp=%.1f C  hum=%.1f%%\n",
             *co2, *temp, *humidity);
     return true;
 }
 
 uint32_t battery_read_mv() {
-    // analogReadMilliVolts uses factory ADC calibration; more accurate than
-    // raw analogRead + manual conversion.
     uint32_t adc_mv   = analogReadMilliVolts(PIN_BATT_ADC);
     uint32_t vbatt_mv = (uint32_t)(adc_mv * VOLTAGE_DIVIDER_RATIO);
     DBG_FMT("[batt] adc=%u mV  vbatt=%u mV\n", adc_mv, vbatt_mv);
