@@ -6,6 +6,7 @@ Handles data ingestion, validation, normalization, and retrieval
 from typing import Dict, Any, Tuple, Optional
 from datetime import datetime, timezone
 import logging
+import os
 
 from ..db import get_mongo_collection
 
@@ -132,7 +133,8 @@ class DataService:
         """
         try:
             timestamp = sensor_data.get('timestamp')
-            if timestamp and timestamp.weekday() >= 5:
+            skip_weekend = os.getenv('SKIP_WEEKEND_FILTER', 'false').lower() in ('true', '1', 'yes')
+            if not skip_weekend and timestamp and timestamp.weekday() >= 5:
                 logger.info(f"Weekend data skipped: {timestamp}")
                 return True, "Data omitted (weekend)"
                 

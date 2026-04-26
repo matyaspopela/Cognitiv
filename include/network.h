@@ -4,22 +4,20 @@
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <time.h>
 #include "config.h"
 
 bool wifi_connect() {
-    // persistent(false) --> aby to nepsalo do NVS flash. Kdyby to delalo dlouho tak to vypali, zbytecny to mit zaply
     WiFi.persistent(false);
     WiFi.setAutoReconnect(false);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD); //def in config.h
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-    DBG_FMT("[wifi] connecting to %s", WIFI_SSID);
+    DBG_FMT("[wifi] connecting to %s\n", WIFI_SSID);
     unsigned long deadline = millis() + WIFI_TIMEOUT_MS;
     while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
         delay(500);
-        DBG(".");
     }
-    DBG("");
 
     if (WiFi.status() != WL_CONNECTED) {
         DBG("[wifi] timeout");
@@ -35,16 +33,37 @@ void wifi_disconnect() {
     WiFi.mode(WIFI_OFF);
 }
 
-static bool build_payload(char* buf, size_t buf_size, //vibecoded stuff (nechal jsem clauda prepsat podle django data parseru)
+// Sync system clock via NTP. Returns true once the clock is set.
+bool ntp_sync() {
+    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    unsigned long deadline = millis() + NTP_TIMEOUT_MS;
+    time_t now = 0;
+    while (millis() < deadline) {
+        time(&now);
+        if (now > 1000000000UL) {
+            DBG_FMT("[ntp] synced  epoch=%lu\n", (unsigned long)now);
+            return true;
+        }
+        delay(500);
+    }
+    DBG("[ntp] sync timeout");
+    return false;
+}
+
+static bool build_payload(char* buf, size_t buf_size,
                            const char* mac,
                            float temp, float humidity,
                            uint16_t co2, uint32_t vbatt_mv) {
+    time_t now;
+    time(&now);
+
     JsonDocument doc;
     doc["mac_address"] = mac;
-    doc["temperature"] = serialized(String(temp, 1));
-    doc["humidity"]    = serialized(String(humidity, 1));
+    doc["timestamp"]   = (long)now;
+    doc["temperature"] = temp;
+    doc["humidity"]    = humidity;
     doc["co2"]         = co2;
-    doc["voltage"]     = serialized(String(vbatt_mv / 1000.0f, 2));
+    doc["voltage"]     = vbatt_mv / 1000.0f;
 
     size_t written = serializeJson(doc, buf, buf_size);
     return (written > 0 && written < buf_size);
@@ -62,11 +81,11 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
     DBG_FMT("[mqtt] payload: %s\n", payload);
 
     WiFiClientSecure tls_client;
-    tls_client.setInsecure();  // no cert pinning for v1
+    tls_client.setInsecure();
 
     PubSubClient mqtt(tls_client);
     mqtt.setServer(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
-    mqtt.setBufferSize(512);  // default varies by PubSubClient version, moznato bude chtit predelat idk jak ale
+    mqtt.setBufferSize(512);
 
     String client_id = "cognitiv_";
     client_id += mac;
@@ -74,7 +93,7 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
 
     for (int attempt = 1; attempt <= MQTT_RETRY_COUNT; attempt++) {
         DBG_FMT("[mqtt] attempt %d/%d\n", attempt, MQTT_RETRY_COUNT);
-        //MQTT retry loop - shrimple
+
         bool connected = mqtt.connect(
             client_id.c_str(),
             MQTT_PUBLISH_USERNAME,
@@ -91,7 +110,7 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
         mqtt.disconnect();
 
         if (published) {
-            DBG("[mqtt] OK");
+            DBG("[mqtt] ok");
             return true;
         }
 
