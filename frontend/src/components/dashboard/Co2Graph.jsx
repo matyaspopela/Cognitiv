@@ -53,7 +53,7 @@ const filterSeriesInRange = (series, startISO, endISO) => {
     });
 };
 
-const Co2Graph = ({ deviceId, timeWindow }) => {
+const Co2Graph = ({ deviceId, timeWindow, showHeader = true }) => {
     const [chartData, setChartData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -194,7 +194,7 @@ const Co2Graph = ({ deviceId, timeWindow }) => {
     return (
         <div className="w-full h-full flex flex-col">
             {/* Chart header — label left, legend right (hidden on mobile) */}
-            <div className="flex items-center justify-between mb-3 px-0.5">
+            {showHeader && <div className="flex items-center justify-between mb-3 px-0.5">
                 <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500 hidden sm:inline">
                         Historical CO₂ Distribution
@@ -225,7 +225,7 @@ const Co2Graph = ({ deviceId, timeWindow }) => {
                         <span className="text-[10px] font-medium text-stone-400">Critical</span>
                     </div>
                 </div>
-            </div>
+            </div>}
 
             <div className="flex-1 min-h-[180px] relative">
                 {loading ? (

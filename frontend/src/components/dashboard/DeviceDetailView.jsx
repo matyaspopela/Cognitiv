@@ -1,134 +1,125 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
 import { dataAPI } from '../../services/api'
 import useDeviceHistory from '../../hooks/useDeviceHistory'
 import TimePicker from '../ui/TimePicker'
 import DataValue from '../ui/DataValue'
 import Co2Graph from './Co2Graph'
+import AirQualityGauge from './AirQualityGauge'
 import Card from '../ui/Card'
 
-/** Derive a status label + colors from an average CO₂ value */
 const getCO2Status = (co2) => {
-  if (co2 == null) return { label: '--', color: '#78716C', bg: 'transparent', border: '#E7E5E4' }
-  if (co2 < 800)  return { label: 'Good',     color: '#16A34A', bg: '#DCFCE7', border: '#16A34A' }
-  if (co2 < 1200) return { label: 'Moderate', color: '#D97706', bg: '#FEF3C7', border: '#D97706' }
-  if (co2 < 1800) return { label: 'Poor',     color: '#EA580C', bg: '#FFEDD5', border: '#EA580C' }
-  return             { label: 'Critical',  color: '#DC2626', bg: '#FEE2E2', border: '#DC2626' }
+  if (co2 == null) return { label: '—',        color: '#78716C' }
+  if (co2 < 800)   return { label: 'Good',     color: '#16A34A' }
+  if (co2 < 1200)  return { label: 'Moderate', color: '#D97706' }
+  if (co2 < 1800)  return { label: 'Poor',     color: '#EA580C' }
+  return              { label: 'Critical',  color: '#DC2626' }
 }
 
-/** % of series buckets with CO₂ above 2000 ppm */
-const computeRiskPercent = (series) => {
-  if (!series || series.length === 0) return null
-  const risky = series.filter(p => {
-    const val = p.co2?.avg ?? p.co2
-    return val != null && val > 2000
-  }).length
-  return Math.round((risky / series.length) * 100)
-}
-
-/**
- * DeviceDetailView — regular user device detail, clean single-page layout.
- */
 const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
   const [device, setDevice] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
-  // Fetch current device info (for CO₂ and Temperature live values)
   useEffect(() => {
-    const fetchDeviceData = async () => {
-      try {
-        setLoading(true)
-        const response = await dataAPI.getDevices()
-        if (response.data && response.data.devices) {
-          const found = response.data.devices.find(
-            (d) => d.device_id === deviceId || d.mac_address === deviceId || d.display_name === deviceId
-          )
-          if (found) setDevice(found)
-        }
-      } catch (error) {
-        console.error('Error fetching device for detail view:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (deviceId) fetchDeviceData()
+    if (!deviceId) return
+    dataAPI.getDevices().then((res) => {
+      const found = res.data?.devices?.find(
+        (d) => d.device_id === deviceId || d.mac_address === deviceId || d.display_name === deviceId
+      )
+      if (found) setDevice(found)
+    }).catch(() => {})
   }, [deviceId])
 
-  // Fetch history for the selected timeWindow — drives Status and At Risk cards
-  const { series, summary } = useDeviceHistory(deviceId, timeWindow)
+  const { summary } = useDeviceHistory(deviceId, timeWindow)
 
-  const readings = device?.current_readings || {}
-
-  // Status derived from period average CO₂ (falls back to live reading while summary loads)
+  const readings = device?.current_readings ?? {}
+  const online = device?.status === 'online'
   const avgCo2 = summary?.co2?.avg ?? readings.co2 ?? null
   const status = getCO2Status(avgCo2)
 
-  const riskPct = useMemo(() => computeRiskPercent(series), [series])
-
   return (
-    <div className="flex flex-col gap-8">
-      {/* Time range picker */}
-      <div className="flex justify-end items-center">
-        <TimePicker
-          value={timeWindow}
-          onChange={onTimeWindowChange}
-          compact
-        />
+    <div className="flex flex-col gap-3">
+      {/* ── Back nav + device name ── */}
+      <div className="flex items-center gap-2 -ml-1">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+          aria-label="Back to devices"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-bold text-stone-900 truncate">
+          {device?.display_name ?? '—'}
+        </span>
+        <span className={`text-xs font-medium ml-1 ${online ? 'text-green-600' : 'text-stone-400'}`}>
+          ● {online ? 'Online' : 'Offline'}
+        </span>
       </div>
 
-      {/* Metric cards — 2-column on mobile, 4-column on md+ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {/* CO₂ Level */}
-        <Card className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]">
+      {/* ── Bento 2×2 grid ── */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Top-left: CO₂ */}
+        <Card className="p-4 flex flex-col justify-center min-h-[80px]">
           <DataValue
-            label="CO2 Level"
-            value={readings.co2 != null ? Math.round(readings.co2) : '--'}
+            label="CO₂"
+            value={readings.co2 != null ? Math.round(readings.co2) : '—'}
             unit="ppm"
           />
         </Card>
 
-        {/* Temperature */}
-        <Card className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]">
+        {/* Top-right: temperature */}
+        <Card className="p-4 flex flex-col justify-center min-h-[80px]">
           <DataValue
             label="Temperature"
-            value={readings.temperature != null ? readings.temperature.toFixed(1) : '--'}
+            value={readings.temperature != null ? readings.temperature.toFixed(1) : '—'}
             unit="°C"
           />
         </Card>
 
-        {/* Air Quality Status */}
-        <Card
-          className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]"
-          style={{ borderLeft: `3px solid ${status.border}` }}
-        >
-          <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">
-            Status
-          </span>
-          <span
-            className="text-2xl font-bold leading-none"
-            style={{ color: status.color }}
-          >
-            {status.label}
-          </span>
-          <span className="text-[10px] text-stone-400 mt-1">air quality</span>
+        {/* Bottom-left: humidity */}
+        <Card className="p-4 flex flex-col justify-center min-h-[80px]">
+          <DataValue
+            label="Humidity"
+            value={readings.humidity != null ? Math.round(readings.humidity) : '—'}
+            unit="%"
+          />
         </Card>
 
-        {/* Today at Risk */}
-        <Card className="p-3 sm:p-4 flex flex-col justify-center min-h-[88px]">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">
-            At Risk
-          </span>
-          <span className="text-2xl font-bold text-stone-900 leading-none">
-            {riskPct != null ? `${riskPct}%` : '--'}
-          </span>
-          <span className="text-[10px] text-stone-400 mt-1">above 2000 ppm</span>
+        {/* Bottom-right: placeholder for future stat or leave asymmetric */}
+        <Card className="p-4 flex flex-col justify-center min-h-[80px]">
+          <DataValue
+            label="Avg CO₂"
+            value={avgCo2 != null ? Math.round(avgCo2) : '—'}
+            unit="ppm"
+          />
         </Card>
       </div>
 
-      {/* Primary chart */}
-      <Card className="p-3 sm:p-6 h-[300px] sm:h-[420px]">
-        <Co2Graph deviceId={deviceId} timeWindow={timeWindow} />
-      </Card>
+      {/* ── Gauge + Graph ── */}
+      <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-8 mt-6 md:mt-10">
+        {/* Gauge — boxless hero, sits directly on background */}
+        <div className="md:w-[44%] md:pl-4">
+          <AirQualityGauge
+            co2={avgCo2}
+            status={status.label}
+            statusColor={status.color}
+          />
+        </div>
+
+        {/* CO₂ graph with inline time picker */}
+        <Card className="p-4 flex-1 flex flex-col min-h-[300px] md:min-h-[360px]">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-stone-500">
+              CO₂
+            </span>
+            <TimePicker value={timeWindow} onChange={onTimeWindowChange} compact />
+          </div>
+          <div className="flex-1 min-h-0">
+            <Co2Graph deviceId={deviceId} timeWindow={timeWindow} showHeader={false} />
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }

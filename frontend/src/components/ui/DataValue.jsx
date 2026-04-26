@@ -20,7 +20,7 @@ const DataValue = ({ value, unit, label, trend, className = '' }) => {
         <span className="font-mono text-xl font-semibold text-text-primary tabular-nums leading-none">
           {value}
         </span>
-        <span className="text-[11px] text-text-muted font-medium uppercase">{unit}</span>
+        <span className="text-[11px] text-text-muted font-medium">{unit}</span>
         {trend !== undefined && (
           <span className={`text-[10px] ml-0.5 ${trend > 0 ? 'text-co2-critical' : trend < 0 ? 'text-co2-good' : 'text-text-muted'}`}>
             {trend > 0 ? '▲' : trend < 0 ? '▼' : '•'}

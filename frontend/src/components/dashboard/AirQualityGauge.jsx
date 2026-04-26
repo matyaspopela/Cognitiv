@@ -1,141 +1,150 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const CX = 110
 const CY = 110
 const R = 90
-const STROKE_WIDTH = 18
 
-// CO₂ zones mapped to arc segments (0° = left, 180° = right)
-const ZONES = [
-  { start: 0,   end: 45,  color: '#16A34A' }, // good    < 800 ppm
-  { start: 45,  end: 90,  color: '#D97706' }, // warning  800–1200
-  { start: 90,  end: 135, color: '#EA580C' }, // poor    1200–1800
-  { start: 135, end: 180, color: '#DC2626' }, // critical >1800
-]
+// Total arc length of the 180° semicircle (used for stroke-dashoffset animation)
+const ARC_LEN = Math.PI * R
 
-/** Convert an angle (0–180°, where 0 = leftmost) to SVG arc point on the semicircle */
-const angleToPoint = (deg) => {
+const TRACK_W = 3
+const PROGRESS_W = 5
+
+// Subtle tick marks at zone boundaries (400→800, 800→1200, 1200→1800 ppm)
+const TICK_ANGLES = [45, 90, 135]
+
+const angleToPoint = (deg, radius = R) => {
   const rad = ((deg + 180) * Math.PI) / 180
-  return {
-    x: CX + R * Math.cos(rad),
-    y: CY + R * Math.sin(rad),
-  }
+  return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) }
 }
 
-/** Build a large-arc SVG path string for one arc segment */
-const arcPath = (startDeg, endDeg) => {
-  const s = angleToPoint(startDeg)
-  const e = angleToPoint(endDeg)
-  const span = endDeg - startDeg
-  const largeArc = span > 180 ? 1 : 0
-  return `M ${s.x} ${s.y} A ${R} ${R} 0 ${largeArc} 1 ${e.x} ${e.y}`
-}
+/** Full 180° arc path — used for both background track and the dashoffset progress arc. */
+const FULL_ARC = (() => {
+  const s = angleToPoint(0)
+  const e = angleToPoint(180)
+  return `M ${s.x} ${s.y} A ${R} ${R} 0 0 1 ${e.x} ${e.y}`
+})()
 
-/** Map CO₂ ppm to angle on the 180° arc */
 const ppmToAngle = (co2) => {
   if (co2 == null) return 0
-  const clamped = Math.max(400, Math.min(2000, co2))
-  return ((clamped - 400) / 1600) * 180
+  return ((Math.max(400, Math.min(2000, co2)) - 400) / 1600) * 180
 }
 
+/**
+ * AirQualityGauge — boxless hero gauge with status text seated inside the arch bowl.
+ * Container has a fixed aspect ratio so it never gets stretched.
+ */
 const AirQualityGauge = ({ co2, status, statusColor }) => {
   const [displayAngle, setDisplayAngle] = useState(0)
   const [textVisible, setTextVisible] = useState(false)
+  const isFirstRender = useRef(true)
 
   useEffect(() => {
-    // Small delay lets the component mount before triggering CSS transition
-    const t1 = setTimeout(() => setDisplayAngle(ppmToAngle(co2)), 80)
-    const t2 = setTimeout(() => setTextVisible(true), 600)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, []) // only on mount for initial animation
-
-  // On subsequent co2 changes, update immediately with spring transition
-  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      const t1 = setTimeout(() => setDisplayAngle(ppmToAngle(co2)), 100)
+      const t2 = setTimeout(() => setTextVisible(true), 500)
+      return () => { clearTimeout(t1); clearTimeout(t2) }
+    }
     setDisplayAngle(ppmToAngle(co2))
     setTextVisible(true)
   }, [co2])
 
-  const pointer = angleToPoint(displayAngle)
+  const color = statusColor ?? '#A8A29E'
+  const dashOffset = ARC_LEN * (1 - displayAngle / 180)
+  const rotDeg = displayAngle - 180
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div
+      className="relative w-full max-w-[460px] mx-auto select-none"
+      style={{ aspectRatio: '220 / 130' }}
+    >
       <svg
-        viewBox="0 0 220 120"
-        className="w-full max-w-[420px]"
+        viewBox="0 0 220 130"
+        className="absolute inset-0 w-full h-full"
         style={{ overflow: 'visible' }}
-        aria-label={`Air quality gauge: ${status ?? '—'}`}
+        aria-label={`Air quality: ${status ?? '—'}`}
       >
         {/* Background track */}
         <path
-          d={arcPath(0, 180)}
+          d={FULL_ARC}
           fill="none"
           stroke="#E7E5E4"
-          strokeWidth={STROKE_WIDTH}
+          strokeWidth={TRACK_W}
           strokeLinecap="round"
         />
 
-        {/* Colored zone segments */}
-        {ZONES.map((z) => (
-          <path
-            key={z.start}
-            d={arcPath(z.start, z.end)}
-            fill="none"
-            stroke={z.color}
-            strokeWidth={STROKE_WIDTH}
-            strokeLinecap="butt"
-            opacity="0.85"
+        {/* Zone boundary ticks — precision instrument feel */}
+        {TICK_ANGLES.map((deg) => {
+          const inner = angleToPoint(deg, R - 7)
+          const outer = angleToPoint(deg, R + 7)
+          return (
+            <line
+              key={deg}
+              x1={inner.x} y1={inner.y}
+              x2={outer.x} y2={outer.y}
+              stroke="#D6D3D1"
+              strokeWidth={1}
+              strokeLinecap="round"
+            />
+          )
+        })}
+
+        {/* Progress arc — animates via stroke-dashoffset */}
+        <path
+          d={FULL_ARC}
+          fill="none"
+          stroke={color}
+          strokeWidth={PROGRESS_W}
+          strokeLinecap="round"
+          strokeDasharray={ARC_LEN}
+          strokeDashoffset={dashOffset}
+          style={{
+            transition: 'stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.4s ease',
+          }}
+        />
+
+        {/* Indicator dot — rotates via CSS transform */}
+        <g
+          style={{
+            transformOrigin: `${CX}px ${CY}px`,
+            transform: `rotate(${rotDeg}deg)`,
+            transition: 'transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }}
+        >
+          <circle
+            cx={CX + R}
+            cy={CY}
+            r={6}
+            fill="white"
+            stroke={color}
+            strokeWidth={2.5}
+            style={{
+              filter: `drop-shadow(0 0 5px ${color}55)`,
+              transition: 'stroke 0.4s ease',
+            }}
           />
-        ))}
-
-        {/* Pointer line from center to arc */}
-        <line
-          x1={CX}
-          y1={CY}
-          x2={pointer.x}
-          y2={pointer.y}
-          stroke={statusColor ?? '#78716C'}
-          strokeWidth={2}
-          strokeLinecap="round"
-          style={{
-            transition: 'x2 0.6s cubic-bezier(0.34,1.56,0.64,1), y2 0.6s cubic-bezier(0.34,1.56,0.64,1)',
-          }}
-        />
-
-        {/* Pointer dot on arc */}
-        <circle
-          cx={pointer.cx ?? pointer.x}
-          cy={pointer.cy ?? pointer.y}
-          r={7}
-          fill="white"
-          stroke={statusColor ?? '#78716C'}
-          strokeWidth={3}
-          style={{
-            filter: `drop-shadow(0 0 4px ${statusColor ?? '#78716C'}88)`,
-            transition: 'cx 0.6s cubic-bezier(0.34,1.56,0.64,1), cy 0.6s cubic-bezier(0.34,1.56,0.64,1)',
-          }}
-        />
-
-        {/* Center pivot dot */}
-        <circle cx={CX} cy={CY} r={4} fill={statusColor ?? '#78716C'} />
+        </g>
       </svg>
 
-      {/* Text below gauge */}
+      {/* Status + value, seated inside the arch bowl */}
       <div
-        className="flex flex-col items-center mt-[-8px]"
+        className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
         style={{
+          bottom: '10%',
           opacity: textVisible ? 1 : 0,
-          transition: 'opacity 0.4s ease 0.2s',
+          transition: 'opacity 0.5s ease 0.15s',
         }}
       >
         <span
-          className="text-2xl font-bold tracking-tight leading-none"
-          style={{ color: statusColor ?? '#78716C' }}
+          className="text-[2.5rem] md:text-[2.75rem] font-semibold tracking-tight leading-none"
+          style={{ color }}
         >
           {status ?? '—'}
         </span>
         {co2 != null && (
-          <span className="text-sm font-mono text-stone-400 mt-1">
-            {Math.round(co2)} ppm
+          <span className="text-sm font-mono text-stone-400 mt-2.5 tabular-nums">
+            {Math.round(co2)} <span className="text-stone-300">ppm</span>
           </span>
         )}
       </div>
