@@ -29,4 +29,16 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     export "${key}=${value}"
 done < "$ENV_FILE"
 
-exec pio "$@"
+MODE="${1:-normal}"
+case "$MODE" in
+    normal)        PIO_ENV="esp32c3" ;;
+    showcase)      PIO_ENV="esp32c3_showcase" ;;
+    test_display)  PIO_ENV="esp32c3_test_display" ;;
+    *)
+        echo "usage: flash.sh [normal|showcase|test_display]"
+        exit 1
+        ;;
+esac
+
+echo "flashing: $PIO_ENV"
+exec pio run -e "$PIO_ENV" -t upload
