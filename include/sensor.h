@@ -12,6 +12,7 @@ static void i2c_reset() {
     Wire.end();
     delay(5);
     Wire.begin(PIN_SDA, PIN_SCL);
+    Wire.setClock(25000);
     scd4x.begin(Wire);
 }
 
@@ -40,7 +41,7 @@ bool sensor_init() {
     return true;
 }
 
-bool sensor_read(uint16_t* co2, float* temp, float* humidity) {
+bool sensor_read(uint16_t* co2, float* temp, float* humidity, void (*yield_fn)() = nullptr) {
     uint16_t err = scd4x.measureSingleShot();
     if (err) {
         DBG_FMT("[sensor] measureSingleShot err=%u\n", err);
@@ -52,6 +53,7 @@ bool sensor_read(uint16_t* co2, float* temp, float* humidity) {
     bool ready = false;
     while (millis() < deadline) {
         delay(SENSOR_POLL_MS);
+        if (yield_fn) yield_fn();
         err = scd4x.getDataReadyFlag(ready);
         if (err) {
             DBG_FMT("[sensor] getDataReadyFlag err=%u\n", err);
