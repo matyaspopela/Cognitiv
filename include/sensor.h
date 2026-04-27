@@ -18,7 +18,7 @@ static void i2c_reset() {
     delay(5);
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setClock(25000);
-    stcc4.begin(Wire, STCC4_I2C_ADDR);
+    stcc4.begin(Wire, STCC4_I2C_ADDR_64);
 }
 
 void sensor_power_on() {
@@ -34,7 +34,7 @@ void sensor_power_off() {
 bool sensor_init() {
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setClock(25000);
-    stcc4.begin(Wire, STCC4_I2C_ADDR);
+    stcc4.begin(Wire, STCC4_I2C_ADDR_64);
     // Wake then immediately sleep — clears any stale state after power-on.
     uint16_t err = stcc4.exitSleepMode();
     if (err) DBG_FMT("[sensor] exitSleepMode err=%u (ok on first boot)\n", err);
@@ -68,7 +68,7 @@ bool sensor_read(uint16_t* co2, float* temp, float* humidity, void (*yield_fn)()
     unsigned long deadline = millis() + SENSOR_TIMEOUT_MS;
     int16_t co2_raw = 0;
     float t = 0.0f, rh = 0.0f;
-    int16_t status = 0;
+    uint16_t status = 0;
     bool ok = false;
 
     while (millis() < deadline) {

@@ -138,7 +138,7 @@ void loop() {
     // Attempt re-init so we recover without a reflash.
     i2c_reset();
 #ifdef SENSOR_STCC4
-    stcc4.begin(Wire, STCC4_I2C_ADDR);
+    stcc4.begin(Wire, STCC4_I2C_ADDR_64);
     {
       uint16_t err = stcc4.exitSleepMode();
       if (err == 0) err = stcc4.measureSingleShot();
