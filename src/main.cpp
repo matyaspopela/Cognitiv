@@ -45,7 +45,7 @@ void setup() {
   delay(100);
   DBG("=== Cognitiv boot ===");
 
-  // ── I2C rail ──────────────────────────────────────────────────────────────
+  // I2C rail
   pinMode(PIN_I2C_POWER, OUTPUT);
   digitalWrite(PIN_I2C_POWER, I2C_RAIL_ON);
   delay(200);
@@ -54,11 +54,11 @@ void setup() {
   pinMode(PIN_SDA, INPUT_PULLUP);
   pinMode(PIN_SCL, INPUT_PULLUP);
   Wire.begin(PIN_SDA, PIN_SCL);
-  Wire.setClock(25000);  // 50 kHz — tolerates higher bus capacitance from DuPont wires + two modules
+  Wire.setClock(25000);  // 25 kHz — tolerates the higher bus capacitance from DuPont wires + two modules
   Wire.setTimeout(20);
   DBG_FMT("[i2c] started SDA=%d SCL=%d\n", PIN_SDA, PIN_SCL);
 
-  // ── I2C scan ──────────────────────────────────────────────────────────────
+  // I2C scan
   uint8_t devices = 0;
   for (uint8_t addr = 1; addr < 127; addr++) {
     Wire.beginTransmission(addr);
@@ -69,8 +69,8 @@ void setup() {
   }
   DBG_FMT("[i2c] scan done — %u device(s)\n", devices);
 
-  // ── Sensor ────────────────────────────────────────────────────────────────
-  sensor_init();  // SCD41: stopPeriodicMeasurement; STCC4: exitSleep→enterSleep
+  // sensor — SCD41: stopPeriodicMeasurement; STCC4: exitSleep→enterSleep
+  sensor_init();
 
 #ifdef SENSOR_STCC4
   {
@@ -94,12 +94,12 @@ void setup() {
   }
 #endif
 
-  // ── Display ───────────────────────────────────────────────────────────────
+  // display
   display_ok = display_init();
   if (display_ok)
     display_show_message("Cognitiv");
 
-  // ── LED ───────────────────────────────────────────────────────────────────
+  // LED
   pinMode(PIN_LED_POWER, OUTPUT);
   digitalWrite(PIN_LED_POWER, LED_RAIL_OFF);
   led_init();
@@ -110,7 +110,7 @@ void setup() {
   DBG("[led] ok");
 #endif
 
-  // ── Button ────────────────────────────────────────────────────────────────
+  // button
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_BUTTON), btn_isr, FALLING);
   DBG("[button] interrupt attached");

@@ -33,7 +33,7 @@ void wifi_disconnect() {
     WiFi.mode(WIFI_OFF);
 }
 
-// Sync system clock via NTP. Returns true once the clock is set.
+// sync clock before building the payload timestamp; returns false on timeout
 bool ntp_sync() {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     unsigned long deadline = millis() + NTP_TIMEOUT_MS;
