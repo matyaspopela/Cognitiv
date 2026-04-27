@@ -70,19 +70,29 @@ void setup() {
   DBG_FMT("[i2c] scan done — %u device(s)\n", devices);
 
   // ── Sensor ────────────────────────────────────────────────────────────────
-  scd4x.begin(Wire);
-  uint16_t err = scd4x.stopPeriodicMeasurement();
-  if (err)
-    DBG_FMT("[sensor] stopPeriodicMeasurement err=%u (ok if idle)\n", err);
-  delay(600);
-  i2c_reset();
+  sensor_init();  // SCD41: stopPeriodicMeasurement; STCC4: exitSleep→enterSleep
 
-  err = scd4x.measureSingleShot();
-  sensor_ok = (err == 0);
-  if (sensor_ok)
-    DBG("[sensor] SCD41 ok — waiting for first reading (~5 s)");
-  else
-    DBG_FMT("[sensor] SCD41 unreachable — err=%u\n", err);
+#ifdef SENSOR_STCC4
+  {
+    uint16_t err = stcc4.exitSleepMode();
+    if (err == 0) err = stcc4.measureSingleShot();
+    stcc4.enterSleepMode();
+    sensor_ok = (err == 0);
+    if (sensor_ok)
+      DBG("[sensor] STCC4 ok");
+    else
+      DBG_FMT("[sensor] STCC4 unreachable — err=%u\n", err);
+  }
+#else
+  {
+    uint16_t err = scd4x.measureSingleShot();
+    sensor_ok = (err == 0);
+    if (sensor_ok)
+      DBG("[sensor] SCD41 ok — waiting for first reading (~5 s)");
+    else
+      DBG_FMT("[sensor] SCD41 unreachable — err=%u\n", err);
+  }
+#endif
 
   // ── Display ───────────────────────────────────────────────────────────────
   display_ok = display_init();
@@ -127,24 +137,41 @@ void loop() {
 
     // Attempt re-init so we recover without a reflash.
     i2c_reset();
-    uint16_t err = scd4x.stopPeriodicMeasurement();
-    if (err) DBG_FMT("[sensor] stopPeriodicMeasurement err=%u\n", err);
-    delay(600);
-    i2c_reset();
-    // performFactoryReset() (0x3632) clears EEPROM-persisted state — more aggressive than reinit.
-    err = scd4x.performFactoryReset();
-    if (err) DBG_FMT("[sensor] performFactoryReset err=%u\n", err);
-    delay(1200);
-    err = scd4x.measureSingleShot();
-    if (err == 0) {
-      DBG("[sensor] re-init succeeded");
-      sensor_ok = true;
-    } else {
-      DBG_FMT("[sensor] re-init failed err=%u — retrying in 5 s\n", err);
-#ifndef SHOWCASE_MODE
-      delay(5000);
-#endif
+#ifdef SENSOR_STCC4
+    stcc4.begin(Wire, STCC4_I2C_ADDR);
+    {
+      uint16_t err = stcc4.exitSleepMode();
+      if (err == 0) err = stcc4.measureSingleShot();
+      stcc4.enterSleepMode();
+      if (err == 0) {
+        DBG("[sensor] re-init succeeded");
+        sensor_ok = true;
+      } else {
+        DBG_FMT("[sensor] re-init failed err=%u — retrying\n", err);
+      }
     }
+#else
+    {
+      uint16_t err = scd4x.stopPeriodicMeasurement();
+      if (err) DBG_FMT("[sensor] stopPeriodicMeasurement err=%u\n", err);
+      delay(600);
+      i2c_reset();
+      // performFactoryReset() (0x3632) clears EEPROM-persisted state — more aggressive than reinit.
+      err = scd4x.performFactoryReset();
+      if (err) DBG_FMT("[sensor] performFactoryReset err=%u\n", err);
+      delay(1200);
+      err = scd4x.measureSingleShot();
+      if (err == 0) {
+        DBG("[sensor] re-init succeeded");
+        sensor_ok = true;
+      } else {
+        DBG_FMT("[sensor] re-init failed err=%u — retrying in 5 s\n", err);
+#ifndef SHOWCASE_MODE
+        delay(5000);
+#endif
+      }
+    }
+#endif
 #ifdef SHOWCASE_MODE
     if (display_ok) display_show_message("No sensor");
     {

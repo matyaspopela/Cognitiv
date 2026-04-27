@@ -8,7 +8,10 @@
       "Bash(python manage.py check)",
       "Bash(npm run:*)",
       "Bash(git add:*)",
-      "Bash(iconv -f utf-16 -t utf-8 BOM.csv)"
+      "Bash(iconv -f utf-16 -t utf-8 BOM.csv)",
+      "WebFetch(domain:www.laskakit.cz)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
