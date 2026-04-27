@@ -29,8 +29,9 @@ export const chartColors = {
  * Thresholds for CO2 levels
  */
 export const CO2_THRESHOLDS = {
-  SAFE: 800,
-  WARNING: 1200,
+  SAFE: 1000,
+  WARNING: 1400,
+  POOR: 2000,
 };
 
 /**

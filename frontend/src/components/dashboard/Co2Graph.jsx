@@ -96,9 +96,9 @@ const Co2Graph = ({ deviceId, timeWindow, showHeader = true }) => {
                                     borderColor: (ctx) => {
                                         const v = ctx.p1.parsed.y
                                         if (v == null) return chartColors.stone[300]
-                                        if (v < 800)  return semanticColors.safe.line
-                                        if (v < 1200) return semanticColors.warning.line
-                                        if (v < 1800) return '#EA580C' // orange-600
+                                        if (v < CO2_THRESHOLDS.SAFE)    return semanticColors.safe.line
+                                        if (v < CO2_THRESHOLDS.WARNING) return semanticColors.warning.line
+                                        if (v < CO2_THRESHOLDS.POOR)    return '#EA580C' // orange-600
                                         return semanticColors.critical.line
                                     }
                                 },

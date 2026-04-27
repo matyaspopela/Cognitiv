@@ -59,7 +59,7 @@ const AdminAnnotatedView = ({ deviceId }) => {
             {/* Header / Controls */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
                 {/* Chart Grouping Tabs */}
-                <div className="flex items-center gap-0 border-b border-stone-200 overflow-x-auto">
+                <div className="flex items-center gap-0 border-b border-stone-200">
                     {['period', 'subject', 'teacher'].map((group) => (
                         <button
                             key={group}

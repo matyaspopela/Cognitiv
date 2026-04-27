@@ -8,13 +8,14 @@ import DataValue from '../ui/DataValue'
 import Co2Graph from './Co2Graph'
 import AirQualityGauge from './AirQualityGauge'
 import Card from '../ui/Card'
+import { CO2_LEVELS } from '../../utils/co2'
 
 const getCO2Status = (co2) => {
-  if (co2 == null) return { label: '—',        color: '#78716C' }
-  if (co2 < 800)   return { label: 'Good',     color: '#16A34A' }
-  if (co2 < 1200)  return { label: 'Moderate', color: '#D97706' }
-  if (co2 < 1800)  return { label: 'Poor',     color: '#EA580C' }
-  return              { label: 'Critical',  color: '#DC2626' }
+  if (co2 == null)                return { label: '—',        color: '#78716C' }
+  if (co2 < CO2_LEVELS.GOOD)      return { label: 'Good',     color: '#16A34A' }
+  if (co2 < CO2_LEVELS.FAIR)      return { label: 'Moderate', color: '#D97706' }
+  if (co2 < CO2_LEVELS.POOR)      return { label: 'Poor',     color: '#EA580C' }
+  return                            { label: 'Critical',  color: '#DC2626' }
 }
 
 const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
@@ -52,8 +53,9 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         <span className="text-sm font-bold text-stone-900 truncate">
           {device?.display_name ?? '—'}
         </span>
-        <span className={`text-xs font-medium ml-1 ${online ? 'text-green-600' : 'text-stone-400'}`}>
-          ● {online ? 'Online' : 'Offline'}
+        <span className={`flex items-center gap-1.5 text-xs font-medium ml-1 ${online ? 'text-green-600' : 'text-stone-400'}`}>
+          <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-green-500' : 'bg-stone-300'}`} />
+          {online ? 'Online' : 'Offline'}
         </span>
       </div>
 
@@ -96,10 +98,11 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         </Card>
       </div>
 
-      {/* ── Gauge + Graph ── */}
-      <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-8 mt-6 md:mt-10">
-        {/* Gauge — boxless hero, sits directly on background */}
-        <div className="md:w-[44%] md:pl-4">
+      {/* ── Gauge + Graph ──
+          Mobile: gauge on top (DOM order). Desktop: chart on top, gauge below. */}
+      <div className="flex flex-col gap-6 mt-6 md:mt-8">
+        {/* Gauge */}
+        <div className="md:order-2 md:max-w-md md:mx-auto md:w-full">
           <AirQualityGauge
             co2={avgCo2}
             status={status.label}
@@ -108,7 +111,7 @@ const DeviceDetailView = ({ deviceId, timeWindow, onTimeWindowChange }) => {
         </div>
 
         {/* CO₂ graph with inline time picker */}
-        <Card className="p-4 flex-1 flex flex-col min-h-[300px] md:min-h-[360px]">
+        <Card className="p-4 flex flex-col min-h-[300px] md:min-h-[460px] md:order-1">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-bold uppercase tracking-widest text-stone-500">
               CO₂

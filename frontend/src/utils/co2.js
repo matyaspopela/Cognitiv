@@ -4,9 +4,9 @@
  */
 
 export const CO2_LEVELS = {
-  GOOD: 800,
-  FAIR: 1200,
-  POOR: 1800
+  GOOD: 1000,
+  FAIR: 1400,
+  POOR: 2000
 };
 
 /**

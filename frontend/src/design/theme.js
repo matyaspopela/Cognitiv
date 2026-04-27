@@ -45,18 +45,18 @@ export const theme = {
 
   // CO2 Thresholds (ppm) - Single Source of Truth
   thresholds: {
-    good: 800,
-    fair: 1200,
-    poor: 1800,
+    good: 1000,
+    fair: 1400,
+    poor: 2000,
   },
 
   // Helper function to get color for CO2 value
   getColorForCO2: (co2) => {
-    if (co2 < 800) {
+    if (co2 < 1000) {
       return colors.semantic.good.color
-    } else if (co2 < 1200) {
+    } else if (co2 < 1400) {
       return colors.semantic.fair.color
-    } else if (co2 < 1800) {
+    } else if (co2 < 2000) {
       return colors.semantic.poor.color
     } else {
       return colors.semantic.critical.color
@@ -65,19 +65,19 @@ export const theme = {
 
   // Helper function to get style object for CO2 value
   getStyleForCO2: (co2) => {
-    if (co2 < 800) {
+    if (co2 < 1000) {
       return {
         color: colors.semantic.good.color,
         background: colors.semantic.good.background,
         status: 'good'
       }
-    } else if (co2 < 1200) {
+    } else if (co2 < 1400) {
       return {
         color: colors.semantic.fair.color,
         background: colors.semantic.fair.background,
         status: 'fair'
       }
-    } else if (co2 < 1800) {
+    } else if (co2 < 2000) {
       return {
         color: colors.semantic.poor.color,
         background: colors.semantic.poor.background,

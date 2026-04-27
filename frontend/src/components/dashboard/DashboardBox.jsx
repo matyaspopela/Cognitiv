@@ -49,7 +49,14 @@ const DashboardBox = ({ device, onClick }) => {
   }
 
   const deviceIdentifier = getDeviceIdentifier()
-  const deviceName = typeof device === 'string' ? device : device?.display_name || device?.device_id || device?.mac_address || 'Unknown'
+  const MAC_RE = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/
+  const looksLikeMac = (val) => typeof val === 'string' && MAC_RE.test(val)
+  const safeName = (d) => {
+    if (d?.display_name) return d.display_name
+    if (d?.device_id && !looksLikeMac(d.device_id)) return d.device_id
+    return 'Unnamed device'
+  }
+  const deviceName = typeof device === 'string' ? 'Unnamed device' : safeName(device)
 
   const getIsOffline = () => {
     if (!device) return true
@@ -154,9 +161,7 @@ const DashboardBox = ({ device, onClick }) => {
           </div>
         ) : miniChartData && !isOffline ? (
           <Line data={miniChartData} options={getMiniChartOptions()} />
-        ) : (
-          <div className="h-full w-full border-b border-stone-100 opacity-20" />
-        )}
+        ) : null}
       </div>
 
       {/* Secondary readings */}

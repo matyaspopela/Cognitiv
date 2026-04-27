@@ -9,7 +9,15 @@ const PageHeader = ({ title, actions, showBack = false }) => {
   const [deviceDisplayName, setDeviceDisplayName] = useState(null);
 
   const params = new URLSearchParams(location.search);
-  const deviceId = params.get('device');
+  const queryDeviceId = params.get('device');
+
+  // Detect a MAC-shaped path segment (e.g. /admin/devices/24:4C:AB:46:A6:69)
+  const MAC_RE = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const lastPathPart = pathParts[pathParts.length - 1] || '';
+  const pathDeviceId = MAC_RE.test(lastPathPart) ? lastPathPart : null;
+
+  const deviceId = queryDeviceId || pathDeviceId;
 
   useEffect(() => {
     const fetchDeviceName = async () => {
@@ -25,11 +33,15 @@ const PageHeader = ({ title, actions, showBack = false }) => {
             (d) => d.device_id === deviceId || d.mac_address === deviceId
           );
           if (device) {
-            setDeviceDisplayName(device.display_name || device.device_id);
+            const id = device.device_id && !MAC_RE.test(device.device_id) ? device.device_id : null;
+            setDeviceDisplayName(device.display_name || id || 'Device');
+          } else {
+            setDeviceDisplayName('Device');
           }
         }
       } catch (error) {
         console.error('Error fetching device for header:', error);
+        setDeviceDisplayName('Device');
       }
     };
 
@@ -54,9 +66,12 @@ const PageHeader = ({ title, actions, showBack = false }) => {
     };
     
     if (routeMap[lastPart]) return routeMap[lastPart];
-    
-    if (deviceId) return `Device: ${deviceId}`;
-    
+
+    // Don't expose raw MACs in the title
+    if (MAC_RE.test(lastPart)) return 'Device';
+
+    if (deviceId) return 'Device';
+
     // Default formatting
     return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
   };
