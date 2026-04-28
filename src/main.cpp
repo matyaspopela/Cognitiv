@@ -42,7 +42,9 @@ static void handle_button() {
 
 void setup() {
   Serial.begin(115200);
-  delay(100);
+  // USB-CDC on ESP32-C3 needs the host to enumerate before output is visible.
+  // Wait up to 3 s, then boot regardless so the device isn't stuck without a monitor.
+  { unsigned long t = millis(); while (!Serial && millis() - t < 3000) delay(10); }
   DBG("=== Cognitiv boot ===");
 
   // I2C rail
@@ -123,6 +125,15 @@ void loop() {
   handle_button();
 
   if (!sensor_ok) {
+    static uint8_t  _reinit_attempts = 0;
+    static uint32_t _next_reinit_ms  = 0;
+
+    if (millis() < _next_reinit_ms) {
+      handle_button();
+      delay(50);
+      return;
+    }
+
     // I2C scan so we can see whether the sensor is on the bus at all.
     DBG("[sensor] not available — scanning I2C bus...");
     uint8_t found = 0;
@@ -146,8 +157,12 @@ void loop() {
       if (err == 0) {
         DBG("[sensor] re-init succeeded");
         sensor_ok = true;
+        _reinit_attempts = 0;
       } else {
-        DBG_FMT("[sensor] re-init failed err=%u — retrying\n", err);
+        _reinit_attempts++;
+        uint32_t wait = (_reinit_attempts >= 3) ? 30000 : 5000;
+        DBG_FMT("[sensor] re-init failed err=%u — retry in %u s\n", err, wait / 1000);
+        _next_reinit_ms = millis() + wait;
       }
     }
 #else
@@ -156,19 +171,16 @@ void loop() {
       if (err) DBG_FMT("[sensor] stopPeriodicMeasurement err=%u\n", err);
       delay(600);
       i2c_reset();
-      // performFactoryReset() (0x3632) clears EEPROM-persisted state — more aggressive than reinit.
-      err = scd4x.performFactoryReset();
-      if (err) DBG_FMT("[sensor] performFactoryReset err=%u\n", err);
-      delay(1200);
       err = scd4x.measureSingleShot();
       if (err == 0) {
         DBG("[sensor] re-init succeeded");
         sensor_ok = true;
+        _reinit_attempts = 0;
       } else {
-        DBG_FMT("[sensor] re-init failed err=%u — retrying in 5 s\n", err);
-#ifndef SHOWCASE_MODE
-        delay(5000);
-#endif
+        _reinit_attempts++;
+        uint32_t wait = (_reinit_attempts >= 3) ? 30000 : 5000;
+        DBG_FMT("[sensor] re-init failed err=%u — retry in %u s\n", err, wait / 1000);
+        _next_reinit_ms = millis() + wait;
       }
     }
 #endif

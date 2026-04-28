@@ -33,10 +33,11 @@ MODE="${1:-normal}"
 case "$MODE" in
     normal)        PIO_ENV="esp32c3" ;;
     normal_stcc4)  PIO_ENV="esp32c3_stcc4" ;;
-    showcase)      PIO_ENV="esp32c3_showcase" ;;
-    test_display)  PIO_ENV="esp32c3_test_display" ;;
+    showcase)          PIO_ENV="esp32c3_showcase" ;;
+    showcase_minimal)  PIO_ENV="esp32c3_showcase_minimal" ;;
+    test_display)      PIO_ENV="esp32c3_test_display" ;;
     *)
-        echo "usage: flash.sh [normal|normal_stcc4|showcase|test_display]"
+        echo "usage: flash.sh [normal|normal_stcc4|showcase|showcase_minimal|test_display]"
         exit 1
         ;;
 esac
