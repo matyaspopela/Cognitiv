@@ -12,32 +12,35 @@ RTC_DATA_ATTR bool led_enabled = true;
 static bool sensor_ok = false;
 static bool display_ok = false;
 
-static volatile bool btn_event = false;
+// Async button handling — runs on a dedicated FreeRTOS task so presses are
+// serviced even while the main loop is blocked inside WiFi/MQTT/I2C calls.
+static SemaphoreHandle_t btn_sem            = nullptr;
+static volatile uint32_t btn_last_isr_ms    = 0;
 
-void IRAM_ATTR btn_isr() { btn_event = true; }
+void IRAM_ATTR btn_isr() {
+  uint32_t now = millis();
+  if (now - btn_last_isr_ms < BTN_DEBOUNCE_MS) return;
+  btn_last_isr_ms = now;
+  BaseType_t hpw = pdFALSE;
+  xSemaphoreGiveFromISR(btn_sem, &hpw);
+  if (hpw) portYIELD_FROM_ISR();
+}
 
-static void handle_button() {
-  if (!btn_event)
-    return;
-  btn_event = false;
+static void btn_task(void*) {
+  for (;;) {
+    if (xSemaphoreTake(btn_sem, portMAX_DELAY) != pdTRUE) continue;
 
-  delay(BTN_DEBOUNCE_MS);
-  if (digitalRead(PIN_BUTTON) != LOW)
-    return;
-
-  buzzer_play_tune();
+    buzzer_play_tune();
 #ifdef SHOWCASE_MODE
-  led_showcase_next();
-  DBG("[button] showcase step advanced");
+    led_showcase_next();
+    DBG("[button] showcase step advanced");
 #else
-  led_enabled = !led_enabled;
-  DBG_FMT("[button] LED %s\n", led_enabled ? "on" : "off (quiet mode)");
-  if (!led_enabled)
-    led_power_off();
+    led_enabled = !led_enabled;
+    DBG_FMT("[button] LED %s\n", led_enabled ? "on" : "off (quiet mode)");
+    if (!led_enabled)
+      led_power_off();
 #endif
-
-  while (digitalRead(PIN_BUTTON) == LOW)
-    delay(10);
+  }
 }
 
 void setup() {
@@ -112,24 +115,25 @@ void setup() {
   DBG("[led] ok");
 #endif
 
-  // button
+  // button — async via FreeRTOS so it can preempt the main loop
   pinMode(PIN_BUTTON, INPUT_PULLUP);
+  btn_sem = xSemaphoreCreateCounting(10, 0);
+  // priority 5 — well above Arduino loopTask (priority 1), so it preempts immediately
+  xTaskCreate(btn_task, "btn_task", 4096, nullptr, 5, nullptr);
   attachInterrupt(digitalPinToInterrupt(PIN_BUTTON), btn_isr, FALLING);
-  DBG("[button] interrupt attached");
+  DBG("[button] async task ready");
 
   DBG("=== boot complete ===");
 }
 
 void loop() {
   unsigned long _loop_start = millis();
-  handle_button();
 
   if (!sensor_ok) {
     static uint8_t  _reinit_attempts = 0;
     static uint32_t _next_reinit_ms  = 0;
 
     if (millis() < _next_reinit_ms) {
-      handle_button();
       delay(50);
       return;
     }
@@ -188,8 +192,8 @@ void loop() {
     if (display_ok) display_show_message("No sensor");
     {
       unsigned long elapsed  = millis() - _loop_start;
-      unsigned long deadline = millis() + (elapsed < 20000UL ? 20000UL - elapsed : 0UL);
-      while (millis() < deadline) { handle_button(); delay(50); }
+      unsigned long deadline = millis() + (elapsed < LOOP_PERIOD_MS ? LOOP_PERIOD_MS - elapsed : 0UL);
+      while (millis() < deadline) delay(50);
     }
 #endif
     return;
@@ -199,26 +203,20 @@ void loop() {
   float temp = 0.0f;
   float hum = 0.0f;
 
-#ifdef SHOWCASE_MODE
-  if (!sensor_read(&co2, &temp, &hum, handle_button)) {
-#else
   if (!sensor_read(&co2, &temp, &hum)) {
-#endif
     DBG("[sensor] read failed");
     if (display_ok) display_show_message("No sensor");
 #ifdef SHOWCASE_MODE
     {
       unsigned long elapsed  = millis() - _loop_start;
-      unsigned long deadline = millis() + (elapsed < 20000UL ? 20000UL - elapsed : 0UL);
-      while (millis() < deadline) { handle_button(); delay(50); }
+      unsigned long deadline = millis() + (elapsed < LOOP_PERIOD_MS ? LOOP_PERIOD_MS - elapsed : 0UL);
+      while (millis() < deadline) delay(50);
     }
 #endif
     return;
   }
 
   DBG_FMT("[sensor] co2=%u ppm  temp=%.1f C  hum=%.1f%%\n", co2, temp, hum);
-
-  handle_button();
 
   if (display_ok)
     display_show_co2(co2);
@@ -232,7 +230,7 @@ void loop() {
   }
 #endif
 
-#ifndef SHOWCASE_MODE
+#if !defined(SHOWCASE_MODE) && !defined(STC_NO_DATA)
   uint32_t vbatt_mv = battery_read_mv();
 
   if (wifi_connect()) {
@@ -244,10 +242,10 @@ void loop() {
   }
 #endif
 
-  // Hold until 20 s from loop start; button is serviced every 50 ms throughout.
+  // Hold until LOOP_PERIOD_MS from loop start. Button is async (FreeRTOS task), so it preempts this hold automatically.
   {
     unsigned long elapsed  = millis() - _loop_start;
-    unsigned long deadline = millis() + (elapsed < 20000UL ? 20000UL - elapsed : 0UL);
-    while (millis() < deadline) { handle_button(); delay(50); }
+    unsigned long deadline = millis() + (elapsed < LOOP_PERIOD_MS ? LOOP_PERIOD_MS - elapsed : 0UL);
+    while (millis() < deadline) delay(50);
   }
 }

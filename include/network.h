@@ -7,7 +7,7 @@
 #include <time.h>
 #include "config.h"
 
-bool wifi_connect() {
+bool wifi_connect(void (*yield_fn)() = nullptr) {
     WiFi.persistent(false);
     WiFi.setAutoReconnect(false);
     WiFi.mode(WIFI_STA);
@@ -17,6 +17,7 @@ bool wifi_connect() {
     unsigned long deadline = millis() + WIFI_TIMEOUT_MS;
     while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
         delay(500);
+        if (yield_fn) yield_fn();
     }
 
     if (WiFi.status() != WL_CONNECTED) {
@@ -34,7 +35,7 @@ void wifi_disconnect() {
 }
 
 // sync clock before building the payload timestamp; returns false on timeout
-bool ntp_sync() {
+bool ntp_sync(void (*yield_fn)() = nullptr) {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     unsigned long deadline = millis() + NTP_TIMEOUT_MS;
     time_t now = 0;
@@ -45,6 +46,7 @@ bool ntp_sync() {
             return true;
         }
         delay(500);
+        if (yield_fn) yield_fn();
     }
     DBG("[ntp] sync timeout");
     return false;
@@ -69,7 +71,7 @@ static bool build_payload(char* buf, size_t buf_size,
     return (written > 0 && written < buf_size);
 }
 
-bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
+bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv, void (*yield_fn)() = nullptr) {
     String mac = WiFi.macAddress();
 
     char payload[256];
@@ -102,7 +104,7 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
 
         if (!connected) {
             DBG_FMT("[mqtt] connect failed  state=%d\n", mqtt.state());
-            if (attempt < MQTT_RETRY_COUNT) delay(MQTT_RETRY_DELAY_MS);
+            if (attempt < MQTT_RETRY_COUNT) { delay(MQTT_RETRY_DELAY_MS); if (yield_fn) yield_fn(); }
             continue;
         }
 
@@ -114,7 +116,7 @@ bool mqtt_publish(float temp, float humidity, uint16_t co2, uint32_t vbatt_mv) {
             return true;
         }
 
-        if (attempt < MQTT_RETRY_COUNT) delay(MQTT_RETRY_DELAY_MS);
+        if (attempt < MQTT_RETRY_COUNT) { delay(MQTT_RETRY_DELAY_MS); if (yield_fn) yield_fn(); }
     }
 
     DBG("[mqtt] all attempts failed");
