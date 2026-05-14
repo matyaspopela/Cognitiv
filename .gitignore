@@ -103,3 +103,5 @@ temp/
 #gemini files
 .gemini
 server/api/management/commands/whitelist_device.py
+firmware_stcc4_nodisplay/*
+firmware_stcc4_nodisplay
