@@ -3,22 +3,20 @@
 #include <Wire.h>
 #include "config.h"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STCC4 driver  (./flash.sh normal_stcc4  →  -D SENSOR_STCC4)
-// ─────────────────────────────────────────────────────────────────────────────
+// STCC4 driver — build with -D SENSOR_STCC4
 #ifdef SENSOR_STCC4
 
 #include <SensirionI2cStcc4.h>
 static SensirionI2cStcc4 stcc4;
 
-// ESP32-C3 I2C peripheral can get stuck after a failed or stretched transaction.
-// Cycling Wire resets the peripheral and releases SDA/SCL so other bus devices work.
+// ESP32-C3 I2C can deadlock after a failed or clock-stretched transaction;
+// cycling Wire releases SDA/SCL so other devices on the bus still work.
 static void i2c_reset() {
     Wire.end();
     delay(5);
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setClock(25000);
-    stcc4.begin(Wire, STCC4_I2C_ADDR);
+    stcc4.begin(Wire, STCC4_I2C_ADDR_64);
 }
 
 void sensor_power_on() {
@@ -34,7 +32,7 @@ void sensor_power_off() {
 bool sensor_init() {
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setClock(25000);
-    stcc4.begin(Wire, STCC4_I2C_ADDR);
+    stcc4.begin(Wire, STCC4_I2C_ADDR_64);
     // Wake then immediately sleep — clears any stale state after power-on.
     uint16_t err = stcc4.exitSleepMode();
     if (err) DBG_FMT("[sensor] exitSleepMode err=%u (ok on first boot)\n", err);
@@ -68,7 +66,7 @@ bool sensor_read(uint16_t* co2, float* temp, float* humidity, void (*yield_fn)()
     unsigned long deadline = millis() + SENSOR_TIMEOUT_MS;
     int16_t co2_raw = 0;
     float t = 0.0f, rh = 0.0f;
-    int16_t status = 0;
+    uint16_t status = 0;
     bool ok = false;
 
     while (millis() < deadline) {
@@ -115,16 +113,13 @@ uint32_t battery_read_mv() {
     return vbatt_mv;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCD41 driver  (default — normal / showcase modes)
-// ─────────────────────────────────────────────────────────────────────────────
+// SCD41 driver — default for normal and showcase builds
 #else
 
 #include <SensirionI2CScd4x.h>
 static SensirionI2CScd4x scd4x;
 
-// ESP32-C3 I2C peripheral can get stuck after a failed or stretched transaction.
-// Cycling Wire resets the peripheral and releases SDA/SCL so other bus devices work.
+// same deadlock fix as above; duplicated because each #ifdef branch needs its own static
 static void i2c_reset() {
     Wire.end();
     delay(5);
@@ -147,13 +142,13 @@ bool sensor_init() {
     Wire.begin(PIN_SDA, PIN_SCL);
     scd4x.begin(Wire);
 
-    // Stop periodic mode in case the sensor was left in it from a prior run.
-    // Datasheet requires ≥500 ms idle time before the next command after stop.
+    // sensor may have been left in periodic mode from a prior run;
+    // datasheet requires ≥500 ms idle after stop before the next command.
     uint16_t err = scd4x.stopPeriodicMeasurement();
     if (err) DBG_FMT("[sensor] stopPeriodicMeasurement err=%u\n", err);
     delay(600);
 
-    // Reset the I2C peripheral after SCD41 init so the OLED can be initialised next.
+    // reset I2C after SCD41 init so the OLED can come up on the same bus
     i2c_reset();
     return true;
 }
